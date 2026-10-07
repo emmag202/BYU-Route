@@ -1,5 +1,6 @@
-App Summary
-"This is a simple application for finding BYU Ryde stations and routes." BYU students and campus visitors often struggle with predicting shuttle arrivals, tracking peak-hour bus capacities, and quickly accessing their most frequently traveled shuttle lines. This problem leads to missed rides, excessive wait times, and unscheduled delays during peak campus commuting hours. The BYU Ryde app solves this by consolidating route map visualizations, scheduled stop departure countdowns, and real-time crowding metrics into a unified mobile interface. Users can search for specific stops or destinations, monitor live shuttle positions, compare alternative campus-bound routes, and save their most frequent lines for instant access. By standardizing route management and providing transparent occupancy data, the application optimizes student transit routines across Brigham Young University's campus network.
+This is a simple application for finding BYU Ryde stations and routes.
+
+BYU students and campus visitors often struggle with predicting shuttle arrivals, tracking peak-hour bus capacities, and quickly accessing their most frequently traveled shuttle lines. The BYU Ryde app solves this by consolidating route map visualizations, scheduled stop departure countdowns, and real-time crowding metrics into a unified mobile interface. Users can search for specific stops or destinations, monitor live shuttle positions, compare alternative campus-bound routes, and save their most frequent lines for instant access. By standardizing route management and providing transparent occupancy data, the application optimizes student transit routines across Brigham Young University's campus network.
 
 ERD
 
