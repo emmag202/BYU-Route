@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BYU Ryde prototype</title>
+<style>
+:root{--bg:#ffffff;--map:#f3f5f7;--street:#ffffff;--ink:#141414;--mute:#626b75;--card:#ffffff;--line:#e3e7eb;--navy:#002e5d;--blue:#0047ba;--ok:#2f7d32;--mid:#b36b00;--bad:#b3261e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 "IBM Plex Sans","Segoe UI",Arial,sans-serif;display:flex;justify-content:center}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+#app{width:100%;max-width:430px;height:100%;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden}
+.mapwrap{position:relative;flex:0 0 calc(44% - 10px);background:var(--map)}
+.mapwrap.tall{flex-basis:calc(58% - 10px)}
+.mapwrap.short{flex-basis:calc(32% - 10px)}
+svg#map{width:100%;height:100%;display:block}
+.top{position:absolute;left:12px;right:12px;top:12px;display:flex;gap:8px;z-index:2}
+.search{flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:14px;padding:0 12px;box-shadow:0 2px 10px #0003;height:46px}
+.search input{flex:1;border:0;background:none;font:inherit;color:var(--ink);height:100%;min-width:0}
+.search input:focus{outline:none}
+.search:focus-within{outline:3px solid var(--blue)}
+.fab{width:46px;height:46px;border-radius:14px;border:0;background:var(--card);box-shadow:0 2px 10px #0003;font-size:20px}
+.sheet{flex:1;min-height:0;overflow-y:auto;background:var(--bg);border-radius:14px 14px 0 0;margin-top:-16px;position:relative;z-index:1;padding:14px 0 24px;box-shadow:0 -4px 14px #0002}
+.pad{padding:0 16px}
+h1{font-size:19px;margin:0 0 2px;font-weight:700}
+h2{font-size:14px;margin:18px 0 8px;font-weight:700;color:var(--mute)}
+.sub{color:var(--mute);font-size:13px}
+.rail{display:flex;gap:10px;overflow-x:auto;padding:10px 16px 6px;scroll-snap-type:x proximity}
+.rc{flex:0 0 228px;scroll-snap-align:start;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;text-align:left;border-left:6px solid var(--c)}
+.rc .n{font-weight:700;font-size:16px}
+.rc .d{color:var(--mute);font-size:13px;margin-bottom:8px}
+.rc .t{display:flex;align-items:baseline;gap:8px}
+.big{font-size:28px;font-weight:700;letter-spacing:-.5px}
+.more{margin-top:8px;font-size:13px;color:var(--navy);background:none;border:0;padding:4px 0;font-weight:600}
+.later{display:none;flex-wrap:wrap;gap:6px;margin-top:6px}
+.later.open{display:flex}
+.later span{background:var(--bg);border-radius:8px;padding:3px 8px;font-size:13px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--k)}
+.err{margin:12px 16px;padding:12px;border-radius:12px;background:#c8372d1f;border:1px solid var(--bad);color:var(--ink)}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.meter{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:6px}
+.meter i{display:block;height:100%;background:var(--k)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin-top:10px}
+.stops{list-style:none;margin:0;padding:0}
+.stops li{display:flex;gap:12px;padding:7px 0;position:relative}
+.stops li:before{content:"";width:12px;height:12px;border-radius:50%;background:var(--card);border:3px solid var(--c);flex:none;margin-top:3px;z-index:1}
+.stops li:not(:last-child):after{content:"";position:absolute;left:5px;top:20px;bottom:-9px;width:2px;background:var(--c)}
+.stops .tm{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--mute)}
+.alt{width:100%;display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:8px;padding:10px 12px;margin-bottom:8px;text-align:left}
+.cta{width:100%;border:0;background:var(--blue);color:#fff;font-weight:700;border-radius:6px;padding:14px;margin-top:14px;font-size:16px}
+.ghost{width:100%;background:none;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:8px;font-weight:600}
+.notice{display:flex;gap:10px;background:#c98a001f;border:1px solid var(--mid);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:14px}
+.back{position:absolute;left:12px;top:12px;z-index:2;width:46px;height:46px;border-radius:14px;border:0;background:var(--card);box-shadow:0 2px 10px #0003;font-size:20px}
+.hide{display:none!important}
+.eta{display:flex;align-items:baseline;gap:8px}
+.pulse{animation:p 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes p{0%{transform:scale(1);opacity:.6}100%{transform:scale(3);opacity:0}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+
+.byuhead{height:54px;background:var(--navy);color:#fff;display:flex;align-items:center;padding:0 16px;gap:12px;flex:none}
+.byumark{font-size:21px;font-weight:800;letter-spacing:.5px;padding-right:12px;border-right:1px solid rgba(255,255,255,.3)}
+.rydetitle{font-size:16px;font-weight:650}
+
+body,#app{background:#fff}
+.sheet{background:#fff;box-shadow:0 -3px 12px rgba(0,46,93,.08)}
+.mapwrap{background:#f3f5f7}
+.rc,.card,.alt,.search,.fab,.back{background:#fff}
+.rc,.card,.alt{box-shadow:0 1px 3px rgba(0,46,93,.05)}
+.later span{background:#f5f7f9}
+
+
+.mapwrap{overflow:hidden;touch-action:none}
+svg#map{touch-action:none;cursor:grab}
+svg#map.dragging{cursor:grabbing}
+.mapcontrols{position:absolute;right:12px;top:70px;z-index:3;display:grid;gap:6px}
+.mapcontrols button{width:42px;height:42px;border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:8px;font-size:21px;font-weight:700;box-shadow:0 1px 5px #0002}
+.sheet{transition:flex-basis .22s ease,border-radius .22s ease}
+.sheetHandle{position:sticky;top:0;z-index:5;background:#fff;padding:7px 0 5px;display:flex;justify-content:center;touch-action:none;cursor:ns-resize}
+.sheetHandle:before{content:"";display:block;width:42px;height:5px;border-radius:5px;background:#c6ccd2}
+.sheet.expanded{flex:1 1 auto;min-height:0;border-radius:14px 14px 0 0;box-shadow:0 -3px 12px rgba(0,46,93,.08)}
+.sheet.expanded .sheetHandle{border-radius:14px 14px 0 0}
+.mapwrap.sheet-open{flex-basis:92px!important;min-height:92px}
+.mapwrap.sheet-open svg,.mapwrap.sheet-open .mapcontrols,.mapwrap.sheet-open .top{opacity:0;pointer-events:none}
+.mapwrap.sheet-open .back{opacity:1}
+
+.profileBtn{margin-left:auto;border:1px solid #ffffff55;background:transparent;color:#fff;width:40px;height:40px;border-radius:8px;font-size:18px}
+.modalBack{position:absolute;inset:54px 0 0;background:#00183255;z-index:30;display:flex;align-items:flex-end}.modal{background:#fff;width:100%;border-radius:16px 16px 0 0;padding:20px 16px 26px}.field{display:block;margin-top:12px;font-size:13px;font-weight:650}.field input{width:100%;margin-top:5px;border:1px solid var(--line);border-radius:8px;padding:12px;font:inherit}.favbtn{width:100%;border:1px solid var(--blue);background:#fff;color:var(--blue);font-weight:700;border-radius:6px;padding:12px;margin-top:8px;font-size:15px}.favbtn.on{background:#eef4ff}.status{font-size:13px;margin-top:10px;color:var(--mute)}
+
+/* ===== DESKTOP PRESENTATION MODE ===== */
+@media (min-width: 800px){
+  html,body{height:100%;min-height:100%;overflow:hidden}
+  body{display:block;background:#f3f5f7}
+  #app{max-width:none;width:100vw;height:100vh;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(380px,.85fr);grid-template-rows:64px minmax(0,1fr);overflow:hidden;background:#fff}
+  .byuhead{grid-column:1 / -1;grid-row:1;height:64px;padding:0 28px;box-shadow:0 1px 0 var(--line);z-index:20}
+  .byumark{font-size:24px}.rydetitle{font-size:18px}
+  .profileBtn{width:42px;height:42px}
+  .mapwrap,.mapwrap.tall,.mapwrap.short,.mapwrap.sheet-open{grid-column:1;grid-row:2;position:relative;flex:none!important;min-height:0!important;height:100%;margin:0;background:var(--map)}
+  .mapwrap.sheet-open svg,.mapwrap.sheet-open .mapcontrols,.mapwrap.sheet-open .top{opacity:1;pointer-events:auto}
+  .sheet,.sheet.expanded{grid-column:2;grid-row:2;position:relative;z-index:5;margin:0;border-radius:0;min-height:0;height:100%;overflow-y:auto;padding:26px 0 40px;border-left:1px solid var(--line);box-shadow:-4px 0 14px rgba(0,46,93,.06);background:#fff}
+  .sheetHandle{display:none!important}
+  .pad{padding:0 28px}
+  .rail{display:grid;grid-template-columns:1fr;gap:10px;overflow:visible;padding:12px 28px 8px}
+  .rc{width:100%;flex:none}
+  .top{left:24px;right:24px;top:22px;max-width:650px}
+  .search{height:50px;border-radius:8px}.fab{height:50px;width:50px;border-radius:8px}
+  .mapcontrols{right:24px;top:24px}
+  .back{left:24px;top:22px;border-radius:8px}
+  h1{font-size:24px}.big{font-size:30px}
+  .modalBack{position:fixed;inset:64px 0 0;align-items:center;justify-content:center;padding:30px}
+  .modal{width:min(520px,calc(100vw - 60px));border-radius:12px;padding:26px;box-shadow:0 14px 45px #0004}
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="byuhead"><span class="byumark">BYU</span><span class="rydetitle">The Ryde</span><button id="profileBtn" class="profileBtn" aria-label="Profile">👤</button></header>
+  <div class="mapwrap" id="mapwrap">
+    <svg id="map" viewBox="0 0 400 520" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Interactive map of Ryde shuttle routes"></svg>
+    <div class="mapcontrols" aria-label="Map controls">
+      <button id="zoomIn" aria-label="Zoom in">+</button>
+      <button id="zoomOut" aria-label="Zoom out">−</button>
+      <button id="fitMap" aria-label="Fit route">⌖</button>
+    </div>
+    <div class="top" id="top">
+      <label class="search"><span aria-hidden="true">🔍</span><input id="q" type="search" placeholder="Search route, stop or destination" aria-label="Search routes"></label>
+      <button class="fab" id="locate" aria-label="Center on my location">◎</button>
+    </div>
+    <button class="back hide" id="back" aria-label="Back">←</button>
+  </div>
+  <div class="sheet" id="sheet"></div>
+  <div class="modalBack hide" id="profileModal"><section class="modal"><div id="profileContent"></div><button class="ghost" id="closeProfile">Close</button></section></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// Paste the team's Supabase Project URL and PUBLISHABLE key here. Never use a secret/service-role key in browser code.
+const SUPABASE_URL="https://sdswjmzgvnkecxuyijst.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_JKz-uqAkZwI0z_431MK9nw_QsvPgtsz";
+const db=(SUPABASE_URL.startsWith("http")&&SUPABASE_PUBLISHABLE_KEY.startsWith("sb_"))?window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
+const SVG="http://www.w3.org/2000/svg";
+const R=[
+ {id:"11",name:"Route 11",dest:"Campus: Wilkinson Center",color:"#12a594",d:"M40 460 L40 340 L170 340 L170 210 L300 210 L300 100",cap:40,riders:14,dep:[4,19,34,49,64],live:true,
+  stops:[["Wymount Terrace",.0,0],["Cougar Apartments",.22,4],["900 E Center",.45,9],["Helaman Halls",.72,14],["Wilkinson Center",1,18]]},
+ {id:"14",name:"Route 14",dest:"Campus: Marriott Center",color:"#e4572e",d:"M360 470 L360 300 L250 300 L250 160 L300 160 L300 100",cap:40,riders:36,dep:[7,22,37,52,67],live:true,
+  stops:[["Riverwoods",0,0],["Slate Canyon Apts",.3,5],["800 N & 900 E",.58,10],["Stadium parking",.82,14],["Marriott Center",1,17]]},
+ {id:"19",name:"Route 19",dest:"Campus: Brimhall Building",color:"#e0a100",d:"M40 160 L130 160 L130 60 L300 60 L300 100",cap:30,riders:22,dep:[2,17,32,47,62],live:true,
+  stops:[["Northridge Flats",0,0],["Edgemont Loop",.3,4],["University Ave",.62,8],["Brimhall Building",1,12]]},
+ {id:"27",name:"Route 27",dest:"Campus: Tanner Building",color:"#6b5bd2",d:"M210 490 L210 400 L290 400 L290 250 L320 250 L320 100",cap:40,riders:5,dep:[11,26,41,56,71],live:false,
+  stops:[["South Campus Commons",0,0],["Oak Hills Lot",.28,5],["Central Lot",.6,11],["Tanner Building",1,16]]}
+];
+const USER={x:150,y:352}; // user location (near Route 11 stop)
+const $=id=>document.getElementById(id);
+const svg=$("map"),sheet=$("sheet"),q=$("q");
+let currentUser=null,favoriteRouteIds=new Set();
+const configured=()=>!!db;
+const esc=(s="")=>String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+async function loadSavedUser(){if(!db)return;const net=localStorage.getItem("ryde_net_id");if(!net)return;const {data,error}=await db.from("users").select("*").eq("net_id",net).maybeSingle();if(error){console.error(error);return}currentUser=data;if(currentUser)await loadFavorites()}
+async function loadFavorites(){favoriteRouteIds.clear();if(!db||!currentUser)return;const {data,error}=await db.from("favorite_routes").select("route_id").eq("user_id",currentUser.user_id);if(error){console.error(error);return}(data||[]).forEach(x=>favoriteRouteIds.add(String(x.route_id)))}
+async function saveUser(name,net_id,email){if(!db)throw new Error("Add your Supabase URL and publishable key first.");const {data,error}=await db.from("users").upsert({name:name.trim(),net_id:net_id.trim(),email:email.trim()},{onConflict:"net_id"}).select().single();if(error)throw error;currentUser=data;localStorage.setItem("ryde_net_id",data.net_id);await loadFavorites()}
+async function toggleFavorite(route_id){if(!currentUser){openProfile();return}const id=String(route_id);if(favoriteRouteIds.has(id)){const {error}=await db.from("favorite_routes").delete().eq("user_id",currentUser.user_id).eq("route_id",id);if(error)throw error;favoriteRouteIds.delete(id)}else{const {error}=await db.from("favorite_routes").insert({user_id:currentUser.user_id,route_id:id});if(error)throw error;favoriteRouteIds.add(id)}}
+function openProfile(){const c=$("profileContent");if(currentUser)c.innerHTML=`<h1>Your Ryde profile</h1><div class="sub">Saved in Supabase</div><div class="card"><b>${esc(currentUser.name)}</b><div>${esc(currentUser.net_id)}</div><div class="sub">${esc(currentUser.email)}</div><div style="margin-top:10px"><b>${favoriteRouteIds.size}</b> favorite route${favoriteRouteIds.size===1?"":"s"}</div></div><button class="ghost" id="switchUser">Use another profile</button>`;else c.innerHTML=`<h1>Set up your Ryde profile</h1><div class="sub">Save your profile and favorite routes.</div><form id="profileForm"><label class="field">Name<input name="name" required maxlength="100"></label><label class="field">Net ID<input name="net_id" required maxlength="50"></label><label class="field">Email<input name="email" type="email" required maxlength="100"></label><button class="cta" type="submit">Save profile</button><div class="status" id="profileStatus">${configured()?"":"Supabase is not configured yet."}</div></form>`;$("profileModal").classList.remove("hide")}
+
+
+const addSheetHandle=()=>{
+  if(sheet.querySelector(".sheetHandle"))return;
+  const h=document.createElement("div");h.className="sheetHandle";h.setAttribute("role","button");
+  h.setAttribute("tabindex","0");h.setAttribute("aria-label","Show or hide full shuttle list");
+  sheet.prepend(h);
+};
+const setSheetExpanded=v=>{
+  sheet.classList.toggle("expanded",v);
+  $("mapwrap").classList.toggle("sheet-open",v);
+};
+
+const now=new Date();
+const clock=m=>{const t=new Date(now.getTime()+m*6e4);let h=t.getHours(),mi=String(t.getMinutes()).padStart(2,"0");return`${h%12||12}:${mi} ${h<12?"AM":"PM"}`};
+const lvl=r=>{const p=r.riders/r.cap;return p<.45?["Plenty of seats","var(--ok)"]:p<.8?["Filling up","var(--mid)"]:["Nearly full","var(--bad)"]};
+const el=(t,a={},p=svg)=>{const e=document.createElementNS(SVG,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e};
+
+/* ---- map ---- */
+let gRoutes={},lenOf={},gUser,gBus,gStops;
+function buildMap(){
+  svg.innerHTML="";
+  for(let x=0;x<=400;x+=65)el("line",{x1:x,y1:0,x2:x,y2:520,stroke:"var(--street)","stroke-width":7});
+  for(let y=30;y<=520;y+=65)el("line",{x1:0,y1:y,x2:400,y2:y,stroke:"var(--street)","stroke-width":7});
+  el("rect",{x:255,y:50,width:90,height:70,rx:10,fill:"var(--line)",opacity:.8});
+  const c=el("text",{x:300,y:40,"text-anchor":"middle","font-size":11,fill:"var(--mute)","font-weight":700});c.textContent="BYU Campus";
+  R.forEach(r=>{
+    const g=el("g",{});gRoutes[r.id]=g;
+    const p=el("path",{d:r.d,fill:"none",stroke:r.color,"stroke-width":6,"stroke-linecap":"round","stroke-linejoin":"round"},g);
+    lenOf[r.id]=p;r.path=p;
+    r.stops.forEach(s=>{const pt=p.getPointAtLength(s[1]*p.getTotalLength());s.pt=pt;
+      el("circle",{cx:pt.x,cy:pt.y,r:5,fill:"#fff",stroke:r.color,"stroke-width":3},g)});
+  });
+  gStops=el("g",{});
+  gBus=el("g",{class:"hide"});
+  el("circle",{r:9,fill:"var(--navy)",stroke:"#fff","stroke-width":3},gBus);
+  const bt=el("text",{y:4,"text-anchor":"middle","font-size":10,fill:"#fff","font-weight":700},gBus);bt.textContent="B";
+  gUser=el("g",{transform:`translate(${USER.x},${USER.y})`});
+  el("circle",{r:8,fill:"var(--blue)",opacity:.5,class:"pulse"},gUser);
+  el("circle",{r:7,fill:"var(--blue)",stroke:"#fff","stroke-width":3},gUser);
+}
+function showRoutes(ids,dim){R.forEach(r=>{gRoutes[r.id].style.display=ids.includes(r.id)?"":"none";gRoutes[r.id].style.opacity=dim&&dim!==r.id&&ids.includes(r.id)?.35:1})}
+function view(x,y,w){const h=w*1.3;svg.setAttribute("viewBox",`${x} ${y} ${w} ${h}`);if(typeof vb!=="undefined"){vb={x,y,w,h}}}
+function fit(r){const b=r.path.getBBox();const w=Math.max(b.width+90,(b.height+90)/1.3);view(b.x+b.width/2-w/2,b.y+b.height/2-w*.65,w)}
+
+/* ---- screens ---- */
+let screen=1,sel=null,timer=null,lostSignal=false;
+function layout(s){
+  screen=s;
+  $("mapwrap").className="mapwrap"+(s==1?"":s==2?" short":" tall");
+  $("top").classList.toggle("hide",s!=1);
+  $("back").classList.toggle("hide",s==1);
+  gBus.classList.add("hide");clearInterval(timer);
+}
+function crowdHTML(r){
+  if(!r.live||lostSignal)return`<div class="notice" role="status"><span aria-hidden="true">⚠️</span><span>Live bus information is currently unavailable for ${r.name}. Showing scheduled times only.</span></div>`;
+  const [t,c]=lvl(r);
+  return`<div class="card" style="--k:${c}"><div class="row" style="border:0;padding:0"><div><div class="sub">On the bus right now</div><div class="big">${r.riders} <span class="sub" style="font-weight:400;font-size:14px">of ${r.cap} seats and standing</span></div></div><span class="badge" style="margin-left:auto"><span class="dot"></span>${t}</span></div><div class="meter"><i style="width:${r.riders/r.cap*100}%"></i></div></div>`;
+}
+function home(filter=""){
+  layout(1);showRoutes(R.map(r=>r.id));view(0,0,400);
+  const f=filter.trim().toLowerCase();
+  const list=R.filter(r=>!f||[r.name,r.id,r.dest,...r.stops.map(s=>s[0])].join(" ").toLowerCase().includes(f));
+  let h=`<div class="pad"><h1>Next shuttles</h1><div class="sub">Sample data for the prototype. Tap a route for stops and crowding.</div></div>`;
+  if(!list.length){h+=`<div class="err" role="alert"><b>No route found for “${f.replace(/</g,"&lt;")}”.</b><br>Check the route number, stop or destination and try again.</div>`;showRoutes([])}
+  else{showRoutes(list.map(r=>r.id));
+   h+=`<div class="rail">`+list.map(r=>{const [t,c]=lvl(r);return`<div class="rc" style="--c:${r.color}">
+    <button style="all:unset;cursor:pointer;display:block;width:100%" data-open="${r.id}" aria-label="Open ${r.name} to ${r.dest}">
+     <div class="n">${r.name}</div><div class="d">to ${r.dest.replace("Campus: ","")}</div>
+     <div class="t"><span class="big">${r.dep[0]} min</span><span class="sub">${clock(r.dep[0])}</span></div>
+     <span class="badge" style="--k:${c}"><span class="dot"></span>${r.live?t:"Live info unavailable"}</span></button>
+    <button class="more" data-more="${r.id}" aria-expanded="false">Later times ▾</button>
+    <div class="later" id="l${r.id}">${r.dep.slice(1).map(m=>`<span>${clock(m)}</span>`).join("")}</div></div>`}).join("")+`</div>
+<div class="pad">
+  <h2>All shuttle routes</h2>
+  ${list.map(r=>{const [t,c]=lvl(r);return `<button class="alt" style="--c:${r.color}" data-open="${r.id}">
+    <div><b>${r.name}</b><div class="sub">${r.dest.replace("Campus: ","")}</div></div>
+    <div style="margin-left:auto;text-align:right"><b>${r.dep[0]} min</b><div class="badge" style="--k:${c}"><span class="dot"></span>${r.live?t:"Scheduled"}</div></div>
+  </button>`}).join("")}
+  <h2>Service information</h2>
+  <div class="card">
+    <div class="row"><div><b>Live bus locations</b><div class="sub">Select a route to see its bus, stops, crowding, and arrival information.</div></div></div>
+    <div class="row"><div><b>Upcoming departures</b><div class="sub">Tap “Later times” on any shuttle above to compare upcoming departures.</div></div></div>
+    <div class="row" style="border:0"><div><b>Prototype data</b><div class="sub">Times, crowding, and bus positions shown here are simulated for usability testing.</div></div></div>
+  </div>
+</div>`}
+  sheet.innerHTML=h;addSheetHandle();
+}
+function detail(id){
+  sel=R.find(r=>r.id==id);const r=sel;layout(2);
+  showRoutes([r.id]);fit(r);
+  gStops.innerHTML="";
+  const [t,c]=lvl(r);
+  const alts=R.filter(x=>x.id!=r.id);
+  sheet.innerHTML=`<div class="pad" style="--c:${r.color}">
+   <div class="row" style="border:0;padding:0"><div><h1>${r.name}</h1><div class="sub">to ${r.dest}</div></div><div style="margin-left:auto;text-align:right"><div class="big">${r.dep[0]} min</div><div class="sub">${clock(r.dep[0])}</div></div></div>
+   ${crowdHTML(r)}
+   <h2>Stops and scheduled times</h2>
+   <ul class="stops">${r.stops.map(s=>`<li><span>${s[0]}</span><span class="tm">${clock(r.dep[0]+s[2])}</span></li>`).join("")}</ul>
+   <button class="cta" id="go">Take this route</button>
+   <h2>Other ways to get to campus</h2>
+   ${alts.map(a=>{const [at,ac]=lvl(a);return`<button class="alt" style="--c:${a.color}" data-open="${a.id}"><div><b>${a.name}</b><div class="sub">${a.dest.replace("Campus: ","")}</div></div><div style="margin-left:auto;text-align:right"><b>${a.dep[0]} min</b><div class="badge" style="--k:${ac}"><span class="dot"></span>${a.live?at:"No live info"}</div></div></button>`}).join("")}
+  </div>`;addSheetHandle();
+}
+function live(){
+  const r=sel;layout(3);showRoutes([r.id]);lostSignal=false;
+  const total=r.path.getTotalLength(),board=r.stops[1],boardD=board[1]*total;
+  let busD=0,uX=USER.x,uY=USER.y,secs=0;
+  const upd=()=>{
+    const left=Math.max(0,Math.round((boardD-busD)/boardD*(r.dep[0]+0)*1+0));
+    const arrived=busD>=boardD-1;
+    const feed=r.live&&!lostSignal;
+    $("eta").textContent=arrived?"Bus is here":feed?Math.max(1,left)+" min":"—";
+    $("etasub").textContent=arrived?`Board at ${board[0]}`:feed?`Bus is heading to ${board[0]}`:"";
+    $("lostmsg").classList.toggle("hide",feed);
+    gBus.classList.toggle("hide",!r.live);
+    gBus.style.opacity=feed?1:.35;
+    const bp=r.path.getPointAtLength(busD);
+    gBus.setAttribute("transform",`translate(${bp.x},${bp.y})`);
+    gUser.setAttribute("transform",`translate(${uX},${uY})`);
+    const minX=Math.min(uX,bp.x)-55,maxX=Math.max(uX,bp.x)+55,minY=Math.min(uY,bp.y)-55,maxY=Math.max(uY,bp.y)+55;
+    const w=Math.max(170,maxX-minX,(maxY-minY)/1.3);
+    view((minX+maxX)/2-w/2,(minY+maxY)/2-w*.65,w);
+  };
+  gStops.innerHTML="";
+  sheet.innerHTML=`<div class="pad" style="--c:${r.color}">
+   <div class="row" style="border:0;padding:0"><div><h1>${r.name} is on the way</h1><div class="sub">to ${r.dest}</div></div></div>
+   <div class="card"><div class="sub">Arriving at your stop</div><div class="eta"><span class="big" id="eta"></span></div><div class="sub" id="etasub"></div></div>
+   <div id="lostmsg" class="notice hide" role="status"><span aria-hidden="true">⚠️</span><span>Live bus information is currently unavailable. Showing scheduled times only; next scheduled arrival is ${clock(r.dep[0])}.</span></div>
+   ${r.live?crowdHTML(r):""}
+   <button class="ghost" id="sim">Simulate lost signal</button>
+   <button class="ghost" id="end">End trip</button></div>`;addSheetHandle();
+  $("sim").onclick=()=>{lostSignal=!lostSignal;$("sim").textContent=lostSignal?"Restore signal":"Simulate lost signal";upd()};
+  $("end").onclick=()=>{lostSignal=false;home()};
+  upd();
+  timer=setInterval(()=>{
+    if(!(r.live&&!lostSignal))return;
+    if(busD<boardD)busD=Math.min(boardD,busD+boardD/120);
+    const tx=board[0]&&board.pt.x-10,ty=board.pt.y+10;
+    uX+=(tx-uX)*.04;uY+=(ty-uY)*.04;upd();
+  },250);
+}
+
+/* ---- events ---- */
+document.addEventListener("click",e=>{
+  const o=e.target.closest("[data-open]");if(o){detail(o.dataset.open);sheet.scrollTop=0;return}
+  const m=e.target.closest("[data-more]");if(m){const l=$("l"+m.dataset.more);const op=l.classList.toggle("open");m.setAttribute("aria-expanded",op);m.textContent=op?"Later times ▴":"Later times ▾"}
+});
+$("back").onclick=()=>screen==3?detail(sel.id):home(q.value);
+sheet.addEventListener("click",e=>{if(e.target.id=="go")live()});
+q.addEventListener("input",()=>home(q.value));
+$("locate").onclick=()=>{view(USER.x-90,USER.y-120,180);setTimeout(()=>view(0,0,400),1800)};
+
+/* ---- interactive map pan / zoom ---- */
+let vb={x:0,y:0,w:400,h:520}, mapDrag=false,mx=0,my=0,startVB=null;
+const applyVB=()=>svg.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+const syncVB=()=>{const a=svg.getAttribute("viewBox").split(/\s+/).map(Number);vb={x:a[0],y:a[1],w:a[2],h:a[3]}};
+const zoom=f=>{
+ syncVB();const nw=Math.max(120,Math.min(520,vb.w*f)),nh=nw*1.3;
+ vb.x+= (vb.w-nw)/2;vb.y+=(vb.h-nh)/2;vb.w=nw;vb.h=nh;applyVB();
+};
+$("zoomIn").onclick=()=>zoom(.78);
+$("zoomOut").onclick=()=>zoom(1.28);
+$("fitMap").onclick=()=>{if(sel)fit(sel);else view(0,0,400);syncVB()};
+svg.addEventListener("pointerdown",e=>{
+ mapDrag=true;svg.classList.add("dragging");svg.setPointerCapture?.(e.pointerId);
+ mx=e.clientX;my=e.clientY;syncVB();startVB={...vb};
+});
+svg.addEventListener("pointermove",e=>{
+ if(!mapDrag)return;
+ const r=svg.getBoundingClientRect();
+ vb.x=startVB.x-(e.clientX-mx)*startVB.w/r.width;
+ vb.y=startVB.y-(e.clientY-my)*startVB.h/r.height;
+ applyVB();
+});
+const endMapDrag=e=>{mapDrag=false;svg.classList.remove("dragging");try{svg.releasePointerCapture?.(e.pointerId)}catch{}};
+svg.addEventListener("pointerup",endMapDrag);svg.addEventListener("pointercancel",endMapDrag);
+
+/* ---- pull-up shuttle sheet ---- */
+let sheetDrag=false,sy=0;
+sheet.addEventListener("pointerdown",e=>{
+ if(!e.target.closest(".sheetHandle"))return;
+ sheetDrag=true;sy=e.clientY;sheet.setPointerCapture?.(e.pointerId);
+});
+sheet.addEventListener("pointerup",e=>{
+ if(!sheetDrag)return;sheetDrag=false;
+ const dy=e.clientY-sy;
+ if(Math.abs(dy)<18)setSheetExpanded(!sheet.classList.contains("expanded"));
+ else setSheetExpanded(dy<0);
+});
+sheet.addEventListener("pointercancel",()=>sheetDrag=false);
+sheet.addEventListener("keydown",e=>{
+ if(!e.target.closest(".sheetHandle"))return;
+ if(e.key==="Enter"||e.key===" "){e.preventDefault();setSheetExpanded(!sheet.classList.contains("expanded"))}
+});
+
+
+$("profileBtn").onclick=openProfile;$("closeProfile").onclick=()=>$("profileModal").classList.add("hide");
+$("profileModal").addEventListener("click",e=>{if(e.target.id==="profileModal")$("profileModal").classList.add("hide");if(e.target.id==="switchUser"){currentUser=null;favoriteRouteIds.clear();localStorage.removeItem("ryde_net_id");openProfile()}});
+$("profileContent").addEventListener("submit",async e=>{if(e.target.id!=="profileForm")return;e.preventDefault();const f=new FormData(e.target),st=$("profileStatus");st.textContent="Saving…";try{await saveUser(f.get("name"),f.get("net_id"),f.get("email"));openProfile()}catch(err){st.textContent=err.message||"Could not save profile."}});
+sheet.addEventListener("click",async e=>{if(e.target.id!=="favoriteBtn")return;if(!currentUser){openProfile();return}e.target.disabled=true;try{await toggleFavorite(sel.id);e.target.classList.toggle("on",favoriteRouteIds.has(String(sel.id)));e.target.textContent=favoriteRouteIds.has(String(sel.id))?"★ Favorite route":"☆ Add to favorites"}catch(err){alert(err.message||"Could not save favorite.")}finally{e.target.disabled=false}});
+
+async function start(){buildMap();await loadSavedUser();home()} start();
+</script>
+</body>
+</html>
