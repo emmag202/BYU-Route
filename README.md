@@ -35,3 +35,6 @@ Our vertical slice is **Save Profile**.
 5. Confirm the saved information is still there.
 
 The profile is stored in the Supabase `users` table and retrieved after refreshing, demonstrating persistent data storage.
+
+Link to DEMO Video:
+https://drive.google.com/file/d/1teh6GizUji3yptUHIkroI10ENTW-uH7p/view?usp=sharing
