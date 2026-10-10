@@ -1,57 +1,37 @@
-This is a simple application for finding BYU Ryde stations and routes.
+# BYU Ryde Shuttle App
 
-BYU students and campus visitors often struggle with predicting shuttle arrivals, tracking peak-hour bus capacities, and quickly accessing their most frequently traveled shuttle lines. The BYU Ryde app solves this by consolidating route map visualizations, scheduled stop departure countdowns, and real-time crowding metrics into a unified mobile interface. Users can search for specific stops or destinations, monitor live shuttle positions, compare alternative campus-bound routes, and save their most frequent lines for instant access. By standardizing route management and providing transparent occupancy data, the application optimizes student transit routines across Brigham Young University's campus network.
+## 1. App Summary
 
-ERD
+BYU Ryde is a web app that helps students explore BYU shuttle routes, stops, and scheduled departures. It includes an interactive route map, route schedules, and a user profile feature that saves information between visits.
 
+## 2. ERD
 
-Tech Stack
-Frontend (HTML5 / CSS3 / Vanilla JavaScript):
+Our relational database models users, routes, stops, buses, and their relationships.
 
-HTML5 & Vanilla JavaScript: Chosen for maximum performance, simple maintenance, and direct DOM manipulate without the overhead of heavy frontend frameworks.
+![BYU Ryde ERD](ryde-erd.png)
 
-CSS3 & Embedded SVG: Provides responsive, accessible styling with interactive vector graphics for precise map rendering, responsive bottom sheets, and route geometry visualization.
+## 3. Tech Stack
 
-Backend & Database (Supabase):
+- **HTML, CSS, JavaScript:** Frontend interface, map, schedules, and user interactions.
+- **Supabase (PostgreSQL):** Backend database for storing and retrieving user profiles.
 
-Supabase: Offers instant RESTful API endpoints and real-time database capabilities, allowing seamless updates and persistent data storage.
+We chose these tools for their simplicity and easy database integration.
 
-How to Get It Running
-Local Development
-Clone the Repository:
+## 4. How to Get It Running
 
-Bash
-git clone <repository-url>
-cd <repository-folder>
-Configure Supabase Credentials:
+1. Download or clone this repository.
+2. Open `index.html` using VS Code Live Server.
+3. Ensure the Supabase project URL, publishable key, and database tables are configured.
+4. An internet connection is required for database access.
 
-Create a Supabase project and execute the table schema (e.g., favorites table).
+## 5. Verifying the Vertical Slice
 
-Open index.html (or your JS entry file) and initialize Supabase with your project URL and public anon key:
+Our vertical slice is **Save Profile**.
 
-JavaScript
-const SUPABASE_URL = "https://your-supabase-project.supabase.co";
-const SUPABASE_KEY = "your-anon-key";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-Launch the Application:
+1. Open the application and navigate to the profile section.
+2. Enter a Net ID, name, and email.
+3. Click **Save Profile** and confirm the saved information appears.
+4. Refresh the page and reopen the profile section.
+5. Confirm the saved information is still there.
 
-Open index.html directly in any web browser, or serve it using a local server extension (e.g., VS Code Live Server).
-
-Hosted Platform
-Access the Live App: Open the live deployment link: [https://your-app-name.vercel.app](https://your-app-name.vercel.app) (or your platform URL).
-
-Access the Source Code: View the repository directly at [https://github.com/your-username/byu-ryde-app](https://github.com/your-username/byu-ryde-app).
-
-Verifying the Vertical Slice
-Follow these steps to test end-to-end functionality between the web UI and Supabase database using the "Add Favorite Route" feature:
-
-Trigger the Action:
-
-Launch the application and select any route from the home list (e.g., Route 11).
-
-On the route detail sheet, click the "Add Favorite Route" button.
-
-Verify that the UI displays a immediate visual confirmation (e.g., button state changes to "Saved to Favorites" or a confirmation badge appears).
-Navigate back to Route 11 or check your top Favorites section.
-
-Result: The route number is persistently saved in the Supabase favorites table and automatically rendered as favorited upon page reload.
+The profile is stored in the Supabase `users` table and retrieved after refreshing, demonstrating persistent data storage.
