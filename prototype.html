@@ -84,12 +84,15 @@ svg#map.dragging{cursor:grabbing}
 .mapwrap.sheet-open{flex-basis:92px!important;min-height:92px}
 .mapwrap.sheet-open svg,.mapwrap.sheet-open .mapcontrols,.mapwrap.sheet-open .top{opacity:0;pointer-events:none}
 .mapwrap.sheet-open .back{opacity:1}
+.username{
+  margin-left: auto;
+}
 
 </style>
 </head>
 <body>
 <div id="app">
-  <header class="byuhead"><span class="byumark">BYU</span><span class="rydetitle">The Ryde</span></header>
+  <header class="byuhead"><span class="byumark">BYU</span><span class="rydetitle">The Ryde</span><span class="username">Username</span></header>
   <div class="mapwrap" id="mapwrap">
     <svg id="map" viewBox="0 0 400 520" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Interactive map of Ryde shuttle routes"></svg>
     <div class="mapcontrols" aria-label="Map controls">
