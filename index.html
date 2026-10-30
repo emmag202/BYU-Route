@@ -156,6 +156,13 @@ svg#map{max-width:100%;max-height:100%;object-fit:contain}
 .stop-departures strong{color:#173451}
 .stop-departures span{background:none!important;color:#526779}
 .rc .later.open{display:block}
+.dir-head{margin-top:10px;font-size:11px;font-weight:750;letter-spacing:.5px;text-transform:uppercase;color:#647389}
+.dir-switch{display:inline-flex;margin-top:12px;padding:3px;border-radius:999px;background:#eef2f6;border:1px solid var(--line);gap:2px}
+.dir-switch button{border:0;background:none;border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:650;color:#4a5b6e;cursor:pointer}
+.dir-switch button[aria-pressed="true"]{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(0,30,70,.18)}
+.dir-switch button:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.sched-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.sched-top .dir-switch{margin-top:0}
 @media(max-width:799px){
  .map-caption{top:68px;font-size:12px}
  .map-route-picker{bottom:5px;gap:3px}
@@ -343,39 +350,71 @@ function fit(r){view(0,0,840)}
 
 // Real published timetables, while map geometry, bus location, and crowding remain demonstrations.
 const fmtDeparture=t=>{const [h,m]=t.split(':').map(Number);return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`};
+// Service day rolls over at 3 AM, so a 12:00 AM bus belongs to the evening before it (minute 1440, not 0).
+const SERVICE_DAY_START=180;
 function provoNow(){
  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Denver',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
  const get=k=>parts.find(x=>x.type===k)?.value;
- return {day:{Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[get('weekday')],minutes:Number(get('hour'))*60+Number(get('minute'))};
+ let day={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[get('weekday')],minutes=Number(get('hour'))*60+Number(get('minute'));
+ if(minutes<SERVICE_DAY_START){day=(day+6)%7;minutes+=1440}
+ return {day,minutes};
 }
+// Direction: every stop but the last is a pickup heading to campus; the last column is the campus departure back out.
+const RETURN_LABELS={"101":"MOA → Rec Center","102":"MOA → Wyview/Raintree","103":"MOA → Branbury/Carriage Cove","104":"WILK → King Henry","105":"WILK → South/Joaquin","107":"MOA → Wymount"};
+R.forEach(r=>{
+ const last=r.stops.length-1;
+ r.toCampus=r.stops.map((s,j)=>j).filter(j=>j<last);
+ r.fromCampus=[last];
+ r.campusStop=r.stops[last][0];
+ r.returnLabel=RETURN_LABELS[r.id]||`${r.campusStop} → ${r.stops.slice(0,last).map(s=>s[0]).join('/')}`;
+ // Minutes on the service day; a time earlier than the one before it in its column has passed midnight.
+ r.timetable.forEach(col=>{let prev=-1;col.forEach(t=>{const [h,m]=t.time.split(':').map(Number);let v=h*60+m;while(v<prev)v+=1440;if(v<SERVICE_DAY_START)v+=1440;t.min=v;prev=v})});
+});
+const stopLabel=(r,j)=>r.fromCampus.includes(j)?r.returnLabel:r.stops[j][0];
 function nextDepartures(r,j=0,n=4){
  const {day,minutes}=provoNow();
  return r.timetable[j].filter(t=>{
   if(r.service!=='daily'&&(day===0||day===6))return false;
   if(day===5&&t.days==='Mon-Thu')return false;
-  const [h,m]=t.time.split(':').map(Number);
-  return h*60+m>=minutes;
+  return t.min>=minutes;
  }).slice(0,n);
 }
+// Direction is chosen per route ("to" or "from" campus); remembered in this browser when storage is available.
+const dirOf={};
+try{Object.assign(dirOf,JSON.parse(localStorage.getItem("ryde_dirs")||"{}"))}catch{}
+const getDir=r=>dirOf[r.id]==="from"?"from":"to";
+function setDir(r,d){dirOf[r.id]=d;try{localStorage.setItem("ryde_dirs",JSON.stringify(dirOf))}catch{}}
+const dirStops=(r,d=getDir(r))=>d==="from"?r.fromCampus:r.toCampus;
 function routeNext(r){
- const upcoming=r.stops.map((st,j)=>({stop:st[0],times:nextDepartures(r,j,3)}));
- const available=upcoming.flatMap(x=>x.times.map(t=>({...t,stop:x.stop}))).sort((a,b)=>a.time.localeCompare(b.time));
- return {upcoming,next:available[0]};
+ const d=getDir(r);
+ const groups=dirStops(r,d).map(j=>({j,stop:stopLabel(r,j),times:nextDepartures(r,j,3)}));
+ const next=groups.flatMap(x=>x.times.map(t=>({...t,stop:x.stop}))).sort((a,b)=>a.min-b.min)[0];
+ return {d,groups,next};
 }
+const housing=r=>r.toCampus.map(j=>r.stops[j][0]);
+const cardStops=(r,d)=>d==="from"?`${esc(r.campusStop)} → ${esc(housing(r).join(' · '))}`:`${esc(housing(r).join(' · '))} → ${esc(r.campusStop)}`;
+const cardLabel=d=>d==="from"?"Next bus from campus":"Next bus to campus";
 const nextTimeText=n=>n?fmtDeparture(n.time):"No more today";
-const nextNoteText=n=>n?'From '+esc(n.stop):'No remaining published departures today';
-const laterHTML=up=>up.map(x=>`<div class="stop-departures"><strong>${esc(x.stop)}</strong><span>${x.times.length?x.times.map(t=>fmtDeparture(t.time)).join(' · '):'No more today'}</span></div>`).join('');
+const nextNoteText=(r,{d,next})=>!next?(d==="from"?'No remaining departures from campus today':'No remaining departures to campus today'):d==="from"?`Leaves ${esc(r.campusStop)} for ${esc(housing(r).join(' / '))}`:'From '+esc(next.stop);
+const laterHTML=({groups})=>groups.map(x=>`<div class="stop-departures"><strong>${esc(x.stop)}</strong><span>${x.times.length?x.times.map(t=>fmtDeparture(t.time)).join(' · '):'No more today'}</span></div>`).join('');
+const dirSwitch=r=>{const d=getDir(r);return `<div class="dir-switch" role="group" aria-label="Direction for ${esc(r.name)}">${[["to","To campus"],["from","From campus"]].map(([k,l])=>`<button type="button" data-dir="${k}" data-dir-route="${r.id}" aria-pressed="${d===k}">${l}</button>`).join('')}</div>`};
+function updateCard(r){
+ const t=sheet.querySelector(`[data-next-time="${r.id}"]`);if(!t)return;
+ const rn=routeNext(r),q=k=>sheet.querySelector(`[data-${k}="${r.id}"]`);
+ t.innerHTML=nextTimeText(rn.next);
+ q("next-note").innerHTML=nextNoteText(r,rn);
+ q("card-stops").innerHTML=cardStops(r,rn.d);
+ q("card-label").innerHTML=cardLabel(rn.d);
+ const l=document.getElementById("l"+r.id);if(l)l.innerHTML=laterHTML(rn);
+ sheet.querySelectorAll(`[data-dir-route="${r.id}"]`).forEach(b=>b.setAttribute("aria-pressed",b.dataset.dir===rn.d));
+}
 // Re-evaluate "next" times as the clock advances, updating in place so open panels, search focus and scroll are kept.
 let lastTimeKey=null;
 function refreshTimes(force){
  const {day,minutes}=provoNow(),key=day+':'+minutes;
  if(!force&&key===lastTimeKey)return;lastTimeKey=key;
  R.forEach(r=>{
-  const t=sheet.querySelector(`[data-next-time="${r.id}"]`);if(!t)return;
-  const {upcoming,next}=routeNext(r);
-  t.innerHTML=nextTimeText(next);
-  const n=sheet.querySelector(`[data-next-note="${r.id}"]`);if(n)n.innerHTML=nextNoteText(next);
-  const l=document.getElementById("l"+r.id);if(l)l.innerHTML=laterHTML(upcoming);
+  updateCard(r);
  });
  if(screen==2&&sel){
   const weekday=sel.service==='daily'||(day>=1&&day<=5);
@@ -390,7 +429,10 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshTim
 window.addEventListener("focus",()=>refreshTimes(true));
 function schedulePanel(r){
  const day=provoNow().day,weekday=r.service==='daily'||(day>=1&&day<=5);
- return `<div class="card"><b>Published departure schedule</b><div class="sub">${r.service==='daily'?'Monday–Sunday, 5 PM–midnight':'Monday–Friday during Fall and Winter semesters; school holiday exceptions apply'}. Times are scheduled, not live.</div>${r.stops.map((s,j)=>{let next=nextDepartures(r,j,5);return `<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(s[0])}</b><div class="sub" data-stop-next="${j}">${!weekday?'No regular weekday service today':next.length?next.map(t=>fmtDeparture(t.time)).join(' · '):'No further departures listed today'}</div></div>`}).join('')}<details><summary>View complete timetable</summary>${r.stops.map((s,j)=>`<div style="margin-top:12px"><b>${esc(s[0])}</b><div class="sub">${r.timetable[j].map(t=>fmtDeparture(t.time)+(t.days==='Mon-Thu'?' (M–Th)':'')).join(' · ')}</div></div>`).join('')}</details></div>`;
+ const nextRow=j=>{const next=nextDepartures(r,j,5);return `<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(stopLabel(r,j))}</b><div class="sub" data-stop-next="${j}">${!weekday?'No regular weekday service today':next.length?next.map(t=>fmtDeparture(t.time)).join(' · '):'No further departures listed today'}</div></div>`};
+ const fullRow=j=>`<div style="margin-top:12px"><b>${esc(stopLabel(r,j))}</b><div class="sub">${r.timetable[j].map(t=>fmtDeparture(t.time)+(t.days==='Mon-Thu'?' (M–Th)':'')).join(' · ')}</div></div>`;
+ const d=getDir(r),dirs=f=>`<div class="dir-head">${d==="from"?`From campus · ${esc(r.campusStop)} departures`:'To campus · pickups'}</div>${dirStops(r,d).map(f).join('')}`;
+ return `<div class="card"><div class="sched-top"><b>Published departure schedule</b>${dirSwitch(r)}</div><div class="sub">${r.service==='daily'?'Monday–Sunday, 5 PM–midnight':'Monday–Friday during Fall and Winter semesters; school holiday exceptions apply'}. Times are scheduled, not live.</div>${dirs(nextRow)}<details><summary>View complete timetable</summary>${dirs(fullRow)}</details></div>`;
 }
 function informationPanel(){return `<div class="pad"><h2>About The Ryde</h2><div class="card"><b>Free for BYU students</b><div class="sub">Show your BYU ID to ride. Regular routes run Monday–Friday during Fall and Winter semesters, including reading days and finals week, but not school holidays. Heritage Overflow Parking has a separately published Monday–Sunday schedule.</div></div><h2>Contact and feedback</h2><div class="card"><p>Suggestions, issues, and compliments are welcome.</p><a href="mailto:theryde@studentmovement.com">theryde@studentmovement.com</a><p><a href="tel:8018996010">801-899-6010</a></p></div><h2>Advertising and employment</h2><div class="card"><p>Advertising inquiries: <a href="tel:8018996010">801-899-6010</a></p><p>Sales or bus driving: <a href="mailto:jake@studentmovement.com">jake@studentmovement.com</a></p><p>Marketing or bus driving: <a href="mailto:kevin@studentmovement.com">kevin@studentmovement.com</a></p></div><p class="sub">Prototype: schematic map, estimated bus positions, and crowding are simulated. Published departure schedules are informational and may change.</p></div>`}
 /* ---- screens ---- */
@@ -419,17 +461,18 @@ function home(filter=""){
   if(!list.length){h+=`<div class="card">No routes match your search. Try another stop or neighborhood.</div>`}
   else{
     h+=`<div class="rail">`+list.map(r=>{
-      const {upcoming,next}=routeNext(r);
+      const rn=routeNext(r),{next,d}=rn;
       return `<article class="rc" style="--c:${r.color}">
         <button class="route-open" data-open="${r.id}" aria-label="View ${esc(r.name)} timetable">
           <span class="route-name">${esc(r.name)}</span>
-          <span class="route-stop">${esc(r.stops.map(st=>st[0]).join(' · '))}</span>
-          <span class="next-label">Next scheduled departure</span>
+          <span class="route-stop" data-card-stops="${r.id}">${cardStops(r,d)}</span>
+          <span class="next-label" data-card-label="${r.id}">${cardLabel(d)}</span>
           <span class="next-time" data-next-time="${r.id}">${nextTimeText(next)}</span>
-          <span class="route-note" data-next-note="${r.id}">${nextNoteText(next)}</span>
+          <span class="route-note" data-next-note="${r.id}">${nextNoteText(r,rn)}</span>
         </button>
+        ${dirSwitch(r)}
         <button class="more" data-more="${r.id}" aria-expanded="false">Times by stop ▾</button>
-        <div class="later" id="l${r.id}">${laterHTML(upcoming)}</div>
+        <div class="later" id="l${r.id}">${laterHTML(rn)}</div>
       </article>`;
     }).join("")+`</div>`;
   }
@@ -458,7 +501,7 @@ function detail(id){
   sheet.innerHTML=`<div class="pad detail-shell" style="--c:${r.color}"><button class="detail-back" type="button" id="backToRoutes">← All routes</button>
    <div class="row" style="border:0;padding:0"><div><h1>${r.name}</h1><div class="sub">Published weekday / weekend departure schedule</div></div></div>
    <div class="notice">Map is the published route diagram. Departure times are scheduled, not GPS predictions.</div>
-   ${schedulePanel(r)}
+   <div id="schedPanel">${schedulePanel(r)}</div>
    <button class="ghost" id="favoriteBtn">${favoriteRouteIds.has(String(r.id))?"★ Favorite route":"☆ Add to favorites"}</button>
    <button class="cta" id="go">Try simulated trip</button>
    <h2>Other ways to get to campus</h2>
@@ -507,6 +550,13 @@ function live(){
 
 /* ---- events ---- */
 document.addEventListener("click",e=>{
+  const ds=e.target.closest("[data-dir]");if(ds){
+   const r=R.find(x=>x.id==ds.dataset.dirRoute);if(!r||getDir(r)===ds.dataset.dir)return;
+   setDir(r,ds.dataset.dir);
+   const panel=$("schedPanel");
+   if(panel&&sel&&sel.id==r.id){const open=panel.querySelector("details")?.open;panel.innerHTML=schedulePanel(r);if(open)panel.querySelector("details").open=true;panel.querySelector(`[data-dir="${ds.dataset.dir}"]`)?.focus()}
+   else updateCard(r);
+   return}
   const o=e.target.closest("[data-open]");if(o){detail(o.dataset.open);sheet.scrollTop=0;return}
   const m=e.target.closest("[data-more]");if(m){const l=$("l"+m.dataset.more);const op=l.classList.toggle("open");m.setAttribute("aria-expanded",op);m.textContent=op?"Next departures ▴":"Next departures ▾"}
 });
@@ -566,7 +616,13 @@ $("profileModal").addEventListener("click",e=>{if(e.target.id==="profileModal")$
 $("profileContent").addEventListener("submit",async e=>{if(e.target.id!=="profileForm")return;e.preventDefault();const f=new FormData(e.target),st=$("profileStatus");st.textContent="Saving…";try{await saveUser(f.get("name"),f.get("net_id"),f.get("email"));openProfile()}catch(err){st.textContent=err.message||"Could not save profile."}});
 sheet.addEventListener("click",async e=>{if(e.target.id!=="favoriteBtn")return;if(!currentUser){openProfile();return}e.target.disabled=true;try{await toggleFavorite(sel.id);e.target.classList.toggle("on",favoriteRouteIds.has(String(sel.id)));e.target.textContent=favoriteRouteIds.has(String(sel.id))?"★ Favorite route":"☆ Add to favorites"}catch(err){alert(err.message||"Could not save favorite.")}finally{e.target.disabled=false}});
 
-async function start(){buildMap();await loadSavedUser();home()} start();
+// Draw the routes first; the saved profile loads in the background so a slow or failing Supabase call can't blank the page.
+async function start(){
+ buildMap();home();
+ try{await loadSavedUser()}catch(err){console.error("Could not load saved profile:",err)}
+ const fb=$("favoriteBtn");if(fb&&sel)fb.textContent=favoriteRouteIds.has(String(sel.id))?"★ Favorite route":"☆ Add to favorites";
+}
+start();
 </script>
 </body>
 </html>
