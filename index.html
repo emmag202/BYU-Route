@@ -315,7 +315,7 @@ const setSheetExpanded=v=>{
 };
 
 const now=new Date();
-const clock=m=>{const t=new Date(now.getTime()+m*6e4);let h=t.getHours(),mi=String(t.getMinutes()).padStart(2,"0");return`${h%12||12}:${mi} ${h<12?"AM":"PM"}`};
+const clock=m=>{const t=new Date(Date.now()+m*6e4);let h=t.getHours(),mi=String(t.getMinutes()).padStart(2,"0");return`${h%12||12}:${mi} ${h<12?"AM":"PM"}`};
 const lvl=r=>{const p=r.riders/r.cap;return p<.45?["Plenty of seats","var(--ok)"]:p<.8?["Filling up","var(--mid)"]:["Nearly full","var(--bad)"]};
 const el=(t,a={},p=svg)=>{const e=document.createElementNS(SVG,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e};
 
@@ -357,9 +357,40 @@ function nextDepartures(r,j=0,n=4){
   return h*60+m>=minutes;
  }).slice(0,n);
 }
+function routeNext(r){
+ const upcoming=r.stops.map((st,j)=>({stop:st[0],times:nextDepartures(r,j,3)}));
+ const available=upcoming.flatMap(x=>x.times.map(t=>({...t,stop:x.stop}))).sort((a,b)=>a.time.localeCompare(b.time));
+ return {upcoming,next:available[0]};
+}
+const nextTimeText=n=>n?fmtDeparture(n.time):"No more today";
+const nextNoteText=n=>n?'From '+esc(n.stop):'No remaining published departures today';
+const laterHTML=up=>up.map(x=>`<div class="stop-departures"><strong>${esc(x.stop)}</strong><span>${x.times.length?x.times.map(t=>fmtDeparture(t.time)).join(' · '):'No more today'}</span></div>`).join('');
+// Re-evaluate "next" times as the clock advances, updating in place so open panels, search focus and scroll are kept.
+let lastTimeKey=null;
+function refreshTimes(force){
+ const {day,minutes}=provoNow(),key=day+':'+minutes;
+ if(!force&&key===lastTimeKey)return;lastTimeKey=key;
+ R.forEach(r=>{
+  const t=sheet.querySelector(`[data-next-time="${r.id}"]`);if(!t)return;
+  const {upcoming,next}=routeNext(r);
+  t.innerHTML=nextTimeText(next);
+  const n=sheet.querySelector(`[data-next-note="${r.id}"]`);if(n)n.innerHTML=nextNoteText(next);
+  const l=document.getElementById("l"+r.id);if(l)l.innerHTML=laterHTML(upcoming);
+ });
+ if(screen==2&&sel){
+  const weekday=sel.service==='daily'||(day>=1&&day<=5);
+  sheet.querySelectorAll("[data-stop-next]").forEach(d=>{
+   const next=nextDepartures(sel,+d.dataset.stopNext,5);
+   d.innerHTML=!weekday?'No regular weekday service today':next.length?next.map(t=>fmtDeparture(t.time)).join(' · '):'No further departures listed today';
+  });
+ }
+}
+setInterval(()=>refreshTimes(),15000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshTimes(true)});
+window.addEventListener("focus",()=>refreshTimes(true));
 function schedulePanel(r){
  const day=provoNow().day,weekday=r.service==='daily'||(day>=1&&day<=5);
- return `<div class="card"><b>Published departure schedule</b><div class="sub">${r.service==='daily'?'Monday–Sunday, 5 PM–midnight':'Monday–Friday during Fall and Winter semesters; school holiday exceptions apply'}. Times are scheduled, not live.</div>${r.stops.map((s,j)=>{let next=nextDepartures(r,j,5);return `<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(s[0])}</b><div class="sub">${!weekday?'No regular weekday service today':next.length?next.map(t=>fmtDeparture(t.time)).join(' · '):'No further departures listed today'}</div></div>`}).join('')}<details><summary>View complete timetable</summary>${r.stops.map((s,j)=>`<div style="margin-top:12px"><b>${esc(s[0])}</b><div class="sub">${r.timetable[j].map(t=>fmtDeparture(t.time)+(t.days==='Mon-Thu'?' (M–Th)':'')).join(' · ')}</div></div>`).join('')}</details></div>`;
+ return `<div class="card"><b>Published departure schedule</b><div class="sub">${r.service==='daily'?'Monday–Sunday, 5 PM–midnight':'Monday–Friday during Fall and Winter semesters; school holiday exceptions apply'}. Times are scheduled, not live.</div>${r.stops.map((s,j)=>{let next=nextDepartures(r,j,5);return `<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(s[0])}</b><div class="sub" data-stop-next="${j}">${!weekday?'No regular weekday service today':next.length?next.map(t=>fmtDeparture(t.time)).join(' · '):'No further departures listed today'}</div></div>`}).join('')}<details><summary>View complete timetable</summary>${r.stops.map((s,j)=>`<div style="margin-top:12px"><b>${esc(s[0])}</b><div class="sub">${r.timetable[j].map(t=>fmtDeparture(t.time)+(t.days==='Mon-Thu'?' (M–Th)':'')).join(' · ')}</div></div>`).join('')}</details></div>`;
 }
 function informationPanel(){return `<div class="pad"><h2>About The Ryde</h2><div class="card"><b>Free for BYU students</b><div class="sub">Show your BYU ID to ride. Regular routes run Monday–Friday during Fall and Winter semesters, including reading days and finals week, but not school holidays. Heritage Overflow Parking has a separately published Monday–Sunday schedule.</div></div><h2>Contact and feedback</h2><div class="card"><p>Suggestions, issues, and compliments are welcome.</p><a href="mailto:theryde@studentmovement.com">theryde@studentmovement.com</a><p><a href="tel:8018996010">801-899-6010</a></p></div><h2>Advertising and employment</h2><div class="card"><p>Advertising inquiries: <a href="tel:8018996010">801-899-6010</a></p><p>Sales or bus driving: <a href="mailto:jake@studentmovement.com">jake@studentmovement.com</a></p><p>Marketing or bus driving: <a href="mailto:kevin@studentmovement.com">kevin@studentmovement.com</a></p></div><p class="sub">Prototype: schematic map, estimated bus positions, and crowding are simulated. Published departure schedules are informational and may change.</p></div>`}
 /* ---- screens ---- */
@@ -388,19 +419,17 @@ function home(filter=""){
   if(!list.length){h+=`<div class="card">No routes match your search. Try another stop or neighborhood.</div>`}
   else{
     h+=`<div class="rail">`+list.map(r=>{
-      const upcoming=r.stops.map((st,j)=>({stop:st[0],times:nextDepartures(r,j,3)}));
-      const available=upcoming.flatMap(x=>x.times.map(t=>({...t,stop:x.stop}))).sort((a,b)=>a.time.localeCompare(b.time));
-      const next=available[0];
+      const {upcoming,next}=routeNext(r);
       return `<article class="rc" style="--c:${r.color}">
         <button class="route-open" data-open="${r.id}" aria-label="View ${esc(r.name)} timetable">
           <span class="route-name">${esc(r.name)}</span>
           <span class="route-stop">${esc(r.stops.map(st=>st[0]).join(' · '))}</span>
           <span class="next-label">Next scheduled departure</span>
-          <span class="next-time">${next?fmtDeparture(next.time):"No more today"}</span>
-          <span class="route-note">${next?'From '+esc(next.stop):'No remaining published departures today'}</span>
+          <span class="next-time" data-next-time="${r.id}">${nextTimeText(next)}</span>
+          <span class="route-note" data-next-note="${r.id}">${nextNoteText(next)}</span>
         </button>
         <button class="more" data-more="${r.id}" aria-expanded="false">Times by stop ▾</button>
-        <div class="later" id="l${r.id}">${upcoming.map(x=>`<div class="stop-departures"><strong>${esc(x.stop)}</strong><span>${x.times.length?x.times.map(t=>fmtDeparture(t.time)).join(' · '):'No more today'}</span></div>`).join('')}</div>
+        <div class="later" id="l${r.id}">${laterHTML(upcoming)}</div>
       </article>`;
     }).join("")+`</div>`;
   }
