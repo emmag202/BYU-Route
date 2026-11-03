@@ -258,11 +258,33 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
  .modalBack{inset:62px 0 0}
 }
 
+
+/* Sprint 1: Clear profile entry and optional homepage introduction. */
+.profileBtn{width:auto;min-width:96px;height:42px;padding:0 15px;background:#fff;color:#002e5d;border:1px solid #fff;border-radius:9px;font-size:14px;font-weight:750;white-space:nowrap}
+.profileBtn:hover{background:#eaf2ff}
+.welcome-intro{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:22px 24px;margin:0 0 26px;background:#eaf3ff;border:1px solid #bfd7f6;border-left:5px solid #0047ba;border-radius:12px}
+.welcome-intro h2{font-size:clamp(20px,2.5vw,25px);color:#002e5d;margin:3px 0 7px}
+.welcome-intro p{margin:0;color:#2d4c69;font-size:14px;line-height:1.5}
+.welcome-intro .welcome-note{font-size:12px;color:#566e83;margin-top:8px}
+.welcome-eyebrow{font-size:11px;font-weight:800;letter-spacing:.8px;color:#0047ba}
+.welcome-dismiss{background:#0047ba;border:0;color:#fff;border-radius:8px;padding:11px 22px;font-weight:750;white-space:nowrap}
+.welcome-dismiss:hover{background:#003a99}
+@media(max-width:650px){
+  .byuhead{gap:6px;padding:0 10px}
+  .rydetitle{font-size:15px}
+  .header-nav{gap:3px}
+  .header-nav button{font-size:11px;padding:7px 8px}
+  .profileBtn{width:auto;min-width:0;height:36px;padding:0 10px;font-size:12px}
+  .welcome-intro{padding:17px 16px;gap:14px;flex-direction:column;align-items:flex-start;margin-bottom:22px}
+  .welcome-intro h2{font-size:21px}
+  .welcome-dismiss{width:100%}
+}
+@media(max-width:380px){.byumark{font-size:16px}.rydetitle{font-size:14px}.header-nav button{padding:6px}.profileBtn{padding:0 7px}}
 </style>
 </head>
 <body>
 <div id="app">
-  <header class="byuhead"><span class="byumark">BYU</span><span class="rydetitle">The Ryde</span><nav class="header-nav"><button id="navRoutes" class="active" type="button">Routes</button><button id="navMap" type="button">Route map</button></nav><button id="profileBtn" class="profileBtn" aria-label="Profile">👤</button></header>
+  <header class="byuhead"><span class="byumark">BYU</span><span class="rydetitle">The Ryde</span><nav class="header-nav"><button id="navRoutes" class="active" type="button">Routes</button><button id="navMap" type="button">Route map</button></nav><button id="profileBtn" class="profileBtn" type="button" aria-label="Sign in or create profile">Sign in</button></header>
   <div class="mapwrap" id="mapwrap"><div class="map-caption">BYU Ryde route map <span>Drag to pan · Scroll to zoom · Select a route below</span></div>
     <svg id="map" viewBox="0 0 400 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Interactive map of Ryde shuttle routes"></svg>
     <div class="mapcontrols" aria-label="Map controls">
@@ -301,11 +323,18 @@ const USER={x:150,y:352}; // user location (near Route 11 stop)
 const $=id=>document.getElementById(id);
 const svg=$("map"),sheet=$("sheet"),q=$("q");
 let currentUser=null,favoriteRouteIds=new Set();
+function updateProfileButton(){
+  const button=document.getElementById("profileBtn");
+  if(!button)return;
+  button.textContent=currentUser?"My profile":"Sign in";
+  button.setAttribute("aria-label",currentUser?"Open my profile":"Sign in or create profile");
+}
+
 const configured=()=>!!db;
 const esc=(s="")=>String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-async function loadSavedUser(){if(!db)return;const net=localStorage.getItem("ryde_net_id");if(!net)return;const {data,error}=await db.from("users").select("*").eq("net_id",net).maybeSingle();if(error){console.error(error);return}currentUser=data;if(currentUser)await loadFavorites()}
+async function loadSavedUser(){if(!db)return;const net=localStorage.getItem("ryde_net_id");if(!net)return;const {data,error}=await db.from("users").select("*").eq("net_id",net).maybeSingle();if(error){console.error(error);return}currentUser=data;if(currentUser)await loadFavorites();updateProfileButton()}
 async function loadFavorites(){favoriteRouteIds.clear();if(!db||!currentUser)return;const {data,error}=await db.from("favorite_routes").select("route_id").eq("user_id",currentUser.user_id);if(error){console.error(error);return}(data||[]).forEach(x=>favoriteRouteIds.add(String(x.route_id)))}
-async function saveUser(name,net_id,email){if(!db)throw new Error("Add your Supabase URL and publishable key first.");const {data,error}=await db.from("users").upsert({name:name.trim(),net_id:net_id.trim(),email:email.trim()},{onConflict:"net_id"}).select().single();if(error)throw error;currentUser=data;localStorage.setItem("ryde_net_id",data.net_id);await loadFavorites()}
+async function saveUser(name,net_id,email){if(!db)throw new Error("Add your Supabase URL and publishable key first.");const {data,error}=await db.from("users").upsert({name:name.trim(),net_id:net_id.trim(),email:email.trim()},{onConflict:"net_id"}).select().single();if(error)throw error;currentUser=data;localStorage.setItem("ryde_net_id",data.net_id);await loadFavorites();updateProfileButton()}
 async function toggleFavorite(route_id){if(!currentUser){openProfile();return}const id=String(route_id);if(favoriteRouteIds.has(id)){const {error}=await db.from("favorite_routes").delete().eq("user_id",currentUser.user_id).eq("route_id",id);if(error)throw error;favoriteRouteIds.delete(id)}else{const {error}=await db.from("favorite_routes").insert({user_id:currentUser.user_id,route_id:id});if(error)throw error;favoriteRouteIds.add(id)}}
 function openProfile(){const c=$("profileContent");if(currentUser)c.innerHTML=`<h1>Your Ryde profile</h1><div class="sub">Saved in Supabase</div><div class="card"><b>${esc(currentUser.name)}</b><div>${esc(currentUser.net_id)}</div><div class="sub">${esc(currentUser.email)}</div><div style="margin-top:10px"><b>${favoriteRouteIds.size}</b> favorite route${favoriteRouteIds.size===1?"":"s"}</div></div><button class="ghost" id="switchUser">Use another profile</button>`;else c.innerHTML=`<h1>Set up your Ryde profile</h1><div class="sub">Save your profile and favorite routes.</div><form id="profileForm"><label class="field">Name<input name="name" required maxlength="100"></label><label class="field">Net ID<input name="net_id" required maxlength="50"></label><label class="field">Email<input name="email" type="email" required maxlength="100"></label><button class="cta" type="submit">Save profile</button><div class="status" id="profileStatus">${configured()?"":"Supabase is not configured yet."}</div></form>`;$("profileModal").classList.remove("hide")}
 
@@ -449,6 +478,12 @@ function crowdHTML(r){
   const [t,c]=lvl(r);
   return`<div class="card" style="--k:${c}"><div class="row" style="border:0;padding:0"><div><div class="sub">On the bus right now</div><div class="big">${r.riders} <span class="sub" style="font-weight:400;font-size:14px">of ${r.cap} seats and standing</span></div></div><span class="badge" style="margin-left:auto"><span class="dot"></span>${t}</span></div><div class="meter"><i style="width:${r.riders/r.cap*100}%"></i></div></div>`;
 }
+let welcomeDismissedInPage=false;
+function showWelcomeIntro(){
+  if(welcomeDismissedInPage)return false;
+  try{return sessionStorage.getItem("ryde_welcome_dismissed")!=="1"}
+  catch{return true}
+}
 function home(filter=""){
   layout(1);sel=null;showRoutes(R.map(r=>r.id));view(0,0,840);
   $("app").classList.remove("map-mode");
@@ -457,7 +492,12 @@ function home(filter=""){
   const list=R.filter(r=>!f||[r.name,r.dest,...r.stops.map(s=>s[0])].join(" ").toLowerCase().includes(f));
   let h=`<section class="hero"><h1>Where do you want to go?</h1><p>Find your BYU shuttle route and its next scheduled departure.</p>
     <label class="hero-search"><span aria-hidden="true">⌕</span><input id="routeSearch" type="search" placeholder="Search a location, stop, or route…" value="${esc(filter)}" aria-label="Find shuttle routes"></label></section>
-    <div class="pad home-body"><div class="section-heading"><div><h2>Explore shuttle routes</h2><p>Published departure schedules · Provo local time · Not live GPS</p></div><span class="sub">${list.length} routes</span></div>`;
+    <div class="pad home-body">${showWelcomeIntro()?`<section class="welcome-intro" id="welcomeIntro" aria-label="Welcome to The Ryde">
+      <div><span class="welcome-eyebrow">NEW TO THE RYDE?</span><h2>Welcome to The Ryde!</h2>
+      <p>Find shuttle routes, check published departure times, explore the route map, and save your favorite routes.</p>
+      <p class="welcome-note">This is a prototype for planning trips, not live GPS tracking.</p></div>
+      <button class="welcome-dismiss" type="button" id="welcomeDismiss">Got it</button>
+    </section>`:""}<div class="section-heading"><div><h2>Explore shuttle routes</h2><p>Published departure schedules · Provo local time · Not live GPS</p></div><span class="sub">${list.length} routes</span></div>`;
   if(!list.length){h+=`<div class="card">No routes match your search. Try another stop or neighborhood.</div>`}
   else{
     h+=`<div class="rail">`+list.map(r=>{
@@ -549,6 +589,13 @@ function live(){
 }
 
 /* ---- events ---- */
+sheet.addEventListener("click",e=>{
+  if(e.target.closest("#welcomeDismiss")){
+    welcomeDismissedInPage=true;
+    try{sessionStorage.setItem("ryde_welcome_dismissed","1")}catch{}
+    document.getElementById("welcomeIntro")?.remove();
+  }
+});
 document.addEventListener("click",e=>{
   const ds=e.target.closest("[data-dir]");if(ds){
    const r=R.find(x=>x.id==ds.dataset.dirRoute);if(!r||getDir(r)===ds.dataset.dir)return;
@@ -612,13 +659,13 @@ sheet.addEventListener("keydown",e=>{
 
 
 $("profileBtn").onclick=openProfile;$("closeProfile").onclick=()=>$("profileModal").classList.add("hide");
-$("profileModal").addEventListener("click",e=>{if(e.target.id==="profileModal")$("profileModal").classList.add("hide");if(e.target.id==="switchUser"){currentUser=null;favoriteRouteIds.clear();localStorage.removeItem("ryde_net_id");openProfile()}});
+$("profileModal").addEventListener("click",e=>{if(e.target.id==="profileModal")$("profileModal").classList.add("hide");if(e.target.id==="switchUser"){currentUser=null;favoriteRouteIds.clear();localStorage.removeItem("ryde_net_id");updateProfileButton();openProfile()}});
 $("profileContent").addEventListener("submit",async e=>{if(e.target.id!=="profileForm")return;e.preventDefault();const f=new FormData(e.target),st=$("profileStatus");st.textContent="Saving…";try{await saveUser(f.get("name"),f.get("net_id"),f.get("email"));openProfile()}catch(err){st.textContent=err.message||"Could not save profile."}});
 sheet.addEventListener("click",async e=>{if(e.target.id!=="favoriteBtn")return;if(!currentUser){openProfile();return}e.target.disabled=true;try{await toggleFavorite(sel.id);e.target.classList.toggle("on",favoriteRouteIds.has(String(sel.id)));e.target.textContent=favoriteRouteIds.has(String(sel.id))?"★ Favorite route":"☆ Add to favorites"}catch(err){alert(err.message||"Could not save favorite.")}finally{e.target.disabled=false}});
 
 // Draw the routes first; the saved profile loads in the background so a slow or failing Supabase call can't blank the page.
 async function start(){
- buildMap();home();
+ buildMap();home();updateProfileButton();
  try{await loadSavedUser()}catch(err){console.error("Could not load saved profile:",err)}
  const fb=$("favoriteBtn");if(fb&&sel)fb.textContent=favoriteRouteIds.has(String(sel.id))?"★ Favorite route":"☆ Add to favorites";
 }
