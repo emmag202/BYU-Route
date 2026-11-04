@@ -190,6 +190,8 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 #app{width:100%;max-width:none;height:100dvh;display:flex;flex-direction:column;overflow:hidden;background:#f6f8fb}
 .byuhead{height:70px;padding:0 clamp(18px,4vw,56px);gap:14px;box-shadow:0 1px 0 #dfe5ee;z-index:20}
 .rydetitle{font-size:20px}
+.ryde-home{appearance:none;border:0;background:transparent;color:inherit;font-family:inherit;font-weight:650;padding:3px 0;border-radius:4px;text-align:left;cursor:pointer}
+.ryde-home:hover{text-decoration:underline}
 .header-nav{display:flex;gap:8px;margin-left:20px}
 .header-nav button{border:1px solid #ffffff55;color:#fff;background:transparent;border-radius:9px;padding:9px 15px;font-weight:700;font-size:14px}
 .header-nav button.active{background:#fff;color:#002e5d}
@@ -284,7 +286,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 </head>
 <body>
 <div id="app">
-  <header class="byuhead"><span class="byumark">BYU</span><span class="rydetitle">The Ryde</span><nav class="header-nav"><button id="navRoutes" class="active" type="button">Routes</button><button id="navMap" type="button">Route map</button></nav><button id="profileBtn" class="profileBtn" type="button" aria-label="Sign in or create profile">Sign in</button></header>
+  <header class="byuhead"><span class="byumark">BYU</span><button type="button" class="rydetitle ryde-home" id="rydeHome" aria-label="Go to Routes home">The Ryde</button><nav class="header-nav"><button id="navRoutes" class="active" type="button">Routes</button><button id="navMap" type="button">Route map</button></nav><button id="profileBtn" class="profileBtn" type="button" aria-label="Sign in or create profile">Sign in</button></header>
   <div class="mapwrap" id="mapwrap"><div class="map-caption">BYU Ryde route map <span>Drag to pan · Scroll to zoom · Select a route below</span></div>
     <svg id="map" viewBox="0 0 400 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Interactive map of Ryde shuttle routes"></svg>
     <div class="mapcontrols" aria-label="Map controls">
@@ -617,6 +619,7 @@ document.addEventListener("click",e=>{
 });
 $("back").onclick=()=>screen==3?detail(sel.id):home(q.value);
 sheet.addEventListener("click",e=>{if(e.target.id=="go")live();if(e.target.id=="openMapFromHome")mapPage();if(e.target.id=="backToRoutes")home()});
+$("rydeHome").onclick=()=>{home();sheet.scrollTop=0};
 $("navRoutes").onclick=()=>home();$("navMap").onclick=()=>mapPage();
 q.addEventListener("input",()=>{home(q.value)});
 $("locate").onclick=()=>{view(0,0,840)};
