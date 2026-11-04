@@ -283,6 +283,11 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 }
 @media(max-width:380px){.byumark{font-size:16px}.rydetitle{font-size:14px}.header-nav button{padding:6px}.profileBtn{padding:0 7px}}
 
+/* Keep legacy map controls in the DOM for existing script references, but never render them. */
+#app .mapcontrols,
+#app .top,
+#app .map-route-picker{display:none!important;visibility:hidden!important;pointer-events:none!important}
+
 /* MapLibre + Amazon Location route map integration */
 #routeMap{display:none;position:absolute;inset:0;width:100%;height:100%;z-index:1;background:#e8edf0}
 #app.map-mode #routeMap{display:block}
@@ -343,16 +348,16 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
   <div class="mapwrap" id="mapwrap">
     <div id="routeMap" aria-label="Interactive BYU shuttle route map"></div>
     <svg id="map" viewBox="0 0 400 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Interactive map of Ryde shuttle routes"></svg>
-    <div class="mapcontrols" aria-hidden="true" style="display:none">
+    <div class="mapcontrols" aria-hidden="true" style="display:none!important">
       <button id="zoomIn" type="button" tabindex="-1" aria-hidden="true"></button>
       <button id="zoomOut" type="button" tabindex="-1" aria-hidden="true"></button>
       <button id="fitMap" type="button" tabindex="-1" aria-hidden="true"></button>
     </div>
-    <div class="top hide" id="top" aria-hidden="true" style="display:none">
+    <div class="top hide" id="top" aria-hidden="true" style="display:none!important">
       <input id="q" type="search" tabindex="-1" aria-hidden="true">
       <button class="fab" id="locate" type="button" tabindex="-1" aria-hidden="true"></button>
     </div>
-    <div class="map-route-picker" id="mapRoutePicker" aria-label="Select a route on the map"></div>
+    <div class="map-route-picker" id="mapRoutePicker" aria-label="Select a route on the map" style="display:none!important"></div>
     <div class="aws-place-search" role="search" aria-label="Amazon Location place search"><input id="awsPlaceQuery" type="search" placeholder="Search places or addresses" aria-label="Search places"><button id="awsPlaceSearch" type="button">Search</button><button id="awsNearbySearch" type="button">Nearby</button></div>
   <div class="aws-place-status" id="awsPlaceStatus" aria-live="polite"></div>
   <div class="king-henry-stop-legend" id="kingHenryStopLegend" hidden aria-label="Map legend: selected route student pickup and drop-off stops"><span class="legend-marker"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16.5V18a1 1 0 0 0 1 1h1v-2.5M17 16.5V19h1a1 1 0 0 0 1-1v-1.5M4 11h16M7 7h.01M17 7h.01M6 3.5h12A2.5 2.5 0 0 1 20.5 6v9A2.5 2.5 0 0 1 18 17.5H6A2.5 2.5 0 0 1 3.5 15V6A2.5 2.5 0 0 1 6 3.5Z"/></svg></span><span><strong>Student pickup &amp; drop-off</strong><small>Students can board or exit here</small></span></div>
@@ -365,8 +370,8 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="./aws-config.js"></script>
-<script src="./route-data.js"></script>
-<script src="./route-map.js"></script>
+<script src="./js/route-data.js"></script>
+<script src="./js/route-map.js"></script>
 <script>
 // The browser talks to the local API. Database credentials stay in the API's ignored .env file.
 const API_BASE_URL="https://l6sjs2oitk2izyrm4462xzugt40fzlcn.lambda-url.us-east-1.on.aws";
