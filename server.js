@@ -72,9 +72,12 @@ app.post("/api/users", async (req, res, next) => {
   try {
     const name = String(req.body.name || "").trim();
     const netId = String(req.body.net_id || "").trim();
-    const email = String(req.body.email || "").trim();
+    const email = String(req.body.email || "").trim().toLowerCase();
     if (!name || !netId || !email || name.length > 100 || netId.length > 50 || email.length > 100) {
       return res.status(400).json({ error: "Enter a name, Net ID, and email within the allowed lengths." });
+    }
+    if (!/^[^\s@]+@byu\.edu$/.test(email)) {
+      return res.status(400).json({ error: "Use a valid email address ending in @byu.edu." });
     }
     const result = await pool.query(
       `INSERT INTO appuser (name, net_id, email)
