@@ -133,6 +133,54 @@ app.delete("/api/users/:userId/favorites/:routeKey", async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Saved home address: one row per user in user_home.
+app.get("/api/users/:userId/home", async (req, res, next) => {
+  try {
+    const userId = Number(req.params.userId);
+    if (!Number.isInteger(userId) || userId < 1) return res.status(400).json({ error: "Invalid user ID." });
+    const result = await pool.query(
+      "SELECT label, lat::float AS lat, lng::float AS lng FROM user_home WHERE user_id = $1",
+      [userId],
+    );
+    res.json(result.rows[0] || null);
+  } catch (error) { next(error); }
+});
+
+app.put("/api/users/:userId/home", async (req, res, next) => {
+  try {
+    const userId = Number(req.params.userId);
+    const label = String(req.body.label || "").trim();
+    const lat = Number(req.body.lat);
+    const lng = Number(req.body.lng);
+    if (!Number.isInteger(userId) || userId < 1) return res.status(400).json({ error: "Invalid user ID." });
+    if (!label || label.length > 200) return res.status(400).json({ error: "Enter an address up to 200 characters." });
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      return res.status(400).json({ error: "That address has invalid map coordinates." });
+    }
+    const result = await pool.query(
+      `INSERT INTO user_home (user_id, label, lat, lng)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id) DO UPDATE
+         SET label = EXCLUDED.label, lat = EXCLUDED.lat, lng = EXCLUDED.lng, updated_at = CURRENT_TIMESTAMP
+       RETURNING label, lat::float AS lat, lng::float AS lng`,
+      [userId, label, lat, lng],
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    if (error.code === "23503") return res.status(404).json({ error: "That profile no longer exists. Sign in again." });
+    next(error);
+  }
+});
+
+app.delete("/api/users/:userId/home", async (req, res, next) => {
+  try {
+    const userId = Number(req.params.userId);
+    if (!Number.isInteger(userId) || userId < 1) return res.status(400).json({ error: "Invalid user ID." });
+    await pool.query("DELETE FROM user_home WHERE user_id = $1", [userId]);
+    res.status(204).end();
+  } catch (error) { next(error); }
+});
+
 app.use((error, _req, res, _next) => {
   console.error(error.message);
   if (error.code === "23505") return res.status(409).json({ error: "That email is already associated with another Net ID." });

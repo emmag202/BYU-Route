@@ -20,6 +20,8 @@
   let activeRouteId = null;
   let requestId = 0;
   let placeMarkers = [];
+  let homeMarker = null;
+  let pendingHome = null;
   const routeStopMarkers = new Map();
   const calculatedRouteCache = new Map();
   let listenersAttached = false;
@@ -373,11 +375,34 @@
         .addTo(map);
       placeMarkers.push(marker);
       bounds.extend(point);
+      const row = document.createElement('div');
+      row.className = 'place-row';
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = label;
       button.addEventListener('click', () => { map.flyTo({ center: point, zoom: 16 }); marker.togglePopup(); list.replaceChildren(); });
-      list.appendChild(button);
+      const saveHome = document.createElement('button');
+      saveHome.type = 'button';
+      saveHome.className = 'place-save-home';
+      saveHome.textContent = 'Save as home';
+      saveHome.setAttribute('aria-label', `Save ${label} as your home address`);
+      saveHome.addEventListener('click', async () => {
+        if (typeof window.onRydeSaveHome !== 'function') return;
+        saveHome.disabled = true;
+        saveHome.textContent = 'Saving…';
+        try {
+          const saved = await window.onRydeSaveHome({ label, lng: point[0], lat: point[1] });
+          if (saved) { clearPlaceMarkers(); status('Home address saved.'); }
+          else { saveHome.disabled = false; saveHome.textContent = 'Save as home'; }
+        } catch (error) {
+          console.error('Could not save home address:', error);
+          saveHome.disabled = false;
+          saveHome.textContent = 'Save as home';
+          status(error.message || 'Could not save home address.');
+        }
+      });
+      row.append(button, saveHome);
+      list.appendChild(row);
     }
     if (bounds.isEmpty()) status('No results with map coordinates were returned.');
     else map.fitBounds(bounds, { padding: 70, maxZoom: 16 });
@@ -403,6 +428,19 @@
       console.error('Amazon Places search failed:', error);
       status(error.message || 'Unable to search places.');
     }
+  }
+
+  function showHome(place) {
+    pendingHome = place || null;
+    if (!map) return;
+    if (homeMarker) { homeMarker.remove(); homeMarker = null; }
+    if (!place) return;
+    const lng = Number(place.lng), lat = Number(place.lat);
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+    homeMarker = new maplibregl.Marker({ color: '#002e5d' })
+      .setLngLat([lng, lat])
+      .setPopup(new maplibregl.Popup({ offset: 24 }).setText(`Home · ${place.label || ''}`))
+      .addTo(map);
   }
 
   function attachEvents() {
@@ -446,6 +484,7 @@
     map.on('load', () => {
       ensureBaseLayers();
       createRouteStopMarkers();
+      showHome(pendingHome);
       map.on('click', LAYER_ROUTES, event => {
         const id = event.features?.[0]?.properties?.id;
         if (id) selectRoute(id);
@@ -460,4 +499,5 @@
   window.initRydeRouteMap = initialize;
   window.resizeRydeMap = () => { if (map) map.resize(); };
   window.clearRydePlaceResults = clearPlaceMarkers;
+  window.showRydeHome = showHome;
 })();
