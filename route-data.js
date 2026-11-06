@@ -20,8 +20,7 @@ window.BYU_RYDE_ROUTES = [
       [40.25176385171031, -111.64797127346249]  // Destination
     ],
     stops: [
-      { waypoint: 1, label: 'West Stop 1' },
-      { waypoint: 2, label: 'West Stop 2' },
+      { waypoint: 3, label: 'West Stop 2' },
       { waypoint: 4, label: 'West Stop 3' }
     ],
     awsRequest: {
