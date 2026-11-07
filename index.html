@@ -230,6 +230,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .info-collapsible summary{font-size:18px;font-weight:750;cursor:pointer;color:#173653;padding:16px 0}
 .info-collapsible h2{font-size:18px;color:#173653}
 .detail-shell{max-width:1120px;margin:0 auto;padding-top:36px}
+.detail-shell .detail-head:first-child{margin-top:0}
 .detail-back{border:0;background:transparent;color:#0047ba;font-size:15px;font-weight:750;padding:0 0 22px}
 .detail-shell h1{font-size:clamp(32px,4vw,46px);font-weight:850;color:#132d49}
 .detail-shell .card{border-radius:14px;padding:24px}
@@ -325,7 +326,9 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .near-btn.ghosty{background:#fff;color:#002e5d}
 .near-btn:disabled{opacity:.6}
 .near-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:10px}
-.near-item{appearance:none;text-align:left;font:inherit;color:inherit;background:var(--card,#fff);border:1px solid var(--line,#e5e7eb);border-left:6px solid var(--c);border-radius:8px;padding:11px 12px;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+.near-item{background:var(--card,#fff);border:1px solid var(--line,#e5e7eb);border-left:6px solid var(--c);border-radius:8px;padding:11px 12px;display:flex;flex-direction:column;gap:8px}
+.near-open{appearance:none;text-align:left;font:inherit;color:inherit;background:none;border:0;padding:0;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+.near-start{margin-top:auto!important;padding:9px!important;font-size:14px!important}
 .near-route{font-weight:700}
 .near-stop{font-size:13px;color:#4b5563}
 .near-next{font-size:13px;font-weight:650}
@@ -338,6 +341,99 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .day-chip[aria-pressed="true"] .day-chip-sub{color:#cfe0f5}
 .day-note{margin:6px 0 0;font-size:13px;color:#4b5563;min-height:1px}
 .day-note:empty{display:none}
+/* ---- Direction banner + switch (location sets the direction; the switch is for planning ahead) ---- */
+.dir-banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px;margin:-6px 0 16px;padding:14px 18px;border-radius:12px;background:#002e5d;color:#fff}
+.dir-banner-text{display:flex;flex-direction:column;gap:2px}
+.dir-banner.from{background:#0b5a46}
+.dir-banner h2{margin:0;font-size:clamp(20px,2.2vw,26px);font-weight:800;color:#fff}
+.dir-eyebrow{font-size:11px;font-weight:750;letter-spacing:.6px;text-transform:uppercase;opacity:.8}
+.dir-banner .dir-eyebrow{color:#d8e6f6}
+.dir-toggle{display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:12px;color:#d8e6f6}
+.dir-btn{appearance:none;border:1px solid #fff;background:#fff;color:#002e5d;border-radius:999px;padding:7px 14px;font:inherit;font-size:13px;font-weight:750;cursor:pointer;white-space:nowrap}
+.dir-banner.from .dir-btn{color:#0b5a46}
+.dir-banner .dir-btn.subtle{background:transparent;color:#fff;border-color:#ffffff99}
+.dir-btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+@media (max-width:560px){.dir-toggle{align-items:flex-start}}
+.dir-toggle-actions{display:flex;flex-wrap:wrap;gap:8px}
+/* ---- Route cards ---- */
+.rc .route-days{display:block;margin-top:3px;font-size:12px;color:#6a7a8c;font-weight:600}
+.rc .route-note{display:block;font-size:13px;color:#5b697a;margin-top:2px}
+.rc .route-note:empty{display:none}
+.next-day{display:inline-block;margin-right:8px;padding:2px 8px;border-radius:6px;background:#e8eef7;color:#002e5d;font-size:.55em;font-weight:800;vertical-align:middle;letter-spacing:.2px}
+.next-in{display:inline-block;margin-left:8px;font-size:.5em;font-weight:700;color:#4a5b6e;vertical-align:middle;letter-spacing:0}
+.start-btn{appearance:none;display:block;width:100%;margin-top:12px;border:0;border-radius:10px;background:#0047ba;color:#fff;font:inherit;font-size:16px;font-weight:800;padding:12px;cursor:pointer}
+.start-btn:hover{filter:brightness(.92)}
+.start-btn:focus-visible{outline:3px solid #0047ba;outline-offset:2px}
+/* ---- Time chips ---- */
+.tchips{display:flex;flex-wrap:wrap;gap:6px}
+.tchip{display:inline-flex;align-items:baseline;gap:5px;padding:4px 9px;border-radius:7px;background:#f1f4f8;border:1px solid #e1e7ef;font-size:13px;font-weight:650;color:#1b324c;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tchip small{font-size:11px;font-weight:750;color:#5d6f84}
+.tchip.next{background:#0047ba;border-color:#0047ba;color:#fff}
+.tchip.next small{color:#d6e4fa}
+.tchip.past{opacity:.42}
+.tchip.last{border-color:#d98a00;background:#fff6e5}
+.tchip.last small{color:#9a5f00}
+.tchip.next.last{background:#0047ba;color:#fff}
+.stop-departures .tchips{margin-top:4px}
+.next-rows{display:grid;grid-auto-flow:column;grid-auto-columns:max-content;gap:8px 48px}
+@media (max-width:560px){.next-rows{grid-auto-columns:minmax(0,1fr);gap:8px 16px}.next-row .tchips{flex-direction:column;align-items:flex-start}.next-row b .sub{display:block;margin:2px 0 0}}
+.next-row{display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.dir-pill{font-size:12px;font-weight:750;padding:4px 10px;border-radius:999px;background:#e8eef7;color:#002e5d}
+.hour-grid{display:flex;flex-direction:column;gap:6px}
+.hour-row{display:grid;grid-template-columns:52px 1fr;align-items:start;gap:8px}
+.hour{font-size:12px;font-weight:750;color:#6a7a8c;padding-top:5px;text-align:right}
+.sched-foot{margin:14px 0 0;font-size:13px!important}
+.detail-head{margin-bottom:6px}
+/* ---- Timetable: stops side by side, one row per trip ---- */
+.tt-wrap{display:flex;flex-wrap:wrap;gap:12px 40px;align-items:flex-start;margin-top:4px}
+.tt{min-width:0}
+.tt .dir-head{margin:12px 0 6px}
+.tt-table{border-collapse:collapse;font-variant-numeric:tabular-nums}
+.tt-table thead th{position:sticky;top:0;background:#fff;z-index:1;text-align:left;font-size:14px;font-weight:750;color:#132d49;padding:6px 14px 8px 10px;border-bottom:2px solid var(--c);vertical-align:bottom;white-space:nowrap}
+.tt-sub{display:block;font-size:11.5px;font-weight:600;color:#6a7a8c;white-space:normal}
+.tt-table td{padding:5px 14px 5px 10px;font-size:14px;font-weight:600;color:#1b324c;white-space:nowrap}
+.tt-table th.tt-hour{padding:5px 8px 5px 0;font-size:11px;font-weight:750;color:#8796a8;text-align:right;white-space:nowrap;min-width:42px}
+.tt-table tr.hour-start td,.tt-table tr.hour-start th{border-top:1px solid #e8edf2}
+.tt-table tbody tr:first-child td,.tt-table tbody tr:first-child th{border-top:0}
+.tt-table tr.past td{color:#a3afbd;font-weight:500}
+.tt-table tr.next td:not(.tt-tag){background:#0047ba;color:#fff}
+.tt-table tr.next td:nth-child(2){border-radius:6px 0 0 6px}
+.tt-table tr.next td:nth-last-child(2){border-radius:0 6px 6px 0}
+.tt-tag{font-size:11px!important;font-weight:750!important;color:#0047ba!important;padding-left:8px!important}
+.tt-table tr.last td:not(.tt-tag){box-shadow:inset 0 -2px 0 #d98a00}
+.tt-table tr.last .tt-tag{color:#9a5f00!important}
+.tt-none{color:#c2cbd6}
+@media (max-width:560px){.tt-wrap{gap:4px}.tt{width:100%}.tt-table{width:100%}.tt-table td,.tt-table thead th{padding-left:6px;padding-right:8px}}
+.route-line{display:flex;flex-direction:column;gap:6px;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid #e8edf2}
+.line-stops{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.line-stop{padding:4px 10px;border-radius:999px;border:2px solid var(--c);font-size:14px;font-weight:700;color:#132d49;background:#fff}
+.line-stop.campus{background:var(--c);color:#fff}
+.line-arrow{color:#8796a8;font-weight:700}
+.next-row b .sub{font-weight:500;margin-left:6px}
+.detail-head .route-days{font-size:15px;color:#5b697a;font-weight:600;margin-top:4px}
+/* ---- Start screen ---- */
+.start-summary .next-label{margin-top:0}
+.start-time{font-size:clamp(30px,4vw,40px);font-weight:850;color:#0047ba;letter-spacing:-.5px;line-height:1.15;margin:2px 0 8px}
+.start-summary p{margin:0 0 4px;font-size:15px;color:#29405a}
+.trip-choice{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.trip-choice .dir-switch{margin-top:0;flex-wrap:wrap}
+.stop-strip{list-style:none;margin:18px 0 0;padding:0 0 0 4px;position:relative}
+.stop-strip li{position:relative;padding:0 0 18px 34px}
+.stop-strip li::before{content:"";position:absolute;left:9px;top:6px;bottom:-6px;width:4px;background:var(--c);opacity:.35;border-radius:2px}
+.stop-strip li:last-child::before{display:none}
+.stop-strip .strip-walk::before{background:repeating-linear-gradient(to bottom,#8796a8 0 5px,transparent 5px 10px);opacity:1;width:3px;left:10px}
+.stop-strip .you::before{background:repeating-linear-gradient(to bottom,#8796a8 0 5px,transparent 5px 10px);opacity:1;width:3px;left:10px}
+.strip-dot{position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff;border:4px solid var(--c);box-sizing:border-box;z-index:1}
+.you .strip-dot{background:#0047ba;border-color:#cfe0f8;box-shadow:0 0 0 3px #0047ba33}
+.board .strip-dot,.dest .strip-dot{width:22px;height:22px;left:0;top:0;background:var(--c)}
+.mid .strip-dot{width:14px;height:14px;left:4px;top:4px;border-width:3px}
+.strip-body{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+.strip-body b{font-size:16px;color:#132d49}
+.strip-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.strip-tag{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:#eef2f6;color:#4a5b6e}
+.board .strip-tag,.dest .strip-tag{background:var(--c);color:#fff}
+.walk-box{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px dashed #b9c6d6;border-radius:10px;background:#fafbfd}
+.strip-body .near-btn{margin-top:6px}
 </style>
 </head>
 <body>
@@ -481,27 +577,12 @@ function provoNow(){
  if(minutes<SERVICE_DAY_START){day=(day+6)%7;minutes+=1440}
  return {day,minutes};
 }
-// Day picker: riders can look ahead up to a week. Today uses the live clock; a future day starts at the
-// beginning of that service day so cards show its first departures.
-let planOffset=0;
-function serviceNow(){const n=provoNow();return planOffset?{day:(n.day+planOffset)%7,minutes:SERVICE_DAY_START}:n}
+// The home page always shows "now": each card rolls forward to the next real departure, even if that's
+// another day. Looking at a specific day's schedule lives on the route's detail page (Mon–Thu / Friday / Weekend).
+function serviceNow(){return provoNow()}
 const WEEKDAY_LONG=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const dayWord=()=>planOffset===0?"today":planOffset===1?"tomorrow":`on ${WEEKDAY_LONG[serviceNow().day]}`;
-const dayTitle=()=>planOffset===0?"Today":planOffset===1?"Tomorrow":WEEKDAY_LONG[serviceNow().day];
-const noneText=w=>planOffset?`No ${w} ${dayWord()}`:`No more ${w} today`;
-function planDays(){
- const base=Date.now()-SERVICE_DAY_START*6e4; // service day rolls over at 3 AM
- const fmt=new Intl.DateTimeFormat('en-US',{timeZone:'America/Denver',weekday:'short',month:'short',day:'numeric'});
- const today=provoNow().day;
- return [...Array(7)].map((_,i)=>{const dow=(today+i)%7,parts=fmt.formatToParts(new Date(base+i*864e5)),g=k=>parts.find(x=>x.type===k)?.value;
-  return {i,dow,label:i===0?"Today":i===1?"Tomorrow":g('weekday'),date:`${g('month')} ${g('day')}`,kind:dow===5?"Friday":dow===0||dow===6?"Weekend":"Mon–Thu"}});
-}
-function dayPickerHTML(){
- const days=planDays(),cur=days[planOffset];
- const note=cur.kind==="Weekend"?"Weekday routes don't run on weekends. Only Heritage Overflow Parking has service.":cur.kind==="Friday"?"Friday schedule: buses stop earlier than Mon–Thu.":"";
- return `<div class="day-picker" role="group" aria-label="Choose a day to view">${days.map(d=>`<button type="button" class="day-chip${d.kind==="Weekend"?" weekend":""}" data-plan-day="${d.i}" aria-pressed="${d.i===planOffset}"><span class="day-chip-name">${d.label}</span><span class="day-chip-sub">${d.i<2?d.date:d.date.replace(/^\w+ /,"")} · ${d.kind}</span></button>`).join("")}</div>
- <p class="day-note">${planOffset?`Showing first departures ${dayWord()} (${cur.date}). `:""}${note}</p>`;
-}
+const WEEKDAY_SHORT=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const runDays=r=>r.service==='daily'?"Every day · 5 PM–midnight":"Mon–Thu · shorter Friday · no weekends";
 
 // Direction: every stop but the last is a pickup heading to campus; the last column is the campus departure back out.
 const RETURN_LABELS={"101":"MOA → Rec Center","102":"MOA → Wyview/Raintree","103":"MOA → Branbury/Carriage Cove","104":"WILK → King Henry","105":"WILK → South/Joaquin","107":"MOA → Wymount"};
@@ -515,85 +596,147 @@ R.forEach(r=>{
  r.timetable.forEach(col=>{let prev=-1;col.forEach(t=>{const [h,m]=t.time.split(':').map(Number);let v=h*60+m;while(v<prev)v+=1440;if(v<SERVICE_DAY_START)v+=1440;t.min=v;prev=v})});
 });
 const stopLabel=(r,j)=>r.fromCampus.includes(j)?r.returnLabel:r.stops[j][0];
-function nextDepartures(r,j=0,n=4){
- const {day,minutes}=serviceNow();
- return r.timetable[j].filter(t=>{
-  if(r.service!=='daily'&&(day===0||day===6))return false;
-  if(day===5&&t.days==='Mon-Thu')return false;
-  return t.min>=minutes;
- }).slice(0,n);
+const housing=r=>r.toCampus.map(j=>r.stops[j][0]);
+
+// Departures from one stop column on a given service day, at or after a minute of that day.
+function departuresOn(r,j,day,from){
+ if(r.service!=='daily'&&(day===0||day===6))return [];
+ return r.timetable[j].filter(t=>!(day===5&&t.days==='Mon-Thu')&&t.min>=from);
 }
-// Direction is chosen per route ("to" or "from" campus); remembered in this browser when storage is available.
-const dirOf={};
-try{Object.assign(dirOf,JSON.parse(localStorage.getItem("ryde_dirs")||"{}"))}catch{}
-const getDir=r=>dirOf[r.id]==="from"?"from":"to";
-function setDir(r,d){dirOf[r.id]=d;try{localStorage.setItem("ryde_dirs",JSON.stringify(dirOf))}catch{}}
-const dirStops=(r,d=getDir(r))=>d==="from"?r.fromCampus:r.toCampus;
+function nextDepartures(r,j=0,n=4){const {day,minutes}=serviceNow();return departuresOn(r,j,day,minutes).slice(0,n)}
+// Upcoming departures that roll into later days once today is done. `ahead` is days from today (0 = today).
+function upcoming(r,j,n=3){
+ const {day,minutes}=serviceNow(),out=[];
+ for(let ahead=0;ahead<8&&out.length<n;ahead++)
+  departuresOn(r,j,(day+ahead)%7,ahead?SERVICE_DAY_START:minutes).forEach(t=>{if(out.length<n)out.push({...t,ahead})});
+ return out;
+}
+const dayTag=ahead=>ahead===0?"":ahead===1?"Tomorrow":WEEKDAY_SHORT[(serviceNow().day+ahead)%7];
+const sortKey=t=>t.ahead*2000+t.min;
+const inText=t=>{if(t.ahead)return "";const m=t.min-serviceNow().minutes;return m<1?"now":m<60?`in ${m} min`:`in ${Math.floor(m/60)} hr ${m%60} min`};
+// Estimated time at a later stop: the first departure listed there after the bus has left the previous stop.
+function arrivalAfter(r,j,prev){
+ const day=(serviceNow().day+prev.ahead)%7,t=departuresOn(r,j,day,prev.min)[0];
+ return t?{...t,ahead:prev.ahead}:null;
+}
+
+// Direction comes from where the rider is: on campus means heading home, anywhere else means heading to campus.
+// The switch under the route cards overrides it for planning from somewhere else (this visit only).
+const CAMPUS_BOUNDS={south:40.2440,north:40.2560,west:-111.6560,east:-111.6420}; // approximate BYU main campus
+const onCampus=([lat,lng])=>lat>=CAMPUS_BOUNDS.south&&lat<=CAMPUS_BOUNDS.north&&lng>=CAMPUS_BOUNDS.west&&lng<=CAMPUS_BOUNDS.east;
+let dirOverride=null;
+const hasGps=()=>nearState.source==="gps"&&!!nearState.pos;
+const autoDir=()=>hasGps()&&onCampus(nearState.pos)?"from":"to";
+const getDir=()=>dirOverride||autoDir();
+const dirStops=(r,d=getDir())=>d==="from"?r.fromCampus:r.toCampus;
+function dirBannerHTML(){
+ const d=getDir();
+ const why=dirOverride?"Planning ahead":nearState.status==="locating"?"Finding your location…":hasGps()?(d==="from"?"You're on campus":"You're off campus"):"Location unavailable";
+ return `<div class="dir-banner ${d}"><div class="dir-banner-text"><span class="dir-eyebrow">${why}</span><h2>${d==="from"?"Heading home from campus":"Heading to campus"}</h2></div>${dirToggleHTML()}</div>`;
+}
+function dirToggleHTML(){
+ const other=getDir()==="from"?"to":"from";
+ return `<div class="dir-toggle"><span>Planning from somewhere else?</span><div class="dir-toggle-actions"><button type="button" class="dir-btn" data-dir-set="${other}">${other==="from"?"Switch to trips home":"Switch to trips to campus"}</button>${dirOverride?`<button type="button" class="dir-btn subtle" data-dir-set="auto">Use my location</button>`:""}</div></div>`;
+}
+
 function routeNext(r){
- const d=getDir(r);
- const groups=dirStops(r,d).map(j=>({j,stop:stopLabel(r,j),times:nextDepartures(r,j,3)}));
- const next=groups.flatMap(x=>x.times.map(t=>({...t,stop:x.stop}))).sort((a,b)=>a.min-b.min)[0];
+ const d=getDir();
+ const groups=dirStops(r,d).map(j=>({j,stop:d==="from"?r.campusStop:r.stops[j][0],times:upcoming(r,j,3)}));
+ const next=groups.flatMap(x=>x.times.map(t=>({...t,stop:x.stop,j:x.j}))).sort((a,b)=>sortKey(a)-sortKey(b))[0]||null;
  return {d,groups,next};
 }
-const housing=r=>r.toCampus.map(j=>r.stops[j][0]);
 // The next pickup location and its departure time are the key details on each card.
-// In the return direction, show the actual campus boarding stop, not the route summary.
-const cardNextStop=(r,{d,next})=>next?esc(d==="from"?r.campusStop:next.stop):noneText("departures");
-const cardLabel=rn=>rn.next?(planOffset?"First pickup stop":"Next pickup stop"):"Service status";
-const nextTimeText=n=>n?fmtDeparture(n.time):"";
-const nextNoteText=(r,{d,next})=>!next?(d==="from"?noneText("departures from campus"):noneText("departures to campus")):d==="from"?`Leaves ${esc(r.campusStop)} for ${esc(housing(r).join(' / '))}`:'From '+esc(next.stop);
-const laterHTML=({groups})=>groups.map(x=>`<div class="stop-departures"><strong>${esc(x.stop)}</strong><span>${x.times.length?x.times.map(t=>fmtDeparture(t.time)).join(' · '):(planOffset?`None ${dayWord()}`:'No more today')}</span></div>`).join('');
-const dirSwitch=r=>{const d=getDir(r);return `<div class="dir-switch" role="group" aria-label="Direction for ${esc(r.name)}">${[["to","To campus"],["from","From campus"]].map(([k,l])=>`<button type="button" data-dir="${k}" data-dir-route="${r.id}" aria-pressed="${d===k}">${l}</button>`).join('')}</div>`};
+const cardNextStop=(r,{next})=>next?esc(next.stop):"No scheduled departures";
+const nextTimeText=n=>n?`${n.ahead?`<span class="next-day">${dayTag(n.ahead)}</span>`:""}${fmtDeparture(n.time)}${inText(n)?`<span class="next-in">${inText(n)}</span>`:""}`:"";
+const timeChip=(t,cls="")=>`<span class="tchip${cls}">${t.ahead?`<small>${dayTag(t.ahead)}</small>`:""}${fmtDeparture(t.time)}</span>`;
+const laterHTML=(r,{groups,d})=>groups.map(x=>`<div class="stop-departures"><strong>${d==="from"?`${esc(x.stop)} → ${esc(housing(r).join(" / "))}`:esc(x.stop)}</strong><div class="tchips">${x.times.length?x.times.map(t=>timeChip(t)).join(""):'<span class="sub">None scheduled</span>'}</div></div>`).join("");
+const openCards=new Set();
+function cardHTML(r){
+ const rn=routeNext(r),open=openCards.has(r.id);
+ return `<article class="rc" style="--c:${r.color}">
+  <button class="route-open" data-open="${r.id}" aria-label="View ${esc(r.name)} schedule">
+   <span class="route-name">${esc(r.name)}</span>
+   <span class="route-stop" data-card-stops="${r.id}">${cardNextStop(r,rn)}</span>
+   <span class="next-time" data-next-time="${r.id}">${nextTimeText(rn.next)}</span>
+  </button>
+  <button type="button" class="start-btn" data-start="${r.id}">Start ▸</button>
+  <button class="more" data-more="${r.id}" aria-expanded="${open}">${open?"More times ▴":"More times ▾"}</button>
+  <div class="later${open?" open":""}" id="l${r.id}">${laterHTML(r,rn)}</div>
+ </article>`;
+}
 function updateCard(r){
  const t=sheet.querySelector(`[data-next-time="${r.id}"]`);if(!t)return;
  const rn=routeNext(r),q=k=>sheet.querySelector(`[data-${k}="${r.id}"]`);
  t.innerHTML=nextTimeText(rn.next);
  q("card-stops").innerHTML=cardNextStop(r,rn);
- q("card-label").textContent=cardLabel(rn);
- const l=document.getElementById("l"+r.id);if(l)l.innerHTML=laterHTML(rn);
- sheet.querySelectorAll(`[data-dir-route="${r.id}"]`).forEach(b=>b.setAttribute("aria-pressed",b.dataset.dir===rn.d));
+ const l=document.getElementById("l"+r.id);if(l)l.innerHTML=laterHTML(r,rn);
 }
 // Re-evaluate "next" times as the clock advances, updating in place so open panels, search focus and scroll are kept.
 let lastTimeKey=null;
 function refreshTimes(force){
  const {day,minutes}=provoNow(),key=day+':'+minutes;
  if(!force&&key===lastTimeKey)return;lastTimeKey=key;
- R.forEach(r=>{
-  updateCard(r);
- });
- if(screen==2&&sel){
-  const pd=serviceNow().day,weekday=sel.service==='daily'||(pd>=1&&pd<=5);
-  sheet.querySelectorAll("[data-stop-next]").forEach(d=>{
-   const next=nextDepartures(sel,+d.dataset.stopNext,5);
-   d.innerHTML=!weekday?`No regular weekday service ${dayWord()}`:next.length?next.map(t=>fmtDeparture(t.time)).join(' · '):`No further departures listed ${dayWord()}`;
-  });
- }
+ if(startState){renderStart();return}
+ if(screen==2&&sel&&$("schedPanel")){$("schedPanel").innerHTML=schedulePanel(sel);return}
+ R.forEach(updateCard);
 }
 setInterval(()=>refreshTimes(),15000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshTimes(true)});
 window.addEventListener("focus",()=>refreshTimes(true));
-// Weekday routes publish a Mon–Thu schedule and a shorter Friday schedule ("Mon-Thu" times don't run Fridays).
-const SCHED_DAYS=[["mth","Mon–Thu"],["fri","Friday"]];
+
+// Detail page schedule. Weekday routes publish a Mon–Thu schedule and a shorter Friday one ("Mon-Thu" times don't run Fridays).
+const SCHED_DAYS=[["mth","Mon–Thu"],["fri","Friday"],["wkd","Weekend"]];
 const schedDayOf={};
-const todaySchedDay=()=>serviceNow().day===5?"fri":"mth";
+const todaySchedDay=()=>{const d=serviceNow().day;return d===5?"fri":d===0||d===6?"wkd":"mth"};
 const getSchedDay=r=>schedDayOf[r.id]||todaySchedDay();
 const runsOn=(t,k)=>k!=="fri"||t.days!=="Mon-Thu";
-const lastOn=(col,k)=>{const ts=col.filter(t=>runsOn(t,k));return ts[ts.length-1]||null};
-function todayScheduleNote(r){
- if(r.service==='daily')return '';
- const day=serviceNow().day,first=r.toCampus[0],fri=lastOn(r.timetable[first],"fri"),mth=lastOn(r.timetable[first],"mth");
- if(day===0||day===6)return `<div class="sched-today weekend"><b>No service ${dayWord()}.</b> Weekday service resumes Monday.</div>`;
- const k=day===5?"fri":"mth",last=k==="fri"?fri:mth;
- return `<div class="sched-today ${k}"><b>${k==="fri"&&dayTitle()==="Friday"?"Friday schedule":`${dayTitle()}: ${k==="fri"?"Friday":"Mon–Thu"} schedule`}.</b> Last pickup at ${esc(stopLabel(r,first))} is ${last?fmtDeparture(last.time):"—"}${k==="fri"&&mth&&fri&&mth.time!==fri.time?` (${fmtDeparture(mth.time)} Mon–Thu)`:""}.</div>`;
+const hourLabel=min=>{const h=Math.floor(min/60)%24;return `${h%12||12} ${h>=12?"PM":"AM"}`};
+const schedDaySwitch=r=>{const k=getSchedDay(r),today=todaySchedDay();return `<div class="dir-switch sched-day-switch" role="group" aria-label="Schedule day for ${esc(r.name)}">${SCHED_DAYS.map(([v,l])=>`<button type="button" data-sched-day="${v}" data-sched-route="${r.id}" aria-pressed="${k===v}">${l}${v===today?" · today":""}</button>`).join('')}</div>`};
+// Timetable with one column per stop and one row per bus trip. A row is matched by taking, at each later stop,
+// the first unused time within 40 minutes after the previous stop. Hour labels mark where each hour starts.
+function alignTrips(cols,maxGap=40){
+ const used=cols.map(c=>c.map(()=>false)),rows=[];
+ cols.forEach((col,c)=>col.forEach((t,i)=>{
+  if(used[c][i])return;used[c][i]=true;
+  const row=cols.map(()=>null);row[c]=t;let prev=t;
+  for(let c2=c+1;c2<cols.length;c2++){
+   const k=cols[c2].findIndex((x,i2)=>!used[c2][i2]&&x.min>=prev.min&&x.min-prev.min<=maxGap);
+   if(k<0)break;used[c2][k]=true;row[c2]=cols[c2][k];prev=row[c2];
+  }
+  rows.push(row);
+ }));
+ return rows.sort((a,b)=>a.find(Boolean).min-b.find(Boolean).min);
 }
-const schedDaySwitch=r=>{const k=getSchedDay(r),d=serviceNow().day,wk=d>=1&&d<=5;return `<div class="dir-switch sched-day-switch" role="group" aria-label="Schedule day for ${esc(r.name)}">${SCHED_DAYS.map(([v,l])=>`<button type="button" data-sched-day="${v}" data-sched-route="${r.id}" aria-pressed="${k===v}">${l}${wk&&v===todaySchedDay()?` · ${planOffset?dayWord().replace(/^on /,""):"today"}`:""}</button>`).join('')}</div>`};
+function timetableHTML(r,k,title,colIdx,heads){
+ const daily=r.service==='daily',cols=colIdx.map(j=>daily?r.timetable[j]:r.timetable[j].filter(t=>runsOn(t,k)));
+ const rows=alignTrips(cols);
+ if(!rows.length)return `<div class="tt"><div class="dir-head">${title}</div><div class="sub">No departures listed</div></div>`;
+ const isToday=daily||k===todaySchedDay(),now=serviceNow().minutes,first=row=>row.find(Boolean);
+ const nextRow=isToday?rows.find(row=>first(row).min>=now):null,lastRow=rows[rows.length-1];
+ let prevHour=null;
+ const body=rows.map(row=>{
+  const h=Math.floor(first(row).min/60),newHour=h!==prevHour;prevHour=h;
+  const cls=[row===nextRow?"next":isToday&&first(row).min<now?"past":"",row===lastRow?"last":"",newHour?"hour-start":""].filter(Boolean).join(" ");
+  return `<tr class="${cls}"><th scope="row" class="tt-hour">${newHour?hourLabel(h*60):""}</th>${row.map(t=>`<td>${t?fmtDeparture(t.time):'<span class="tt-none">—</span>'}</td>`).join("")}<td class="tt-tag">${row===nextRow?"next":row===lastRow?"last bus":""}</td></tr>`;
+ }).join("");
+ return `<div class="tt"><div class="dir-head">${title}</div><table class="tt-table"><thead><tr><th></th>${heads.map(x=>`<th scope="col">${x}</th>`).join("")}<th></th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
 function schedulePanel(r){
- const day=serviceNow().day,weekday=r.service==='daily'||(day>=1&&day<=5);
- const nextRow=j=>{const next=nextDepartures(r,j,5);return `<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(stopLabel(r,j))}</b><div class="sub" data-stop-next="${j}">${!weekday?`No regular weekday service ${dayWord()}`:next.length?next.map(t=>fmtDeparture(t.time)).join(' · '):`No further departures listed ${dayWord()}`}</div></div>`};
- const k=getSchedDay(r);
- const fullRow=j=>{if(r.service==='daily')return `<div style="margin-top:12px"><b>${esc(stopLabel(r,j))}</b><div class="sub">${r.timetable[j].map(t=>fmtDeparture(t.time)).join(' · ')}</div></div>`;const ts=r.timetable[j].filter(t=>runsOn(t,k)),last=ts[ts.length-1];return `<div style="margin-top:12px"><b>${esc(stopLabel(r,j))}</b><div class="sub">${ts.map(t=>t===last?`<b class="last-bus">${fmtDeparture(t.time)} (last)</b>`:fmtDeparture(t.time)).join(' · ')}</div></div>`};
- const d=getDir(r),dirs=f=>`<div class="dir-head">${d==="from"?`From campus · ${esc(r.campusStop)} departures`:'To campus · pickups'}</div>${dirStops(r,d).map(f).join('')}`;
- return `<div class="card"><div class="sched-top"><b>Published departure schedule</b>${dirSwitch(r)}</div><div class="sub">${r.service==='daily'?'Monday–Sunday, 5 PM–midnight':'Monday–Thursday, plus a shorter Friday schedule, during Fall and Winter semesters; school holiday exceptions apply'}. Times are scheduled, not live.</div>${todayScheduleNote(r)}${dirs(nextRow)}<details><summary>View complete timetable</summary>${r.service==='daily'?'':`<div class="sched-day-row"><span class="sub">Show the schedule for</span>${schedDaySwitch(r)}</div>`}${dirs(fullRow)}</details></div>`;
+ const d=getDir(),daily=r.service==='daily',k=daily?"daily":getSchedDay(r);
+ const rows=dirStops(r,d).map(j=>({j,ts:upcoming(r,j,4)})),all=rows.flatMap(x=>x.ts);
+ // When every upcoming time is on the same later day, say the day once in the heading instead of on each time.
+ const oneDay=all.length&&all.every(t=>t.ahead===all[0].ahead)?all[0].ahead:0;
+ const dayName=oneDay?(oneDay===1?"Tomorrow":WEEKDAY_LONG[(serviceNow().day+oneDay)%7]):"";
+ const stopName=j=>d==="from"?`${esc(r.campusStop)} <span class="sub">→ ${esc(housing(r).join(" / "))}</span>`:`${esc(r.stops[j][0])}<span class="sub">stop ${r.toCampus.indexOf(j)+1} of ${r.toCampus.length}</span>`;
+ const nextRow=({j,ts})=>`<div class="next-row"><b>${stopName(j)}</b><div class="tchips">${ts.length?ts.map((t,i)=>timeChip(oneDay?{...t,ahead:0}:t,i===0?" next":"")).join(""):'<span class="sub">None scheduled</span>'}</div></div>`;
+ const line=r.stops.map((s,i)=>`<span class="line-stop${i===r.stops.length-1?" campus":""}">${esc(s[0])}</span>`).join('<span class="line-arrow" aria-hidden="true">→</span>');
+const tables=`<div class="tt-wrap">${timetableHTML(r,k,"To campus",r.toCampus,r.toCampus.map(j=>esc(r.stops[j][0])))}${timetableHTML(r,k,"Leaving campus",r.fromCampus,[`${esc(r.campusStop)} <span class="tt-sub">→ ${esc(housing(r).join(" / "))}</span>`])}</div>`;
+ const body=k==="wkd"
+  ?`<div class="sched-today weekend"><b>No service on weekends.</b> ${esc(r.name)} runs Monday–Friday. Heritage Overflow Parking is the only route with weekend service.</div>`
+  :`${k==="fri"?'<div class="sched-today fri"><b>Friday schedule.</b> Buses stop earlier than Mon–Thu.</div>':""}${tables}`;
+ return `<div class="card"><div class="route-line"><span class="sub">${esc(r.name)} route stops</span><div class="line-stops">${line}</div></div><div class="sched-top"><b>Next departures${dayName?` · ${dayName}`:""}</b><span class="dir-pill">${d==="from"?"Heading home from campus":"Heading to campus"}</span></div><div class="next-rows">${rows.map(nextRow).join("")}</div></div>
+ <div class="card"><div class="sched-top"><b>Full schedule</b>${daily?'<span class="sub">Every day, 5 PM–midnight</span>':schedDaySwitch(r)}</div>${body}
+ <p class="sub sched-foot">Fall and Winter semesters; school holiday exceptions apply. Times are scheduled, not live.</p></div>`;
 }
 function informationPanel(){return `<div class="pad"><h2>About The Ryde</h2><div class="card"><b>Free for BYU students</b><div class="sub">Show your BYU ID to ride. Regular routes run Monday–Friday during Fall and Winter semesters, including reading days and finals week, but not school holidays. Heritage Overflow Parking has a separately published Monday–Sunday schedule.</div></div><h2>Contact and feedback</h2><div class="card"><p>Suggestions, issues, and compliments are welcome.</p><a href="mailto:theryde@studentmovement.com">theryde@studentmovement.com</a><p><a href="tel:8018996010">801-899-6010</a></p></div><h2>Advertising and employment</h2><div class="card"><p>Advertising inquiries: <a href="tel:8018996010">801-899-6010</a></p><p>Sales or bus driving: <a href="mailto:jake@studentmovement.com">jake@studentmovement.com</a></p><p>Marketing or bus driving: <a href="mailto:kevin@studentmovement.com">kevin@studentmovement.com</a></p></div><p class="sub">Prototype: schematic map, estimated bus positions, and crowding are simulated. Published departure schedules are informational and may change.</p></div>`}
 /* ---- search: "did you mean" (local typo correction over route and stop names; no external API) ---- */
@@ -651,25 +794,27 @@ function nearYouHTML(){
  if(!(window.BYU_RYDE_ROUTES||[]).some(g=>Array.isArray(g.points)&&g.points.length))return "";
  if(!nearState.pos&&homePlace&&nearState.status==="idle")nearState={status:"ready",pos:[Number(homePlace.lat),Number(homePlace.lng)],source:"home",message:""};
  const head=t=>`<section class="near-you" aria-label="Suggested routes near you" aria-live="polite"><div class="near-head"><h2>${t}</h2>`;
- const locBtn=`<button type="button" class="near-btn" data-near="gps">${nearState.source==="gps"?"Refresh my location":"Use my location"}</button>`;
+ const locBtn=`<button type="button" class="near-btn${nearState.status==="error"?"":" ghosty"}" data-near="gps">${nearState.status==="error"?"Try again":"Refresh location"}</button>`;
  const homeBtn=homePlace&&nearState.source!=="home"?`<button type="button" class="near-btn ghosty" data-near="home">Near my home</button>`:"";
  if(nearState.status==="locating")return head("Finding routes near you…")+`</div><p class="sub">Waiting for your location.</p></section>`;
  if(nearState.status==="error"||!nearState.pos)return head("Routes near you")+`<div class="near-actions">${locBtn}${homeBtn}</div></div><p class="sub">${esc(nearState.message||"See the closest Ryde stops and their next pickup. Your location stays on this device unless you save it as home.")}</p></section>`;
  const list=nearSuggestions(nearState.pos),where=nearState.source==="home"?"your home":"you";
  let h=head(nearState.source==="home"?"Near your home":"Near you")+`<div class="near-actions">${locBtn}${homeBtn}</div></div>`;
  if(!list.length)h+=`<p class="sub">No Ryde stops within ${NEAR_RADIUS_MI} miles of ${where}.</p>`;
- else h+=`<div class="near-list">`+list.map(({r,d,label})=>{const t=nextPickupNear(r,label);return `<button type="button" class="near-item" data-open="${r.id}" style="--c:${r.color}"><span class="near-route">${esc(r.name)}</span><span class="near-stop">${label?esc(label):"Closest point on route"} · ${d<0.1?"right here":`${d.toFixed(1)} mi`} · ~${walkMinutes(d)} min walk</span><span class="near-next">${t?`${planOffset?"First":"Next"} pickup ${fmtDeparture(t.time)}${label?"":` at ${esc(t.stop)}`}`:r.service!=="daily"&&[0,6].includes(serviceNow().day)?"No weekend service":noneText("pickups")}</span></button>`}).join("")+`</div>`;
+ else h+=`<div class="near-list">`+list.map(({r,d,label})=>{const t=nextPickupNear(r,label);return `<div class="near-item" style="--c:${r.color}"><button type="button" class="near-open" data-open="${r.id}" aria-label="View ${esc(r.name)} schedule"><span class="near-route">${esc(r.name)}</span><span class="near-stop">${label?esc(label):"Closest point on route"} · ${d<0.1?"right here":`${d.toFixed(1)} mi`} · ~${walkMinutes(d)} min walk</span><span class="near-next">${t?`${"Next"} pickup ${fmtDeparture(t.time)}${label?"":` at ${esc(t.stop)}`}`:r.service!=="daily"&&[0,6].includes(serviceNow().day)?"No weekend service":"No more pickups today"}</span></button><button type="button" class="start-btn near-start" data-start="${r.id}">Start ▸</button></div>`}).join("")+`</div>`;
  if(nearState.source==="gps"&&currentUser&&!homePlace)h+=`<button type="button" class="near-btn ghosty" data-near="save-home">Save this location as my home</button>`;
  return h+`</section>`;
 }
 function locateRider(){
- if(!navigator.geolocation){nearState={status:"error",pos:null,source:null,message:"This browser can't share your location."};refreshHome();return}
- nearState={...nearState,status:"locating"};refreshHome();
+ if(!navigator.geolocation){nearState={status:"error",pos:null,source:null,message:"This browser can't share your location."};refreshScreen();return}
+ nearState={...nearState,status:"locating"};refreshScreen();
  navigator.geolocation.getCurrentPosition(
-  p=>{nearState={status:"ready",pos:[p.coords.latitude,p.coords.longitude],source:"gps",message:""};refreshHome()},
-  err=>{nearState={status:"error",pos:null,source:null,message:err.code===1?"Location access was blocked. Allow it in your browser settings, or save a home address in your profile.":"Couldn't get your location. Try again in a moment."};refreshHome()},
+  p=>{nearState={status:"ready",pos:[p.coords.latitude,p.coords.longitude],acc:p.coords.accuracy,source:"gps",message:""};refreshScreen()},
+  err=>{nearState={status:"error",pos:null,source:null,message:err.code===1?"Location access was blocked. Allow it in your browser settings, or save a home address in your profile.":"Couldn't get your location. Try again in a moment."};refreshScreen()},
   {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
 }
+// Location changes the home cards' direction and the Start screen's "you are here".
+function refreshScreen(){if(startState)renderStart();else refreshHome()}
 // Re-render only while the Routes home screen is showing, keeping whatever is typed in search.
 function refreshHome(){if(screen===1&&!sel&&!$("app").classList.contains("map-mode")){const s=$("routeSearch");home(s?s.value:"")}}
 
@@ -682,11 +827,6 @@ function layout(s){
   $("back").classList.toggle("hide",s==1);
   gBus.classList.add("hide");clearInterval(timer);
 }
-function crowdHTML(r){
-  if(!r.live||lostSignal)return`<div class="notice" role="status"><span aria-hidden="true">⚠️</span><span>Live bus information is currently unavailable for ${r.name}. Showing scheduled times only.</span></div>`;
-  const [t,c]=lvl(r);
-  return`<div class="card" style="--k:${c}"><div class="row" style="border:0;padding:0"><div><div class="sub">On the bus right now</div><div class="big">${r.riders} <span class="sub" style="font-weight:400;font-size:14px">of ${r.cap} seats and standing</span></div></div><span class="badge" style="margin-left:auto"><span class="dot"></span>${t}</span></div><div class="meter"><i style="width:${r.riders/r.cap*100}%"></i></div></div>`;
-}
 let welcomeDismissedInPage=false;
 function showWelcomeIntro(){
   if(welcomeDismissedInPage)return false;
@@ -694,7 +834,7 @@ function showWelcomeIntro(){
   catch{return true}
 }
 function home(filter=""){
-  layout(1);sel=null;showRoutes(R.map(r=>r.id));view(0,0,840);
+  setHash("#/");layout(1);sel=null;startState=null;showRoutes(R.map(r=>r.id));view(0,0,840);
   $("app").classList.remove("map-mode");
   $("navRoutes").classList.add("active");$("navMap").classList.remove("active");
   const f=filter.trim().toLowerCase();
@@ -707,24 +847,9 @@ function home(filter=""){
       <p>Find shuttle routes, check published departure times, explore the route map, and save your favorite routes.</p>
       <p class="welcome-note">This is a prototype for planning trips, not live GPS tracking.</p></div>
       <button class="welcome-dismiss" type="button" id="welcomeDismiss">Got it</button>
-    </section>`:""}${f?"":nearYouHTML()}<div class="section-heading"><div><h2>Explore shuttle routes</h2>${dayPickerHTML()}</div><span class="sub">${list.length} routes</span></div>`;
+    </section>`:""}${f?"":nearYouHTML()}<div class="section-heading"><div><h2>Explore shuttle routes</h2></div><span class="sub">${list.length} routes</span></div>${dirBannerHTML()}`;
   if(!list.length){h+=`<div class="card">No routes match “${esc(filter.trim())}”.${suggestion?` Did you mean <button type="button" class="did-you-mean" data-suggest="${esc(suggestion)}">${esc(suggestion)}</button>?`:" Try another stop or neighborhood."}</div>`}
-  else{
-    h+=`<div class="rail">`+list.map(r=>{
-      const rn=routeNext(r),{next,d}=rn;
-      return `<article class="rc" style="--c:${r.color}">
-        <button class="route-open" data-open="${r.id}" aria-label="View ${esc(r.name)} timetable">
-          <span class="route-name">${esc(r.name)}</span>
-          <span class="next-label" data-card-label="${r.id}">${cardLabel(rn)}</span>
-          <span class="route-stop" data-card-stops="${r.id}">${cardNextStop(r,rn)}</span>
-          <span class="next-time" data-next-time="${r.id}">${nextTimeText(next)}</span>
-        </button>
-        ${dirSwitch(r)}
-        <button class="more" data-more="${r.id}" aria-expanded="false">Times by stop ▾</button>
-        <div class="later" id="l${r.id}">${laterHTML(rn)}</div>
-      </article>`;
-    }).join("")+`</div>`;
-  }
+  else h+=`<div class="rail">`+list.map(cardHTML).join("")+`</div>`;
   h+=`<div class="map-teaser"><div><h2>Want to see all the routes?</h2><p>Explore the official BYU Ryde route diagram, zoom in, and select a route.</p></div><button type="button" id="openMapFromHome">Explore route map →</button></div>
     <details class="info-collapsible"><summary>Service information, eligibility & contact</summary>${informationPanel()}</details></div>`;
   sheet.innerHTML=h;
@@ -736,7 +861,7 @@ function home(filter=""){
   })}
 }
 function mapPage(){
-  layout(1);sel=null;showRoutes(R.map(r=>r.id));view(0,0,840);
+  setHash("#/map");layout(1);sel=null;startState=null;showRoutes(R.map(r=>r.id));view(0,0,840);
   $("app").classList.add("map-mode");
   $("navMap").classList.add("active");$("navRoutes").classList.remove("active");
   if(window.initRydeRouteMap)window.initRydeRouteMap();
@@ -744,59 +869,91 @@ function mapPage(){
 }
 function detail(id){
   $("app").classList.remove("map-mode");$("navRoutes").classList.add("active");$("navMap").classList.remove("active");
-  sel=R.find(r=>r.id==id);const r=sel;layout(2);
+  sel=R.find(r=>r.id==id);const r=sel;if(!r)return home();setHash(`#/route/${r.id}`);layout(2);startState=null;
   showRoutes([r.id]);fit(r);
   gStops.innerHTML="";
-  const [t,c]=lvl(r);
-  const alts=R.filter(x=>x.id!=r.id);
-  sheet.innerHTML=`<div class="pad detail-shell" style="--c:${r.color}"><button class="detail-back" type="button" id="backToRoutes">← All routes</button>
-   <div class="row" style="border:0;padding:0"><div><h1>${r.name}</h1><div class="sub">${planOffset?`Showing ${dayTitle()}'s schedule · <button type="button" class="did-you-mean" data-plan-day="0">back to today</button>`:"Published weekday / weekend departure schedule"}</div></div></div>
-   <div class="notice">Map is the published route diagram. Departure times are scheduled, not GPS predictions.</div>
+  sheet.innerHTML=`<div class="pad detail-shell" style="--c:${r.color}">
+   <div class="detail-head"><h1>${esc(r.name)}</h1><div class="route-days">${runDays(r)}</div></div>
    <div id="schedPanel">${schedulePanel(r)}</div>
    <button class="ghost" id="favoriteBtn">${favoriteRouteIds.has(String(r.id))?"★ Favorite route":"☆ Add to favorites"}</button>
-   <button class="cta" id="go">Try simulated trip</button>
-   <h2>Other ways to get to campus</h2>
-   ${alts.map(a=>{const [at,ac]=lvl(a);return`<button class="alt" style="--c:${a.color}" data-open="${a.id}"><div><b>${a.name}</b><div class="sub">${a.dest.replace("Campus: ","")}</div></div><div style="margin-left:auto;text-align:right"><b>View timetable</b><div class="sub">Published schedule</div></div></button>`}).join("")}
   </div>`;addSheetHandle();
 }
-function live(){
-  const r=sel;layout(3);showRoutes([r.id]);lostSignal=false;
-  const total=r.path.getTotalLength(),board=r.stops[1],boardD=board[1]*total;
-  let busD=0,uX=USER.x,uY=USER.y,secs=0;
-  const upd=()=>{
-    const left=Math.max(0,Math.round((boardD-busD)/boardD*(r.dep[0]+0)*1+0));
-    const arrived=busD>=boardD-1;
-    const feed=r.live&&!lostSignal;
-    $("eta").textContent=arrived?"Bus is here":feed?Math.max(1,left)+" min":"—";
-    $("etasub").textContent=arrived?`Board at ${board[0]}`:feed?`Bus is heading to ${board[0]}`:"";
-    $("lostmsg").classList.toggle("hide",feed);
-    gBus.classList.toggle("hide",!r.live);
-    gBus.style.opacity=feed?1:.35;
-    const bp=r.path.getPointAtLength(busD);
-    gBus.setAttribute("transform",`translate(${bp.x},${bp.y})`);
-    gUser.setAttribute("transform",`translate(${uX},${uY})`);
-    const minX=Math.min(uX,bp.x)-55,maxX=Math.max(uX,bp.x)+55,minY=Math.min(uY,bp.y)-55,maxY=Math.max(uY,bp.y)+55;
-    const w=Math.max(170,maxX-minX,(maxY-minY)/1.3);
-    // Keep the accurate reference map framed; no fabricated live position zoom.
-    view(0,0,840);
+
+// ---- Start screen: you are here → walk to the stop → ride → get off ----
+// "You are here" uses GPS. Walking directions to the stop plug in later (walking API pending).
+let startState=null;
+// ---- History: screens push a hash so the browser's back/forward buttons move between them ----
+let routing=false;
+const sameHash=(a,b)=>(a||"#/")===(b||"#/");
+function setHash(h){if(routing||sameHash(location.hash,h))return;history.pushState(null,"",h)}
+function renderFromHash(){
+  routing=true;
+  try{
+    const h=location.hash,m=h.match(/^#\/(route|start)\/([^/]+)$/),ok=m&&R.some(r=>r.id==m[2]);
+    if(h==="#/map")mapPage();
+    else if(ok&&m[1]==="route")detail(m[2]);
+    else if(ok)startTrip(m[2]);
+    else{if(!sameHash(h,"#/"))history.replaceState(null,"","#/");home()}
+    sheet.scrollTop=0;
+  }finally{routing=false}
+}
+window.addEventListener("popstate",renderFromHash);
+function startTrip(id){
+  const r=R.find(x=>x.id==id);if(!r)return;
+  setHash(`#/start/${r.id}`);sel=r;startState={id:r.id,board:null,dest:null};
+  if(!hasGps()&&nearState.status!=="locating")locateRider();else renderStart();
+  sheet.scrollTop=0;window.scrollTo?.(0,0);
+}
+function tripPlan(r){
+  const d=getDir(),last=r.stops.length-1;
+  if(d==="to"){
+    const rn=routeNext(r),board=startState.board??(rn.next?rn.next.j:r.toCampus[0]);
+    const path=[];for(let j=board;j<=last;j++)path.push(j);
+    return {d,board,dest:last,path};
+  }
+  // Heading home: board at campus; the bus loops back through the pickups in order.
+  const dest=startState.dest??r.toCampus[0];
+  return {d,board:last,dest,path:[last,...r.toCampus.slice(0,r.toCampus.indexOf(dest)+1)]};
+}
+function youAreHereHTML(){
+  if(nearState.status==="locating")return `<b>You are here</b><span class="sub">Finding your location…</span>`;
+  if(hasGps())return `<b>You are here</b><span class="sub">Using your phone's location${nearState.acc?` (±${Math.round(nearState.acc)} m)`:""} · ${onCampus(nearState.pos)?"on campus":"off campus"}</span>`;
+  return `<b>Where are you?</b><span class="sub">${esc(nearState.message||"Location is off.")}</span><button type="button" class="near-btn ghosty" data-near="gps">Try again</button>`;
+}
+function renderStart(){
+  const r=R.find(x=>x.id==startState.id);if(!r)return home();
+  layout(2);showRoutes([r.id]);fit(r);gStops.innerHTML="";
+  $("app").classList.remove("map-mode");$("navRoutes").classList.add("active");$("navMap").classList.remove("active");
+  const p=tripPlan(r),name=j=>esc(r.stops[j][0]),destName=name(p.dest);
+  // Scheduled time at each stop along the ride, starting from the next departure at the boarding stop.
+  const times=[upcoming(r,p.board,1)[0]||null];
+  for(let i=1;i<p.path.length;i++)times.push(times[i-1]?arrivalAfter(r,p.path[i],times[i-1]):null);
+  const boardT=times[0],rideStops=p.path.length-1;
+  const countdown=i=>{const left=p.path.length-1-i;return left===0?"Your stop":left===1?`1 stop to ${destName}`:`${left} stops to ${destName}`};
+  const choiceKind=p.d==="to"?"board":"dest",chosen=p.d==="to"?p.board:p.dest;
+  const choices=`<div class="trip-choice"><span class="sub">${p.d==="to"?"Where are you getting on?":"Where are you getting off?"}</span><div class="dir-switch" role="group">${r.toCampus.map(j=>`<button type="button" data-trip-${choiceKind}="${j}" aria-pressed="${j===chosen}">${name(j)}</button>`).join("")}</div></div>`;
+  const stopItem=(j,i)=>{
+    const t=times[i],role=i===0?"board":i===p.path.length-1?"dest":"mid";
+    const tag=role==="board"?"Get on here":role==="dest"?"Get off here":"Stay on";
+    return `<li class="strip-stop ${role}"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">
+      <div class="strip-line"><b>${name(j)}</b><span class="strip-tag">${tag}</span></div>
+      <span class="sub">${t?`${i?"≈ ":""}${t.ahead?dayTag(t.ahead)+" ":""}${fmtDeparture(t.time)}`:"No scheduled time"}${role==="dest"?"":` · ${countdown(i)}`}</span></div></li>`;
   };
-  gStops.innerHTML="";
-  sheet.innerHTML=`<div class="pad" style="--c:${r.color}">
-   <div class="row" style="border:0;padding:0"><div><h1>${r.name} is on the way</h1><div class="sub">to ${r.dest}</div></div></div>
-   <div class="card"><div class="sub">Arriving at your stop</div><div class="eta"><span class="big" id="eta"></span></div><div class="sub" id="etasub"></div></div>
-   <div id="lostmsg" class="notice hide" role="status"><span aria-hidden="true">⚠️</span><span>Live bus information is currently unavailable. Showing scheduled times only; next scheduled arrival is ${clock(r.dep[0])}.</span></div>
-   ${r.live?crowdHTML(r):""}
-   <button class="ghost" id="sim">Simulate lost signal</button>
-   <button class="ghost" id="end">End trip</button></div>`;addSheetHandle();
-  $("sim").onclick=()=>{lostSignal=!lostSignal;$("sim").textContent=lostSignal?"Restore signal":"Simulate lost signal";upd()};
-  $("end").onclick=()=>{lostSignal=false;home()};
-  upd();
-  timer=setInterval(()=>{
-    if(!(r.live&&!lostSignal))return;
-    if(busD<boardD)busD=Math.min(boardD,busD+boardD/120);
-    const tx=board[0]&&board.pt.x-10,ty=board.pt.y+10;
-    uX+=(tx-uX)*.04;uY+=(ty-uY)*.04;upd();
-  },250);
+  sheet.innerHTML=`<div class="pad detail-shell start-shell" style="--c:${r.color}">
+   <div class="detail-head"><span class="dir-eyebrow">${p.d==="from"?"Heading home from campus":"Heading to campus"}</span><h1>${esc(r.name)}</h1></div>
+   <div class="card start-summary">
+     <span class="next-label">Next bus at ${name(p.board)}</span>
+     <div class="start-time">${boardT?nextTimeText(boardT):"None scheduled"}</div>
+     <p>Get on at <b>${name(p.board)}</b>, ride <b>${rideStops} stop${rideStops===1?"":"s"}</b>, get off at <b>${destName}</b>.${rideStops>1?` You'll pass ${rideStops-1} stop${rideStops===2?"":"s"} before your destination.`:""}</p>
+     ${choices}
+   </div>
+   <ol class="stop-strip">
+     <li class="strip-stop you"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">${youAreHereHTML()}</div></li>
+     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b><span class="sub">Walking directions will appear here.</span></div></li>
+     ${p.path.map(stopItem).join("")}
+   </ol>
+   <p class="sub sched-foot">Times after boarding are estimated from the published schedule, not live.</p>
+  </div>`;addSheetHandle();
 }
 
 /* ---- events ---- */
@@ -808,20 +965,16 @@ sheet.addEventListener("click",e=>{
   }
 });
 document.addEventListener("click",e=>{
-  const ds=e.target.closest("[data-dir]");if(ds){
-   const r=R.find(x=>x.id==ds.dataset.dirRoute);if(!r||getDir(r)===ds.dataset.dir)return;
-   setDir(r,ds.dataset.dir);
-   const panel=$("schedPanel");
-   if(panel&&sel&&sel.id==r.id){const open=panel.querySelector("details")?.open;panel.innerHTML=schedulePanel(r);if(open)panel.querySelector("details").open=true;panel.querySelector(`[data-dir="${ds.dataset.dir}"]`)?.focus()}
-   else updateCard(r);
-   return}
+  const ds=e.target.closest("[data-dir-set]");if(ds){
+   const v=ds.dataset.dirSet;dirOverride=v==="auto"||v===autoDir()?null:v;
+   if(startState){startState.board=null;startState.dest=null}
+   refreshScreen();return}
   const sd=e.target.closest("[data-sched-day]");if(sd){
    const r=R.find(x=>x.id==sd.dataset.schedRoute),panel=$("schedPanel");if(!r||!panel)return;
-   schedDayOf[r.id]=sd.dataset.schedDay;panel.innerHTML=schedulePanel(r);panel.querySelector("details").open=true;panel.querySelector(`[data-sched-day="${sd.dataset.schedDay}"]`)?.focus();return}
-  const pdb=e.target.closest("[data-plan-day]");if(pdb){
-   planOffset=Number(pdb.dataset.planDay)||0;
-   if(sel&&$("schedPanel")){detail(sel.id)}else{refreshHome();sheet.querySelector(`[data-plan-day="${planOffset}"]`)?.focus()}
-   return}
+   schedDayOf[r.id]=sd.dataset.schedDay;panel.innerHTML=schedulePanel(r);panel.querySelector(`[data-sched-day="${sd.dataset.schedDay}"]`)?.focus();return}
+  const st=e.target.closest("[data-start]");if(st){startTrip(st.dataset.start);return}
+  const tb=e.target.closest("[data-trip-board]");if(tb&&startState){startState.board=Number(tb.dataset.tripBoard);renderStart();return}
+  const td=e.target.closest("[data-trip-dest]");if(td&&startState){startState.dest=Number(td.dataset.tripDest);renderStart();return}
   const sg=e.target.closest("[data-suggest]");if(sg){home(sg.dataset.suggest);const s=$("routeSearch");if(s){s.focus();s.setSelectionRange(s.value.length,s.value.length)}return}
   const nb=e.target.closest("[data-near]");if(nb){
    const a=nb.dataset.near;
@@ -830,10 +983,10 @@ document.addEventListener("click",e=>{
    else if(a==="save-home"&&nearState.pos){const top=nearSuggestions(nearState.pos)[0];nb.disabled=true;nb.textContent="Saving…";saveHome(top?`My location near ${top.label||top.r.name}`:"My saved location",nearState.pos[0],nearState.pos[1]).then(()=>{nearState={status:"ready",pos:nearState.pos,source:"home",message:""};refreshHome()}).catch(err=>{nb.disabled=false;nb.textContent="Save this location as my home";alert(err.message||"Could not save home address.")})}
    return}
   const o=e.target.closest("[data-open]");if(o){detail(o.dataset.open);sheet.scrollTop=0;return}
-  const m=e.target.closest("[data-more]");if(m){const l=$("l"+m.dataset.more);const op=l.classList.toggle("open");m.setAttribute("aria-expanded",op);m.textContent=op?"Next departures ▴":"Next departures ▾"}
+ const m=e.target.closest("[data-more]");if(m){const id=m.dataset.more,l=$("l"+id);const op=l.classList.toggle("open");op?openCards.add(id):openCards.delete(id);m.setAttribute("aria-expanded",op);m.textContent=op?"More times ▴":"More times ▾"}
 });
 $("back").onclick=()=>screen==3?detail(sel.id):home(q.value);
-sheet.addEventListener("click",e=>{if(e.target.id=="go")live();if(e.target.id=="openMapFromHome")mapPage();if(e.target.id=="backToRoutes")home()});
+sheet.addEventListener("click",e=>{if(e.target.id=="openMapFromHome")mapPage();if(e.target.id=="backToRoutes")home()});
 $("rydeHome").onclick=()=>{home();sheet.scrollTop=0};
 $("navRoutes").onclick=()=>home();$("navMap").onclick=()=>mapPage();
 q.addEventListener("input",()=>{home(q.value)});
@@ -892,7 +1045,7 @@ sheet.addEventListener("click",async e=>{if(e.target.id!=="favoriteBtn")return;i
 
 // Draw the routes first; profile data loads in the background so an API issue can't blank the page.
 async function start(){
- buildMap();home();updateProfileButton();
+ buildMap();renderFromHash();updateProfileButton();locateRider();
  try{await loadSavedUser()}catch(err){console.error("Could not load saved profile:",err)}
  refreshHome();
  const fb=$("favoriteBtn");if(fb&&sel)fb.textContent=favoriteRouteIds.has(String(sel.id))?"★ Favorite route":"☆ Add to favorites";
