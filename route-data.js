@@ -1,4 +1,3 @@
-
 // Route coordinates are stored as [latitude, longitude]. Routes marked useCalculatedGeometry
 // request road-following geometry from Amazon Location Routes V2.
 
@@ -66,22 +65,24 @@ window.BYU_RYDE_ROUTES = [
     useCalculatedGeometry: true,
     points: [
       [40.25176385171031, -111.64797127346249], // Origin
+      [40.252, -111.649],                       // New intermediate coordinate
       [40.25303388627964, -111.65078478448287], // Waypoint 1
       [40.25799387953086, -111.66801553294589], // Waypoint 2
       [40.257205142718675, -111.66634322030261], // Waypoint 3
       [40.25839277190576, -111.66637034189439], // Waypoint 4
-      [40.25057175473651, -111.6465421990552], // Waypoint 5
+      [40.25057175473651, -111.6465421990552],  // Waypoint 5
       [40.25176385171031, -111.64797127346249]  // Destination
     ],
     stops: [
       { waypoint: 1, label: 'Branbury Origin' },
-      { waypoint: 3, label: 'Branbury Stop 2' },
-      { waypoint: 4, label: 'Branbury Stop 3' }
+      { waypoint: 4, label: 'Branbury Stop 2' },
+      { waypoint: 5, label: 'Branbury Stop 3' }
     ],
     awsRequest: {
       Origin: [-111.64797127346249, 40.25176385171031],
       Destination: [-111.64797127346249, 40.25176385171031],
       Waypoints: [
+        { Position: [-111.649, 40.252] }, // New intermediate coordinate
         { Position: [-111.65078478448287, 40.25303388627964] },
         { Position: [-111.66801553294589, 40.25799387953086] },
         { Position: [-111.66634322030261, 40.257205142718675] },
