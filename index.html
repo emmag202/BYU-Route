@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>BYU Ryde prototype</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.css">
 <style>
 :root{--bg:#ffffff;--map:#f3f5f7;--street:#ffffff;--ink:#141414;--mute:#626b75;--card:#ffffff;--line:#e3e7eb;--navy:#002e5d;--blue:#0047ba;--ok:#2f7d32;--mid:#b36b00;--bad:#b3261e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}html,body{height:100%;margin:0}
@@ -190,6 +191,8 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 #app{width:100%;max-width:none;height:100dvh;display:flex;flex-direction:column;overflow:hidden;background:#f6f8fb}
 .byuhead{height:70px;padding:0 clamp(18px,4vw,56px);gap:14px;box-shadow:0 1px 0 #dfe5ee;z-index:20}
 .rydetitle{font-size:20px}
+.ryde-home{appearance:none;border:0;background:transparent;color:inherit;font-family:inherit;font-weight:650;padding:3px 0;border-radius:4px;text-align:left;cursor:pointer}
+.ryde-home:hover{text-decoration:underline}
 .header-nav{display:flex;gap:8px;margin-left:20px}
 .header-nav button{border:1px solid #ffffff55;color:#fff;background:transparent;border-radius:9px;padding:9px 15px;font-weight:700;font-size:14px}
 .header-nav button.active{background:#fff;color:#002e5d}
@@ -280,28 +283,105 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
   .welcome-dismiss{width:100%}
 }
 @media(max-width:380px){.byumark{font-size:16px}.rydetitle{font-size:14px}.header-nav button{padding:6px}.profileBtn{padding:0 7px}}
+
+/* Restored interactive AWS route map (from prior GitHub version) */
+/* Keep legacy map controls in the DOM for existing script references, but never render them. */#app .mapcontrols,#app .top,#app .map-route-picker{display:none!important;visibility:hidden!important;pointer-events:none!important}/* MapLibre + Amazon Location route map integration */#routeMap{display:none;position:absolute;inset:0;width:100%;height:100%;z-index:1;background:#e8edf0}#app.map-mode #routeMap{display:block}#app.map-mode svg#map{display:none!important}#app:not(.map-mode) .king-henry-stop-legend,#app:not(.map-mode) .ryde-nav-panel,#app:not(.map-mode) .aws-place-status{display:none!important}#routeMap .maplibregl-canvas{outline:none}#routeMap .maplibregl-ctrl-group{border-radius:10px;overflow:hidden;box-shadow:0 2px 10px #0002}#routeMap .maplibregl-ctrl-top-right{top:12px;right:10px}#routeMap .maplibregl-ctrl-top-right .maplibregl-ctrl{margin:0 0 8px}#routeMap .maplibregl-ctrl-compass{display:none!important}.king-henry-stop-marker{width:46px;height:46px;border:3px solid #fff;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#159765,#05613f);color:#fff;box-shadow:0 3px 12px #001b3566;cursor:pointer;padding:0;transition:transform .12s ease,box-shadow .12s ease}.king-henry-stop-marker svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.king-henry-stop-marker:hover,.king-henry-stop-marker:focus-visible{transform:scale(1.1);box-shadow:0 4px 16px #001b3580;outline:3px solid #b8f0d1;outline-offset:2px}.king-henry-popup .maplibregl-popup-content{border-radius:10px;padding:12px 15px;box-shadow:0 4px 18px #001b3533}.king-henry-popup-content{display:flex;flex-direction:column;gap:4px;color:#173451;font:13px/1.4 "Segoe UI",Arial,sans-serif}.king-henry-popup-content strong{font-size:14px}.king-henry-popup-content span{color:#526779}.king-henry-stop-legend{position:absolute;z-index:650;right:10px;bottom:84px;display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #dce5ec;border-radius:11px;background:#fffffff2;box-shadow:0 3px 14px #001b3522;color:#173451;pointer-events:none}.king-henry-stop-legend[hidden]{display:none!important}.king-henry-stop-legend .legend-marker{width:32px;height:32px;display:grid;place-items:center;border:2px solid #fff;border-radius:50%;background:linear-gradient(145deg,#159765,#05613f);color:#fff;box-shadow:0 1px 5px #001b3544}.king-henry-stop-legend .legend-marker svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.king-henry-stop-legend strong,.king-henry-stop-legend small{display:block}.king-henry-stop-legend strong{font-size:12px}.king-henry-stop-legend small{margin-top:2px;color:#607084;font-size:11px}.aws-place-search{display:none;position:absolute;z-index:800;top:12px;left:10px;right:72px;gap:5px;align-items:center}#app.map-mode .aws-place-search{display:flex}.aws-place-search input{min-width:0;flex:1;height:40px;border:1px solid #d7dde3;border-radius:10px;padding:0 12px;background:#fff;font:inherit;font-size:13px;box-shadow:0 2px 10px #0002}.aws-place-search button{height:40px;border:0;border-radius:10px;padding:0 8px;background:#002e5d;color:white;font-size:11px;font-weight:700;box-shadow:0 2px 10px #0002}.aws-place-status{position:absolute;z-index:801;top:60px;left:10px;right:72px;max-height:150px;overflow:auto;background:#fff;border-radius:10px;box-shadow:0 2px 12px #0002;font-size:12px}.aws-place-status:empty{display:none}.aws-place-status button{display:block;width:100%;padding:10px 12px;border:0;border-bottom:1px solid #eee;background:#fff;text-align:left}#app .aws-place-status .place-row{display:flex;align-items:stretch;border-bottom:1px solid #eee}#app .aws-place-status .place-row button{border-bottom:0}#app .aws-place-status .place-row button:first-child{flex:1}#app .aws-place-status .place-save-home{width:auto;flex:0 0 auto;white-space:nowrap;color:#002e5d;font-weight:650;border-left:1px solid #eee}#app .aws-place-status .place-save-home:disabled{opacity:.6}#app.map-mode .mapcontrols,#app.map-mode .map-route-picker,#app.map-mode .top{display:none!important}.route-tabs{display:none;position:absolute;z-index:700;left:0;right:0;bottom:0;padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px));gap:7px;overflow-x:auto;background:#fff;border-top:1px solid #dfe4e9;box-shadow:0 -3px 16px #17212b12;scrollbar-width:none;-webkit-overflow-scrolling:touch;justify-content:center}.route-tabs::-webkit-scrollbar{display:none}#app.map-mode .route-tabs{display:flex}.route-tab{display:flex;align-items:center;gap:7px;flex:0 0 auto;border:1px solid #dbe2ea;border-radius:9px;padding:8px 11px;background:#fff;color:#173451;font-size:11px;font-weight:700;white-space:nowrap}.route-tab[aria-selected="true"]{border-color:var(--route,#002e5d);background:#edf3fb}.route-tab .route-line{width:19px;height:4px;border-radius:5px;background:var(--route,#002e5d)}.route-tab.show-all-routes{flex:0 0 auto;min-width:110px;background:#002e5d;color:#fff;border-color:#002e5d}.ryde-nav-panel{position:absolute;z-index:820;left:10px;bottom:82px;width:min(290px,calc(100% - 20px));background:#fff;border-radius:14px;box-shadow:0 4px 22px #001b3550;padding:14px 16px;color:#152536;font-size:13px}.ryde-nav-panel[hidden]{display:none!important}.ryde-nav-head{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:16px;color:#002e5d}.ryde-nav-head button{border:0;background:#edf2f7;border-radius:8px;width:30px;height:30px;font-size:20px;color:#002e5d}.ryde-nav-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.ryde-nav-stats div{display:flex;flex-direction:column;gap:3px}.ryde-nav-stats span{font-size:22px;font-weight:800;color:#152536;line-height:1.1}.ryde-nav-stats small{font-size:11px;color:#687482}.ryde-nav-summary{margin:10px 0 0;color:#687482;font-size:11px;line-height:1.35}@media(max-width:520px){.route-tabs{justify-content:flex-start}.aws-place-search{right:72px}}
+
+/* Sprint 1: give route cards and page sections a little breathing room. */
+.rail{gap:22px}
+.rc{padding:24px 25px}
+.route-stop{margin-top:11px}
+.next-label{margin-top:22px}
+.more{margin-top:19px;padding-top:16px}
+.section-heading{margin-bottom:24px}
+.map-teaser{margin-top:36px;margin-bottom:36px}
+@media(max-width:650px){
+  .rail{gap:16px}
+  .rc{padding:20px}
+  .section-heading{margin-bottom:18px}
+  .map-teaser{margin-top:28px;margin-bottom:28px}
+}
+
+/* Sprint 1: card hierarchy — pickup stop and time before route branding. */
+.rc .route-name{font-size:15px;font-weight:700;color:#53657a;line-height:1.25}
+.rc .next-label{font-size:11px;font-weight:750;color:#556b82;letter-spacing:.6px;margin-top:17px}
+.rc .route-stop{font-size:22px;font-weight:800;line-height:1.23;color:#122f4e;margin-top:5px;overflow-wrap:anywhere}
+.rc .next-time{font-size:27px;font-weight:800;line-height:1.15;color:#0047ba;margin-top:9px;letter-spacing:-.4px}
+.rc .next-time:empty{display:none}
+.rc .dir-switch{margin-top:17px}
+.rc .more{margin-top:14px;padding-top:13px}
+@media(max-width:650px){.rc .route-stop{font-size:21px}.rc .next-time{font-size:26px}}
+/* Day schedules, did-you-mean, near-you suggestions */
+.sched-today{margin:10px 0 4px;padding:9px 11px;border-radius:8px;font-size:13px;background:#eef3f9;border-left:4px solid #002e5d}
+.sched-today.fri{background:#fff6e5;border-left-color:#d98a00}
+.sched-today.weekend{background:#f3f4f6;border-left-color:#9ca3af}
+.sched-day-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 4px}
+.did-you-mean{appearance:none;border:0;background:none;padding:0;font:inherit;font-weight:700;color:#002e5d;text-decoration:underline;cursor:pointer}
+.near-you{margin:0 0 22px}
+.near-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.near-head h2{margin:0}
+.near-actions{display:flex;gap:8px;flex-wrap:wrap}
+.near-btn{appearance:none;border:1px solid #002e5d;background:#002e5d;color:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.near-btn.ghosty{background:#fff;color:#002e5d}
+.near-btn:disabled{opacity:.6}
+.near-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:10px}
+.near-item{appearance:none;text-align:left;font:inherit;color:inherit;background:var(--card,#fff);border:1px solid var(--line,#e5e7eb);border-left:6px solid var(--c);border-radius:8px;padding:11px 12px;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+.near-route{font-weight:700}
+.near-stop{font-size:13px;color:#4b5563}
+.near-next{font-size:13px;font-weight:650}
+.day-picker{display:flex;gap:8px;overflow-x:auto;padding:4px 0 2px;margin-top:6px;scrollbar-width:thin}
+.day-chip{appearance:none;flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 12px;border:1px solid var(--line,#d1d5db);border-radius:10px;background:#fff;font:inherit;color:inherit;cursor:pointer;text-align:left}
+.day-chip-name{font-weight:700;font-size:14px}
+.day-chip-sub{font-size:11.5px;color:#6b7280}
+.day-chip.weekend .day-chip-sub{color:#9ca3af}
+.day-chip[aria-pressed="true"]{background:#002e5d;border-color:#002e5d;color:#fff}
+.day-chip[aria-pressed="true"] .day-chip-sub{color:#cfe0f5}
+.day-note{margin:6px 0 0;font-size:13px;color:#4b5563;min-height:1px}
+.day-note:empty{display:none}
 </style>
 </head>
 <body>
 <div id="app">
-  <header class="byuhead"><span class="byumark">BYU</span><span class="rydetitle">The Ryde</span><nav class="header-nav"><button id="navRoutes" class="active" type="button">Routes</button><button id="navMap" type="button">Route map</button></nav><button id="profileBtn" class="profileBtn" type="button" aria-label="Sign in or create profile">Sign in</button></header>
-  <div class="mapwrap" id="mapwrap"><div class="map-caption">BYU Ryde route map <span>Drag to pan · Scroll to zoom · Select a route below</span></div>
-    <svg id="map" viewBox="0 0 400 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Interactive map of Ryde shuttle routes"></svg>
-    <div class="mapcontrols" aria-label="Map controls">
-      <button id="zoomIn" aria-label="Zoom in">+</button>
-      <button id="zoomOut" aria-label="Zoom out">−</button>
-      <button id="fitMap" aria-label="Fit route">⌖</button>
+  <header class="byuhead"><span class="byumark">BYU</span><button type="button" class="rydetitle ryde-home" id="rydeHome" aria-label="Go to Routes home">The Ryde</button><nav class="header-nav"><button id="navRoutes" class="active" type="button">Routes</button><button id="navMap" type="button">Route map</button></nav><button id="profileBtn" class="profileBtn" type="button" aria-label="Sign in or create profile">Sign in</button></header>
+  <div class="mapwrap" id="mapwrap">
+    <div id="routeMap" aria-label="Interactive BYU shuttle route map"></div>
+    <!-- Keep original map controls hidden for backwards compatibility with app scripts. -->
+    <svg id="map" viewBox="0 0 400 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Legacy shuttle map"></svg>
+    <div class="mapcontrols" aria-hidden="true" style="display:none!important">
+      <button id="zoomIn" type="button" tabindex="-1" aria-hidden="true"></button>
+      <button id="zoomOut" type="button" tabindex="-1" aria-hidden="true"></button>
+      <button id="fitMap" type="button" tabindex="-1" aria-hidden="true"></button>
     </div>
-    <div class="top" id="top">
-      <label class="search"><span aria-hidden="true">🔍</span><input id="q" type="search" placeholder="Search route, stop or destination" aria-label="Search routes"></label>
-      <button class="fab" id="locate" aria-label="Center on my location">◎</button>
+    <div class="top hide" id="top" aria-hidden="true" style="display:none!important">
+      <input id="q" type="search" tabindex="-1" aria-hidden="true">
+      <button class="fab" id="locate" type="button" tabindex="-1" aria-hidden="true"></button>
     </div>
-    <div class="map-route-picker" id="mapRoutePicker" aria-label="Select a route on the map"></div>
+    <div class="map-route-picker" id="mapRoutePicker" aria-label="Legacy map route picker" style="display:none!important"></div>
+    <div class="aws-place-search" role="search" aria-label="Amazon Location place search">
+      <input id="awsPlaceQuery" type="search" placeholder="Search places or addresses" aria-label="Search places">
+      <button id="awsPlaceSearch" type="button">Search</button>
+      <button id="awsNearbySearch" type="button">Nearby</button>
+    </div>
+    <div class="aws-place-status" id="awsPlaceStatus" aria-live="polite"></div>
+    <div class="king-henry-stop-legend" id="kingHenryStopLegend" hidden aria-label="Map legend: selected route student pickup and drop-off stops">
+      <span class="legend-marker"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16.5V18a1 1 0 0 0 1 1h1v-2.5M17 16.5V19h1a1 1 0 0 0 1-1v-1.5M4 11h16M7 7h.01M17 7h.01M6 3.5h12A2.5 2.5 0 0 1 20.5 6v9A2.5 2.5 0 0 1 18 17.5H6A2.5 2.5 0 0 1 3.5 15V6A2.5 2.5 0 0 1 6 3.5Z"/></svg></span>
+      <span><strong>Student pickup &amp; drop-off</strong><small>Students can board or exit here</small></span>
+    </div>
+    <section class="ryde-nav-panel" id="rydeNavPanel" aria-live="polite" hidden>
+      <div class="ryde-nav-head"><strong id="rydeNavTitle">King Henry</strong><button type="button" id="rydeNavClose" aria-label="Close route summary">×</button></div>
+      <div class="ryde-nav-stats"><div><span id="rydeNavDistance">—</span><small>Trip distance</small></div><div><span id="rydeNavTime">—</span><small>Trip time</small></div></div>
+      <div class="ryde-nav-summary" id="rydeNavSummary">Calculating route…</div>
+    </section>
+    <nav class="route-tabs" id="routeTabs" aria-label="Choose a shuttle route"></nav>
     <button class="back hide" id="back" aria-label="Back">←</button>
   </div>
   <div class="sheet" id="sheet"></div>
   <div class="modalBack hide" id="profileModal"><section class="modal"><div id="profileContent"></div><button class="ghost" id="closeProfile">Close</button></section></div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="./aws-config.js"></script>
+<script src="./route-data.js"></script>
+<script src="./route-map.js"></script>
 <script>
 // The browser talks to the local API. Database credentials stay in the API's ignored .env file.
 const API_BASE_URL="https://l6sjs2oitk2izyrm4462xzugt40fzlcn.lambda-url.us-east-1.on.aws";
@@ -329,7 +409,7 @@ const R=[
 const USER={x:150,y:352}; // user location (near Route 11 stop)
 const $=id=>document.getElementById(id);
 const svg=$("map"),sheet=$("sheet"),q=$("q");
-let currentUser=null,favoriteRouteIds=new Set();
+let currentUser=null,favoriteRouteIds=new Set(),homePlace=null;
 function updateProfileButton(){
   const button=document.getElementById("profileBtn");
   if(!button)return;
@@ -339,12 +419,17 @@ function updateProfileButton(){
 
 const configured=()=>true;
 const esc=(s="")=>String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-async function loadSavedUser(){const net=localStorage.getItem("ryde_net_id");if(!net)return;try{currentUser=await apiRequest(`/api/users/by-net-id/${encodeURIComponent(net)}`);if(currentUser)await loadFavorites();else localStorage.removeItem("ryde_net_id")}catch(error){console.error("Could not load saved profile:",error)}updateProfileButton()}
+async function loadSavedUser(){const net=localStorage.getItem("ryde_net_id");if(!net)return;try{currentUser=await apiRequest(`/api/users/by-net-id/${encodeURIComponent(net)}`);if(currentUser)await Promise.all([loadFavorites(),loadHome()]);else localStorage.removeItem("ryde_net_id")}catch(error){console.error("Could not load saved profile:",error)}updateProfileButton()}
 async function loadFavorites(){favoriteRouteIds.clear();if(!currentUser)return;const ids=await apiRequest(`/api/users/${currentUser.user_id}/favorites`);(ids||[]).forEach(id=>favoriteRouteIds.add(String(id)))}
+// Saved home address: one per user, stored via /api/users/:id/home as {label, lat, lng}.
+async function loadHome(){homePlace=null;if(currentUser){try{homePlace=await apiRequest(`/api/users/${currentUser.user_id}/home`)}catch(error){homePlace=null}}window.showRydeHome?.(homePlace)}
+async function saveHome(label,lat,lng){homePlace=await apiRequest(`/api/users/${currentUser.user_id}/home`,{method:"PUT",body:JSON.stringify({label,lat,lng})});window.showRydeHome?.(homePlace);return homePlace}
+async function clearHome(){await apiRequest(`/api/users/${currentUser.user_id}/home`,{method:"DELETE"});homePlace=null;window.showRydeHome?.(null);if(nearState.source==="home")nearState={status:"idle",pos:null,source:null,message:""};refreshHome()}
+window.onRydeSaveHome=async({label,lat,lng})=>{if(!currentUser){openProfile();return false}await saveHome(label,lat,lng);nearState={status:"idle",pos:null,source:null,message:""};return true};
 const isByuEmail=(email)=>/^[^\s@]+@byu\.edu$/i.test(String(email||"").trim());
-async function saveUser(name,net_id,email){currentUser=await apiRequest("/api/users",{method:"POST",body:JSON.stringify({name:name.trim(),net_id:net_id.trim(),email:email.trim()})});localStorage.setItem("ryde_net_id",currentUser.net_id);await loadFavorites();updateProfileButton()}
+async function saveUser(name,net_id,email){currentUser=await apiRequest("/api/users",{method:"POST",body:JSON.stringify({name:name.trim(),net_id:net_id.trim(),email:email.trim()})});localStorage.setItem("ryde_net_id",currentUser.net_id);await Promise.all([loadFavorites(),loadHome()]);updateProfileButton()}
 async function toggleFavorite(route_id){if(!currentUser){openProfile();return}const id=String(route_id);if(favoriteRouteIds.has(id)){await apiRequest(`/api/users/${currentUser.user_id}/favorites/${encodeURIComponent(id)}`,{method:"DELETE"});favoriteRouteIds.delete(id)}else{await apiRequest(`/api/users/${currentUser.user_id}/favorites`,{method:"POST",body:JSON.stringify({route_key:id})});favoriteRouteIds.add(id)}}
-function openProfile(){const c=$("profileContent");if(currentUser)c.innerHTML=`<h1>Your Ryde profile</h1><div class="sub">Saved in the Ryde database</div><div class="card"><b>${esc(currentUser.name)}</b><div>${esc(currentUser.net_id)}</div><div class="sub">${esc(currentUser.email)}</div><div style="margin-top:10px"><b>${favoriteRouteIds.size}</b> favorite route${favoriteRouteIds.size===1?"":"s"}</div></div><button class="ghost" id="switchUser">Use another profile</button>`;else c.innerHTML=`<h1>Set up your Ryde profile</h1><div class="sub">Save your profile and favorite routes.</div><form id="profileForm" novalidate><label class="field">Name<input name="name" required maxlength="100"></label><label class="field">Net ID<input name="net_id" required maxlength="50"></label><label class="field">Email<input name="email" type="email" required maxlength="100"></label><div class="emailError hide" id="profileStatus" role="alert"></div><button class="cta" type="submit">Save profile</button></form>`;$("profileModal").classList.remove("hide")}
+function openProfile(){const c=$("profileContent");if(currentUser)c.innerHTML=`<h1>Your Ryde profile</h1><div class="sub">Saved in the Ryde database</div><div class="card"><b>${esc(currentUser.name)}</b><div>${esc(currentUser.net_id)}</div><div class="sub">${esc(currentUser.email)}</div><div style="margin-top:10px"><b>${favoriteRouteIds.size}</b> favorite route${favoriteRouteIds.size===1?"":"s"}</div><div style="margin-top:10px"><b>Home:</b> ${homePlace?esc(homePlace.label):'<span class="sub">Not set — search an address on the map and tap “Save as home”.</span>'}</div>${homePlace?'<button class="ghost" id="clearHome" type="button" style="margin-top:8px">Remove home address</button>':""}</div><button class="ghost" id="switchUser">Use another profile</button>`;else c.innerHTML=`<h1>Set up your Ryde profile</h1><div class="sub">Save your profile and favorite routes.</div><form id="profileForm" novalidate><label class="field">Name<input name="name" required maxlength="100"></label><label class="field">Net ID<input name="net_id" required maxlength="50"></label><label class="field">Email<input name="email" type="email" required maxlength="100"></label><div class="emailError hide" id="profileStatus" role="alert"></div><button class="cta" type="submit">Save profile</button></form>`;$("profileModal").classList.remove("hide")}
 
 
 const addSheetHandle=()=>{
@@ -396,6 +481,28 @@ function provoNow(){
  if(minutes<SERVICE_DAY_START){day=(day+6)%7;minutes+=1440}
  return {day,minutes};
 }
+// Day picker: riders can look ahead up to a week. Today uses the live clock; a future day starts at the
+// beginning of that service day so cards show its first departures.
+let planOffset=0;
+function serviceNow(){const n=provoNow();return planOffset?{day:(n.day+planOffset)%7,minutes:SERVICE_DAY_START}:n}
+const WEEKDAY_LONG=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const dayWord=()=>planOffset===0?"today":planOffset===1?"tomorrow":`on ${WEEKDAY_LONG[serviceNow().day]}`;
+const dayTitle=()=>planOffset===0?"Today":planOffset===1?"Tomorrow":WEEKDAY_LONG[serviceNow().day];
+const noneText=w=>planOffset?`No ${w} ${dayWord()}`:`No more ${w} today`;
+function planDays(){
+ const base=Date.now()-SERVICE_DAY_START*6e4; // service day rolls over at 3 AM
+ const fmt=new Intl.DateTimeFormat('en-US',{timeZone:'America/Denver',weekday:'short',month:'short',day:'numeric'});
+ const today=provoNow().day;
+ return [...Array(7)].map((_,i)=>{const dow=(today+i)%7,parts=fmt.formatToParts(new Date(base+i*864e5)),g=k=>parts.find(x=>x.type===k)?.value;
+  return {i,dow,label:i===0?"Today":i===1?"Tomorrow":g('weekday'),date:`${g('month')} ${g('day')}`,kind:dow===5?"Friday":dow===0||dow===6?"Weekend":"Mon–Thu"}});
+}
+function dayPickerHTML(){
+ const days=planDays(),cur=days[planOffset];
+ const note=cur.kind==="Weekend"?"Weekday routes don't run on weekends. Only Heritage Overflow Parking has service.":cur.kind==="Friday"?"Friday schedule: buses stop earlier than Mon–Thu.":"";
+ return `<div class="day-picker" role="group" aria-label="Choose a day to view">${days.map(d=>`<button type="button" class="day-chip${d.kind==="Weekend"?" weekend":""}" data-plan-day="${d.i}" aria-pressed="${d.i===planOffset}"><span class="day-chip-name">${d.label}</span><span class="day-chip-sub">${d.i<2?d.date:d.date.replace(/^\w+ /,"")} · ${d.kind}</span></button>`).join("")}</div>
+ <p class="day-note">${planOffset?`Showing first departures ${dayWord()} (${cur.date}). `:""}${note}</p>`;
+}
+
 // Direction: every stop but the last is a pickup heading to campus; the last column is the campus departure back out.
 const RETURN_LABELS={"101":"MOA → Rec Center","102":"MOA → Wyview/Raintree","103":"MOA → Branbury/Carriage Cove","104":"WILK → King Henry","105":"WILK → South/Joaquin","107":"MOA → Wymount"};
 R.forEach(r=>{
@@ -409,7 +516,7 @@ R.forEach(r=>{
 });
 const stopLabel=(r,j)=>r.fromCampus.includes(j)?r.returnLabel:r.stops[j][0];
 function nextDepartures(r,j=0,n=4){
- const {day,minutes}=provoNow();
+ const {day,minutes}=serviceNow();
  return r.timetable[j].filter(t=>{
   if(r.service!=='daily'&&(day===0||day===6))return false;
   if(day===5&&t.days==='Mon-Thu')return false;
@@ -429,19 +536,20 @@ function routeNext(r){
  return {d,groups,next};
 }
 const housing=r=>r.toCampus.map(j=>r.stops[j][0]);
-const cardStops=(r,d)=>d==="from"?`${esc(r.campusStop)} → ${esc(housing(r).join(' · '))}`:`${esc(housing(r).join(' · '))} → ${esc(r.campusStop)}`;
-const cardLabel=d=>d==="from"?"Next bus from campus":"Next bus to campus";
-const nextTimeText=n=>n?fmtDeparture(n.time):"No more today";
-const nextNoteText=(r,{d,next})=>!next?(d==="from"?'No remaining departures from campus today':'No remaining departures to campus today'):d==="from"?`Leaves ${esc(r.campusStop)} for ${esc(housing(r).join(' / '))}`:'From '+esc(next.stop);
-const laterHTML=({groups})=>groups.map(x=>`<div class="stop-departures"><strong>${esc(x.stop)}</strong><span>${x.times.length?x.times.map(t=>fmtDeparture(t.time)).join(' · '):'No more today'}</span></div>`).join('');
+// The next pickup location and its departure time are the key details on each card.
+// In the return direction, show the actual campus boarding stop, not the route summary.
+const cardNextStop=(r,{d,next})=>next?esc(d==="from"?r.campusStop:next.stop):noneText("departures");
+const cardLabel=rn=>rn.next?(planOffset?"First pickup stop":"Next pickup stop"):"Service status";
+const nextTimeText=n=>n?fmtDeparture(n.time):"";
+const nextNoteText=(r,{d,next})=>!next?(d==="from"?noneText("departures from campus"):noneText("departures to campus")):d==="from"?`Leaves ${esc(r.campusStop)} for ${esc(housing(r).join(' / '))}`:'From '+esc(next.stop);
+const laterHTML=({groups})=>groups.map(x=>`<div class="stop-departures"><strong>${esc(x.stop)}</strong><span>${x.times.length?x.times.map(t=>fmtDeparture(t.time)).join(' · '):(planOffset?`None ${dayWord()}`:'No more today')}</span></div>`).join('');
 const dirSwitch=r=>{const d=getDir(r);return `<div class="dir-switch" role="group" aria-label="Direction for ${esc(r.name)}">${[["to","To campus"],["from","From campus"]].map(([k,l])=>`<button type="button" data-dir="${k}" data-dir-route="${r.id}" aria-pressed="${d===k}">${l}</button>`).join('')}</div>`};
 function updateCard(r){
  const t=sheet.querySelector(`[data-next-time="${r.id}"]`);if(!t)return;
  const rn=routeNext(r),q=k=>sheet.querySelector(`[data-${k}="${r.id}"]`);
  t.innerHTML=nextTimeText(rn.next);
- q("next-note").innerHTML=nextNoteText(r,rn);
- q("card-stops").innerHTML=cardStops(r,rn.d);
- q("card-label").innerHTML=cardLabel(rn.d);
+ q("card-stops").innerHTML=cardNextStop(r,rn);
+ q("card-label").textContent=cardLabel(rn);
  const l=document.getElementById("l"+r.id);if(l)l.innerHTML=laterHTML(rn);
  sheet.querySelectorAll(`[data-dir-route="${r.id}"]`).forEach(b=>b.setAttribute("aria-pressed",b.dataset.dir===rn.d));
 }
@@ -454,24 +562,117 @@ function refreshTimes(force){
   updateCard(r);
  });
  if(screen==2&&sel){
-  const weekday=sel.service==='daily'||(day>=1&&day<=5);
+  const pd=serviceNow().day,weekday=sel.service==='daily'||(pd>=1&&pd<=5);
   sheet.querySelectorAll("[data-stop-next]").forEach(d=>{
    const next=nextDepartures(sel,+d.dataset.stopNext,5);
-   d.innerHTML=!weekday?'No regular weekday service today':next.length?next.map(t=>fmtDeparture(t.time)).join(' · '):'No further departures listed today';
+   d.innerHTML=!weekday?`No regular weekday service ${dayWord()}`:next.length?next.map(t=>fmtDeparture(t.time)).join(' · '):`No further departures listed ${dayWord()}`;
   });
  }
 }
 setInterval(()=>refreshTimes(),15000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshTimes(true)});
 window.addEventListener("focus",()=>refreshTimes(true));
+// Weekday routes publish a Mon–Thu schedule and a shorter Friday schedule ("Mon-Thu" times don't run Fridays).
+const SCHED_DAYS=[["mth","Mon–Thu"],["fri","Friday"]];
+const schedDayOf={};
+const todaySchedDay=()=>serviceNow().day===5?"fri":"mth";
+const getSchedDay=r=>schedDayOf[r.id]||todaySchedDay();
+const runsOn=(t,k)=>k!=="fri"||t.days!=="Mon-Thu";
+const lastOn=(col,k)=>{const ts=col.filter(t=>runsOn(t,k));return ts[ts.length-1]||null};
+function todayScheduleNote(r){
+ if(r.service==='daily')return '';
+ const day=serviceNow().day,first=r.toCampus[0],fri=lastOn(r.timetable[first],"fri"),mth=lastOn(r.timetable[first],"mth");
+ if(day===0||day===6)return `<div class="sched-today weekend"><b>No service ${dayWord()}.</b> Weekday service resumes Monday.</div>`;
+ const k=day===5?"fri":"mth",last=k==="fri"?fri:mth;
+ return `<div class="sched-today ${k}"><b>${k==="fri"&&dayTitle()==="Friday"?"Friday schedule":`${dayTitle()}: ${k==="fri"?"Friday":"Mon–Thu"} schedule`}.</b> Last pickup at ${esc(stopLabel(r,first))} is ${last?fmtDeparture(last.time):"—"}${k==="fri"&&mth&&fri&&mth.time!==fri.time?` (${fmtDeparture(mth.time)} Mon–Thu)`:""}.</div>`;
+}
+const schedDaySwitch=r=>{const k=getSchedDay(r),d=serviceNow().day,wk=d>=1&&d<=5;return `<div class="dir-switch sched-day-switch" role="group" aria-label="Schedule day for ${esc(r.name)}">${SCHED_DAYS.map(([v,l])=>`<button type="button" data-sched-day="${v}" data-sched-route="${r.id}" aria-pressed="${k===v}">${l}${wk&&v===todaySchedDay()?` · ${planOffset?dayWord().replace(/^on /,""):"today"}`:""}</button>`).join('')}</div>`};
 function schedulePanel(r){
- const day=provoNow().day,weekday=r.service==='daily'||(day>=1&&day<=5);
- const nextRow=j=>{const next=nextDepartures(r,j,5);return `<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(stopLabel(r,j))}</b><div class="sub" data-stop-next="${j}">${!weekday?'No regular weekday service today':next.length?next.map(t=>fmtDeparture(t.time)).join(' · '):'No further departures listed today'}</div></div>`};
- const fullRow=j=>`<div style="margin-top:12px"><b>${esc(stopLabel(r,j))}</b><div class="sub">${r.timetable[j].map(t=>fmtDeparture(t.time)+(t.days==='Mon-Thu'?' (M–Th)':'')).join(' · ')}</div></div>`;
+ const day=serviceNow().day,weekday=r.service==='daily'||(day>=1&&day<=5);
+ const nextRow=j=>{const next=nextDepartures(r,j,5);return `<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(stopLabel(r,j))}</b><div class="sub" data-stop-next="${j}">${!weekday?`No regular weekday service ${dayWord()}`:next.length?next.map(t=>fmtDeparture(t.time)).join(' · '):`No further departures listed ${dayWord()}`}</div></div>`};
+ const k=getSchedDay(r);
+ const fullRow=j=>{if(r.service==='daily')return `<div style="margin-top:12px"><b>${esc(stopLabel(r,j))}</b><div class="sub">${r.timetable[j].map(t=>fmtDeparture(t.time)).join(' · ')}</div></div>`;const ts=r.timetable[j].filter(t=>runsOn(t,k)),last=ts[ts.length-1];return `<div style="margin-top:12px"><b>${esc(stopLabel(r,j))}</b><div class="sub">${ts.map(t=>t===last?`<b class="last-bus">${fmtDeparture(t.time)} (last)</b>`:fmtDeparture(t.time)).join(' · ')}</div></div>`};
  const d=getDir(r),dirs=f=>`<div class="dir-head">${d==="from"?`From campus · ${esc(r.campusStop)} departures`:'To campus · pickups'}</div>${dirStops(r,d).map(f).join('')}`;
- return `<div class="card"><div class="sched-top"><b>Published departure schedule</b>${dirSwitch(r)}</div><div class="sub">${r.service==='daily'?'Monday–Sunday, 5 PM–midnight':'Monday–Friday during Fall and Winter semesters; school holiday exceptions apply'}. Times are scheduled, not live.</div>${dirs(nextRow)}<details><summary>View complete timetable</summary>${dirs(fullRow)}</details></div>`;
+ return `<div class="card"><div class="sched-top"><b>Published departure schedule</b>${dirSwitch(r)}</div><div class="sub">${r.service==='daily'?'Monday–Sunday, 5 PM–midnight':'Monday–Thursday, plus a shorter Friday schedule, during Fall and Winter semesters; school holiday exceptions apply'}. Times are scheduled, not live.</div>${todayScheduleNote(r)}${dirs(nextRow)}<details><summary>View complete timetable</summary>${r.service==='daily'?'':`<div class="sched-day-row"><span class="sub">Show the schedule for</span>${schedDaySwitch(r)}</div>`}${dirs(fullRow)}</details></div>`;
 }
 function informationPanel(){return `<div class="pad"><h2>About The Ryde</h2><div class="card"><b>Free for BYU students</b><div class="sub">Show your BYU ID to ride. Regular routes run Monday–Friday during Fall and Winter semesters, including reading days and finals week, but not school holidays. Heritage Overflow Parking has a separately published Monday–Sunday schedule.</div></div><h2>Contact and feedback</h2><div class="card"><p>Suggestions, issues, and compliments are welcome.</p><a href="mailto:theryde@studentmovement.com">theryde@studentmovement.com</a><p><a href="tel:8018996010">801-899-6010</a></p></div><h2>Advertising and employment</h2><div class="card"><p>Advertising inquiries: <a href="tel:8018996010">801-899-6010</a></p><p>Sales or bus driving: <a href="mailto:jake@studentmovement.com">jake@studentmovement.com</a></p><p>Marketing or bus driving: <a href="mailto:kevin@studentmovement.com">kevin@studentmovement.com</a></p></div><p class="sub">Prototype: schematic map, estimated bus positions, and crowding are simulated. Published departure schedules are informational and may change.</p></div>`}
+/* ---- search: "did you mean" (local typo correction over route and stop names; no external API) ---- */
+function editDistance(a,b){
+ const m=a.length,n=b.length;if(!m)return n;if(!n)return m;
+ let prev=Array.from({length:n+1},(_,j)=>j),prev2=null;
+ for(let i=1;i<=m;i++){const cur=[i];for(let j=1;j<=n;j++){let v=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));if(prev2&&i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])v=Math.min(v,prev2[j-2]+1);cur[j]=v}prev2=prev;prev=cur}
+ return prev[n];
+}
+function searchVocabulary(){
+ const terms=new Map();
+ const add=t=>{t=String(t||"").trim();if(t&&!terms.has(t.toLowerCase()))terms.set(t.toLowerCase(),t)};
+ R.forEach(r=>{add(r.name);r.stops.forEach(s=>add(s[0]))});
+ (window.BYU_RYDE_ROUTES||[]).forEach(g=>(g.stops||[]).forEach(s=>add(s.label)));
+ return [...terms.values()];
+}
+function didYouMean(query){
+ const q=query.trim().toLowerCase();if(q.length<3)return null;
+ const limit=q.length<=4?1:q.length<=8?2:3;let best=null;
+ for(const term of searchVocabulary()){
+  const t=term.toLowerCase();
+  const tries=[t,...t.split(/[\s()/,.-]+/).filter(w=>w.length>=3)];
+  for(let k=Math.max(3,q.length-1);k<=q.length+1;k++)tries.push(t.slice(0,k));
+  const d=Math.min(...tries.map(x=>editDistance(q,x)));
+  if(d<=limit&&(!best||d<best.d||(d===best.d&&term.length<best.term.length)))best={term,d};
+ }
+ return best&&best.term.toLowerCase()!==q?best.term:null;
+}
+const routeMatches=(r,f)=>!f||[r.name,r.dest,...r.stops.map(s=>s[0])].join(" ").toLowerCase().includes(f);
+
+/* ---- location-based suggestions: nearest routes/stops to the rider (GPS) or their saved home ---- */
+// Coordinates come from route-data.js (window.BYU_RYDE_ROUTES: points [[lat,lon]], optional stops [{label, waypoint}]).
+const NEAR_RADIUS_MI=1.5;
+let nearState={status:"idle",pos:null,source:null,message:""};
+function milesBetween(a,b){const R0=3958.8,rad=x=>x*Math.PI/180,dLat=rad(b[0]-a[0]),dLon=rad(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLon/2)**2;return 2*R0*Math.asin(Math.sqrt(h))}
+const walkMinutes=mi=>Math.max(1,Math.round(mi*1.25*20)); // straight line x1.25 for streets, at 3 mph
+function nearestOnRoute(r,pos){
+ const g=(window.BYU_RYDE_ROUTES||[]).find(x=>String(x.id)===String(r.id));
+ if(!g||!Array.isArray(g.points)||!g.points.length)return null;
+ let best=null;
+ (g.stops||[]).forEach(s=>{const p=g.points[s.waypoint-1];if(p){const d=milesBetween(pos,p);if(!best||d<best.d)best={d,label:s.label}}});
+ if(!best)g.points.forEach(p=>{const d=milesBetween(pos,p);if(!best||d<best.d)best={d,label:null}});
+ return best;
+}
+function nextPickupNear(r,label){
+ const want=String(label||"").toLowerCase();
+ const j=r.toCampus.find(i=>r.stops[i][0].toLowerCase()===want);
+ const cols=j!==undefined?[j]:r.toCampus;
+ return cols.flatMap(i=>nextDepartures(r,i,1).map(x=>({...x,stop:r.stops[i][0]}))).sort((a,b)=>a.min-b.min)[0]||null;
+}
+function nearSuggestions(pos){
+ return R.map(r=>{const n=nearestOnRoute(r,pos);return n&&{r,...n}}).filter(x=>x&&x.d<=NEAR_RADIUS_MI).sort((a,b)=>a.d-b.d).slice(0,3);
+}
+function nearYouHTML(){
+ if(!(window.BYU_RYDE_ROUTES||[]).some(g=>Array.isArray(g.points)&&g.points.length))return "";
+ if(!nearState.pos&&homePlace&&nearState.status==="idle")nearState={status:"ready",pos:[Number(homePlace.lat),Number(homePlace.lng)],source:"home",message:""};
+ const head=t=>`<section class="near-you" aria-label="Suggested routes near you" aria-live="polite"><div class="near-head"><h2>${t}</h2>`;
+ const locBtn=`<button type="button" class="near-btn" data-near="gps">${nearState.source==="gps"?"Refresh my location":"Use my location"}</button>`;
+ const homeBtn=homePlace&&nearState.source!=="home"?`<button type="button" class="near-btn ghosty" data-near="home">Near my home</button>`:"";
+ if(nearState.status==="locating")return head("Finding routes near you…")+`</div><p class="sub">Waiting for your location.</p></section>`;
+ if(nearState.status==="error"||!nearState.pos)return head("Routes near you")+`<div class="near-actions">${locBtn}${homeBtn}</div></div><p class="sub">${esc(nearState.message||"See the closest Ryde stops and their next pickup. Your location stays on this device unless you save it as home.")}</p></section>`;
+ const list=nearSuggestions(nearState.pos),where=nearState.source==="home"?"your home":"you";
+ let h=head(nearState.source==="home"?"Near your home":"Near you")+`<div class="near-actions">${locBtn}${homeBtn}</div></div>`;
+ if(!list.length)h+=`<p class="sub">No Ryde stops within ${NEAR_RADIUS_MI} miles of ${where}.</p>`;
+ else h+=`<div class="near-list">`+list.map(({r,d,label})=>{const t=nextPickupNear(r,label);return `<button type="button" class="near-item" data-open="${r.id}" style="--c:${r.color}"><span class="near-route">${esc(r.name)}</span><span class="near-stop">${label?esc(label):"Closest point on route"} · ${d<0.1?"right here":`${d.toFixed(1)} mi`} · ~${walkMinutes(d)} min walk</span><span class="near-next">${t?`${planOffset?"First":"Next"} pickup ${fmtDeparture(t.time)}${label?"":` at ${esc(t.stop)}`}`:r.service!=="daily"&&[0,6].includes(serviceNow().day)?"No weekend service":noneText("pickups")}</span></button>`}).join("")+`</div>`;
+ if(nearState.source==="gps"&&currentUser&&!homePlace)h+=`<button type="button" class="near-btn ghosty" data-near="save-home">Save this location as my home</button>`;
+ return h+`</section>`;
+}
+function locateRider(){
+ if(!navigator.geolocation){nearState={status:"error",pos:null,source:null,message:"This browser can't share your location."};refreshHome();return}
+ nearState={...nearState,status:"locating"};refreshHome();
+ navigator.geolocation.getCurrentPosition(
+  p=>{nearState={status:"ready",pos:[p.coords.latitude,p.coords.longitude],source:"gps",message:""};refreshHome()},
+  err=>{nearState={status:"error",pos:null,source:null,message:err.code===1?"Location access was blocked. Allow it in your browser settings, or save a home address in your profile.":"Couldn't get your location. Try again in a moment."};refreshHome()},
+  {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+}
+// Re-render only while the Routes home screen is showing, keeping whatever is typed in search.
+function refreshHome(){if(screen===1&&!sel&&!$("app").classList.contains("map-mode")){const s=$("routeSearch");home(s?s.value:"")}}
+
 /* ---- screens ---- */
 let screen=1,sel=null,timer=null,lostSignal=false;
 function layout(s){
@@ -497,7 +698,8 @@ function home(filter=""){
   $("app").classList.remove("map-mode");
   $("navRoutes").classList.add("active");$("navMap").classList.remove("active");
   const f=filter.trim().toLowerCase();
-  const list=R.filter(r=>!f||[r.name,r.dest,...r.stops.map(s=>s[0])].join(" ").toLowerCase().includes(f));
+  const list=R.filter(r=>routeMatches(r,f));
+  const suggestion=!list.length&&f?didYouMean(f):null;
   let h=`<section class="hero"><h1>Where do you want to go?</h1><p>Find your BYU shuttle route and its next scheduled departure.</p>
     <label class="hero-search"><span aria-hidden="true">⌕</span><input id="routeSearch" type="search" placeholder="Search a location, stop, or route…" value="${esc(filter)}" aria-label="Find shuttle routes"></label></section>
     <div class="pad home-body">${showWelcomeIntro()?`<section class="welcome-intro" id="welcomeIntro" aria-label="Welcome to The Ryde">
@@ -505,18 +707,17 @@ function home(filter=""){
       <p>Find shuttle routes, check published departure times, explore the route map, and save your favorite routes.</p>
       <p class="welcome-note">This is a prototype for planning trips, not live GPS tracking.</p></div>
       <button class="welcome-dismiss" type="button" id="welcomeDismiss">Got it</button>
-    </section>`:""}<div class="section-heading"><div><h2>Explore shuttle routes</h2><p>Published departure schedules · Provo local time · Not live GPS</p></div><span class="sub">${list.length} routes</span></div>`;
-  if(!list.length){h+=`<div class="card">No routes match your search. Try another stop or neighborhood.</div>`}
+    </section>`:""}${f?"":nearYouHTML()}<div class="section-heading"><div><h2>Explore shuttle routes</h2>${dayPickerHTML()}</div><span class="sub">${list.length} routes</span></div>`;
+  if(!list.length){h+=`<div class="card">No routes match “${esc(filter.trim())}”.${suggestion?` Did you mean <button type="button" class="did-you-mean" data-suggest="${esc(suggestion)}">${esc(suggestion)}</button>?`:" Try another stop or neighborhood."}</div>`}
   else{
     h+=`<div class="rail">`+list.map(r=>{
       const rn=routeNext(r),{next,d}=rn;
       return `<article class="rc" style="--c:${r.color}">
         <button class="route-open" data-open="${r.id}" aria-label="View ${esc(r.name)} timetable">
           <span class="route-name">${esc(r.name)}</span>
-          <span class="route-stop" data-card-stops="${r.id}">${cardStops(r,d)}</span>
-          <span class="next-label" data-card-label="${r.id}">${cardLabel(d)}</span>
+          <span class="next-label" data-card-label="${r.id}">${cardLabel(rn)}</span>
+          <span class="route-stop" data-card-stops="${r.id}">${cardNextStop(r,rn)}</span>
           <span class="next-time" data-next-time="${r.id}">${nextTimeText(next)}</span>
-          <span class="route-note" data-next-note="${r.id}">${nextNoteText(r,rn)}</span>
         </button>
         ${dirSwitch(r)}
         <button class="more" data-more="${r.id}" aria-expanded="false">Times by stop ▾</button>
@@ -538,6 +739,8 @@ function mapPage(){
   layout(1);sel=null;showRoutes(R.map(r=>r.id));view(0,0,840);
   $("app").classList.add("map-mode");
   $("navMap").classList.add("active");$("navRoutes").classList.remove("active");
+  if(window.initRydeRouteMap)window.initRydeRouteMap();
+  if(window.resizeRydeMap)window.resizeRydeMap();
 }
 function detail(id){
   $("app").classList.remove("map-mode");$("navRoutes").classList.add("active");$("navMap").classList.remove("active");
@@ -547,7 +750,7 @@ function detail(id){
   const [t,c]=lvl(r);
   const alts=R.filter(x=>x.id!=r.id);
   sheet.innerHTML=`<div class="pad detail-shell" style="--c:${r.color}"><button class="detail-back" type="button" id="backToRoutes">← All routes</button>
-   <div class="row" style="border:0;padding:0"><div><h1>${r.name}</h1><div class="sub">Published weekday / weekend departure schedule</div></div></div>
+   <div class="row" style="border:0;padding:0"><div><h1>${r.name}</h1><div class="sub">${planOffset?`Showing ${dayTitle()}'s schedule · <button type="button" class="did-you-mean" data-plan-day="0">back to today</button>`:"Published weekday / weekend departure schedule"}</div></div></div>
    <div class="notice">Map is the published route diagram. Departure times are scheduled, not GPS predictions.</div>
    <div id="schedPanel">${schedulePanel(r)}</div>
    <button class="ghost" id="favoriteBtn">${favoriteRouteIds.has(String(r.id))?"★ Favorite route":"☆ Add to favorites"}</button>
@@ -612,11 +815,26 @@ document.addEventListener("click",e=>{
    if(panel&&sel&&sel.id==r.id){const open=panel.querySelector("details")?.open;panel.innerHTML=schedulePanel(r);if(open)panel.querySelector("details").open=true;panel.querySelector(`[data-dir="${ds.dataset.dir}"]`)?.focus()}
    else updateCard(r);
    return}
+  const sd=e.target.closest("[data-sched-day]");if(sd){
+   const r=R.find(x=>x.id==sd.dataset.schedRoute),panel=$("schedPanel");if(!r||!panel)return;
+   schedDayOf[r.id]=sd.dataset.schedDay;panel.innerHTML=schedulePanel(r);panel.querySelector("details").open=true;panel.querySelector(`[data-sched-day="${sd.dataset.schedDay}"]`)?.focus();return}
+  const pdb=e.target.closest("[data-plan-day]");if(pdb){
+   planOffset=Number(pdb.dataset.planDay)||0;
+   if(sel&&$("schedPanel")){detail(sel.id)}else{refreshHome();sheet.querySelector(`[data-plan-day="${planOffset}"]`)?.focus()}
+   return}
+  const sg=e.target.closest("[data-suggest]");if(sg){home(sg.dataset.suggest);const s=$("routeSearch");if(s){s.focus();s.setSelectionRange(s.value.length,s.value.length)}return}
+  const nb=e.target.closest("[data-near]");if(nb){
+   const a=nb.dataset.near;
+   if(a==="gps")locateRider();
+   else if(a==="home"&&homePlace){nearState={status:"ready",pos:[Number(homePlace.lat),Number(homePlace.lng)],source:"home",message:""};refreshHome()}
+   else if(a==="save-home"&&nearState.pos){const top=nearSuggestions(nearState.pos)[0];nb.disabled=true;nb.textContent="Saving…";saveHome(top?`My location near ${top.label||top.r.name}`:"My saved location",nearState.pos[0],nearState.pos[1]).then(()=>{nearState={status:"ready",pos:nearState.pos,source:"home",message:""};refreshHome()}).catch(err=>{nb.disabled=false;nb.textContent="Save this location as my home";alert(err.message||"Could not save home address.")})}
+   return}
   const o=e.target.closest("[data-open]");if(o){detail(o.dataset.open);sheet.scrollTop=0;return}
   const m=e.target.closest("[data-more]");if(m){const l=$("l"+m.dataset.more);const op=l.classList.toggle("open");m.setAttribute("aria-expanded",op);m.textContent=op?"Next departures ▴":"Next departures ▾"}
 });
 $("back").onclick=()=>screen==3?detail(sel.id):home(q.value);
 sheet.addEventListener("click",e=>{if(e.target.id=="go")live();if(e.target.id=="openMapFromHome")mapPage();if(e.target.id=="backToRoutes")home()});
+$("rydeHome").onclick=()=>{home();sheet.scrollTop=0};
 $("navRoutes").onclick=()=>home();$("navMap").onclick=()=>mapPage();
 q.addEventListener("input",()=>{home(q.value)});
 $("locate").onclick=()=>{view(0,0,840)};
@@ -667,7 +885,7 @@ sheet.addEventListener("keydown",e=>{
 
 
 $("profileBtn").onclick=openProfile;$("closeProfile").onclick=()=>$("profileModal").classList.add("hide");
-$("profileModal").addEventListener("click",e=>{if(e.target.id==="profileModal")$("profileModal").classList.add("hide");if(e.target.id==="switchUser"){currentUser=null;favoriteRouteIds.clear();localStorage.removeItem("ryde_net_id");updateProfileButton();openProfile()}});
+$("profileModal").addEventListener("click",e=>{if(e.target.id==="profileModal")$("profileModal").classList.add("hide");if(e.target.id==="clearHome"){e.target.disabled=true;clearHome().then(openProfile).catch(err=>{e.target.disabled=false;alert(err.message||"Could not remove home address.")})}if(e.target.id==="switchUser"){currentUser=null;favoriteRouteIds.clear();homePlace=null;window.showRydeHome?.(null);if(nearState.source==="home")nearState={status:"idle",pos:null,source:null,message:""};refreshHome();localStorage.removeItem("ryde_net_id");updateProfileButton();openProfile()}});
 $("profileContent").addEventListener("input",e=>{if(e.target.name!=="email")return;const st=$("profileStatus");st.textContent="";st.classList.add("hide")});
 $("profileContent").addEventListener("submit",async e=>{if(e.target.id!=="profileForm")return;e.preventDefault();const form=e.target,f=new FormData(form),st=$("profileStatus"),nameInput=form.elements.namedItem("name"),netInput=form.elements.namedItem("net_id"),emailInput=form.elements.namedItem("email");st.textContent="";st.classList.add("hide");if(!nameInput.checkValidity()){nameInput.reportValidity();return}if(!netInput.checkValidity()){netInput.reportValidity();return}if(!emailInput.checkValidity()||!isByuEmail(emailInput.value)){st.textContent="Use a valid email address ending in @byu.edu.";st.classList.remove("hide");return}try{await saveUser(f.get("name"),f.get("net_id"),f.get("email"));openProfile()}catch(err){st.textContent=err.message||"Could not save profile.";st.classList.remove("hide")}});
 sheet.addEventListener("click",async e=>{if(e.target.id!=="favoriteBtn")return;if(!currentUser){openProfile();return}e.target.disabled=true;try{await toggleFavorite(sel.id);e.target.classList.toggle("on",favoriteRouteIds.has(String(sel.id)));e.target.textContent=favoriteRouteIds.has(String(sel.id))?"★ Favorite route":"☆ Add to favorites"}catch(err){alert(err.message||"Could not save favorite.")}finally{e.target.disabled=false}});
@@ -676,6 +894,7 @@ sheet.addEventListener("click",async e=>{if(e.target.id!=="favoriteBtn")return;i
 async function start(){
  buildMap();home();updateProfileButton();
  try{await loadSavedUser()}catch(err){console.error("Could not load saved profile:",err)}
+ refreshHome();
  const fb=$("favoriteBtn");if(fb&&sel)fb.textContent=favoriteRouteIds.has(String(sel.id))?"★ Favorite route":"☆ Add to favorites";
 }
 start();
