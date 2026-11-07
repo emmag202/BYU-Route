@@ -43,17 +43,19 @@ const routeNames = {
 const routeKeys = Object.fromEntries(Object.entries(routeNames).map(([key, name]) => [name, key]));
 
 const app = express();
-app.use(cors({
-  origin(origin, callback) {
-    const allowed = new Set([
-      "https://emmag202.github.io",
-      "http://localhost:5500",
-      "http://127.0.0.1:5500",
-    ]);
-    if (!origin || allowed.has(origin) || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) return callback(null, true);
-    return callback(new Error("This local API only accepts requests from localhost."));
-  },
-}));
+if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  app.use(cors({
+    origin(origin, callback) {
+      const allowed = new Set([
+        "https://emmag202.github.io",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+      ]);
+      if (!origin || allowed.has(origin) || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) return callback(null, true);
+      return callback(new Error("This local API only accepts requests from localhost."));
+    },
+  }));
+}
 app.use(express.json({ limit: "20kb" }));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
