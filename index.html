@@ -433,7 +433,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .strip-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .strip-tag{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:#eef2f6;color:#4a5b6e}
 .board .strip-tag,.dest .strip-tag{background:var(--c);color:#fff}
-.walk-box{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px dashed #b9c6d6;border-radius:10px;background:#fafbfd}
+.walk-box{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px dashed #b9c6d6;border-radius:10px;background:#fafbfd}.walk-estimate{margin-top:2px}.directions-btn{display:inline-flex;align-items:center;align-self:flex-start;margin-top:6px;padding:7px 12px;border-radius:8px;background:#0047ba;color:#fff;text-decoration:none;font-size:13px;font-weight:750}.directions-btn:hover{filter:brightness(.92)}.walk-alternative{display:flex;flex-direction:column;gap:3px;margin-top:10px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#f5f8fc}.walk-alternative b{color:#132d49}
 .strip-body .near-btn{margin-top:6px}
 </style>
 </head>
@@ -917,7 +917,7 @@ function tripPlan(r){
   const dest=startState.dest??r.toCampus[0];
   return {d,board:last,dest,path:[last,...r.toCampus.slice(0,r.toCampus.indexOf(dest)+1)]};
 }
-function youAreHereHTML(){
+const BYU_CAMPUS_CENTER=[40.25176385171031,-111.64797127346249];function routeStopPosition(r,j){const g=(window.BYU_RYDE_ROUTES||[]).find(x=>String(x.id)===String(r.id));const routeStopIndex=j===r.stops.length-1?0:j+1;const marker=g?.stops?.[routeStopIndex];return marker&&g?.points?.[marker.waypoint-1]||null}function walkingDirectionsURL(origin,destination){const params=new URLSearchParams({api:"1",destination,travelmode:"walking"});if(origin)params.set("origin",Array.isArray(origin)?origin.join(","):origin);return `https://www.google.com/maps/dir/?${params.toString()}`}function walkingEstimateHTML(origin,destination){if(!origin||!destination)return `<span class="sub walk-estimate">Walking distance and time shown in Maps.</span>`;const mi=milesBetween(origin,destination);return `<span class="sub walk-estimate">Estimated · ${mi.toFixed(1)} mi · ~${walkMinutes(mi)} min walk</span>`}function youAreHereHTML(){
   if(nearState.status==="locating")return `<b>You are here</b><span class="sub">Finding your location…</span>`;
   if(hasGps())return `<b>You are here</b><span class="sub">Using your phone's location${nearState.acc?` (±${Math.round(nearState.acc)} m)`:""} · ${onCampus(nearState.pos)?"on campus":"off campus"}</span>`;
   return `<b>Where are you?</b><span class="sub">${esc(nearState.message||"Location is off.")}</span><button type="button" class="near-btn ghosty" data-near="gps">Try again</button>`;
@@ -931,7 +931,7 @@ function renderStart(){
   const times=[upcoming(r,p.board,1)[0]||null];
   for(let i=1;i<p.path.length;i++)times.push(times[i-1]?arrivalAfter(r,p.path[i],times[i-1]):null);
   const boardT=times[0],rideStops=p.path.length-1;
-  const countdown=i=>{const left=p.path.length-1-i;return left===0?"Your stop":left===1?`1 stop to ${destName}`:`${left} stops to ${destName}`};
+  const countdown=i=>{const left=p.path.length-1-i;return left===0?"Your stop":left===1?`1 stop to ${destName}`:`${left} stops to ${destName}`};const boardPosition=routeStopPosition(r,p.board);const campusTripOrigin=nearState.pos&&onCampus(nearState.pos)?nearState.pos:"Brigham Young University, Provo, Utah";const walkOrigin=p.d==="from"?campusTripOrigin:nearState.pos;const walkDestination=boardPosition||`${r.stops[p.board][0]}, BYU, Provo, Utah`;const walkTitle=p.d==="from"?`Walk from campus to ${name(p.board)}`:`Walk from your location to ${name(p.board)}`;const walkEstimateOrigin=p.d==="from"&&!Array.isArray(campusTripOrigin)?null:walkOrigin;const walkAlternative=p.d==="to"&&!(nearState.pos&&onCampus(nearState.pos))?`<div class="walk-alternative"><b>Walking alternative</b><span class="sub">Walk to BYU campus instead</span>${walkingEstimateHTML(nearState.pos,BYU_CAMPUS_CENTER)}<a class="directions-btn" href="${esc(walkingDirectionsURL(nearState.pos,"Brigham Young University, Provo, Utah"))}" target="_blank" rel="noopener noreferrer">Get walking directions</a></div>`:"";
   const choiceKind=p.d==="to"?"board":"dest",chosen=p.d==="to"?p.board:p.dest;
   const choices=`<div class="trip-choice"><span class="sub">${p.d==="to"?"Where are you getting on?":"Where are you getting off?"}</span><div class="dir-switch" role="group">${r.toCampus.map(j=>`<button type="button" data-trip-${choiceKind}="${j}" aria-pressed="${j===chosen}">${name(j)}</button>`).join("")}</div></div>`;
   const stopItem=(j,i)=>{
@@ -947,11 +947,11 @@ function renderStart(){
      <span class="next-label">Next bus at ${name(p.board)}</span>
      <div class="start-time">${boardT?nextTimeText(boardT):"None scheduled"}</div>
      <p>Get on at <b>${name(p.board)}</b>, ride <b>${rideStops} stop${rideStops===1?"":"s"}</b>, get off at <b>${destName}</b>.${rideStops>1?` You'll pass ${rideStops-1} stop${rideStops===2?"":"s"} before your destination.`:""}</p>
-     ${choices}
+     ${choices}${walkAlternative}
    </div>
    <ol class="stop-strip">
      <li class="strip-stop you"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">${youAreHereHTML()}</div></li>
-     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b><span class="sub">Walking directions will appear here.</span></div></li>
+     <li class="strip-walk"><div class="walk-box"><b>${walkTitle}</b>${walkingEstimateHTML(walkEstimateOrigin,boardPosition)}<a class="directions-btn" href="${esc(walkingDirectionsURL(walkOrigin,walkDestination))}" target="_blank" rel="noopener noreferrer">Get directions</a></div></li>
      ${p.path.map(stopItem).join("")}
    </ol>
    <p class="sub sched-foot">Times after boarding are estimated from the published schedule, not live.</p>
