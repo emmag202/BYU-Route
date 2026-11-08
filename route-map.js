@@ -60,7 +60,7 @@
     const route = data.Routes?.[0];
     const leg = route?.Legs?.[0];
     const details = leg?.PedestrianLegDetails;
-    const summary = buildRouteSummary(route);
+    const summary = buildRouteSummary(route) || (details?.TravelSteps?.length ? { Distance: details.TravelSteps.reduce((total, step) => total + (Number(step.Distance) || 0), 0), DurationSeconds: details.TravelSteps.reduce((total, step) => total + (Number(step.Duration) || 0), 0), DistanceUnit: 'Meters' } : null);
     if (!leg || !summary) throw new Error('Amazon Location did not return a walking route.');
 
     return {
