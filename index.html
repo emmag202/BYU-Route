@@ -432,7 +432,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .strip-body b{font-size:16px;color:#132d49}
 .strip-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .strip-tag{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:#eef2f6;color:#4a5b6e}
-.board .strip-tag,.dest .strip-tag{background:var(--c);color:#fff}.walk-box{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px dashed #b9c6d6;border-radius:10px;background:#fafbfd}.walk-box .walk-action{align-self:flex-start;margin-top:8px;border:0;border-radius:8px;padding:8px 12px;background:#0047ba;color:#fff;font:inherit;font-size:13px;font-weight:750;cursor:pointer}.walk-box .walk-action:disabled{opacity:.6;cursor:wait}.walk-summary{margin-top:8px;font-weight:750;color:#132d49}.walk-directions{margin:6px 0 0;padding-left:22px;color:#29405a}.walk-directions li{padding:3px 0}.walk-error{margin-top:6px;color:#b3261e} 
+.board .strip-tag,.dest .strip-tag{background:var(--c);color:#fff}.walk-box{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px dashed #b9c6d6;border-radius:10px;background:#fafbfd} 
 .strip-body .near-btn{margin-top:6px}
 </style>
 </head>
@@ -478,7 +478,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="./aws-config.js"></script>
 <script src="./route-data.js"></script>
-<script src="./route-map.js?v=walking-fix-20261108"></script>
+<script src="./route-map.js"></script>
 <script>
 // The browser talks to the local API. Database credentials stay in the API's ignored .env file.
 const API_BASE_URL="https://l6sjs2oitk2izyrm4462xzugt40fzlcn.lambda-url.us-east-1.on.aws";
@@ -770,7 +770,7 @@ const routeMatches=(r,f)=>!f||[r.name,r.dest,...r.stops.map(s=>s[0])].join(" ").
 
 /* ---- location-based suggestions: nearest routes/stops to the rider (GPS) or their saved home ---- */
 // Coordinates come from route-data.js (window.BYU_RYDE_ROUTES: points [[lat,lon]], optional stops [{label, waypoint}]).
-const NEAR_RADIUS_MI=1.5;const BYU_CAMPUS_CENTER=[40.25176385171031,-111.64797127346249];let walkingState={key:null,loading:false,error:"",result:null};let walkingRequestId=0;function routeStopPosition(r,j){const g=(window.BYU_RYDE_ROUTES||[]).find(x=>String(x.id)===String(r.id)),n=j===r.stops.length-1?0:j+1,s=g?.stops?.[n];return s&&g?.points?.[s.waypoint-1]||null}function walkingStepText(s){if(s.Instruction)return s.Instruction;const t=String(s.Type||"").toLowerCase(),r=s.NextRoad?.RoadName||s.CurrentRoad?.RoadName;if(t==="depart")return r?`Start walking on ${r}`:"Start walking";if(t==="arrive")return "Arrive at your destination";if(t==="turn")return `Turn ${String(s.TurnStepDetails?.SteeringDirection||"").toLowerCase()}${r?` onto ${r}`:""}`.trim();if(t==="keep")return `Keep${r?` onto ${r}`:" going"}`;return r?`Continue on ${r}`:"Continue walking"}function walkingDistanceText(s){const n=Number(s?.Distance),u=String(s?.DistanceUnit||"Meters").toLowerCase();return `${(u.startsWith("mile")?n:u.startsWith("kilometer")||u==="km"?n/1.609344:n/1609.344).toFixed(1)} mi`}function walkingDurationText(s){return `${Math.max(1,Math.round(Number(s?.DurationSeconds??s?.Duration??s?.durationSeconds??s?.duration)/60))} min`}function requestWalkingDirections(r,b,d,target){const stop=routeStopPosition(r,b),origin=d==="from"?(hasGps()&&onCampus(nearState.pos)?nearState.pos:BYU_CAMPUS_CENTER):nearState.pos,dest=target==="campus"?BYU_CAMPUS_CENTER:stop,key=origin&&dest?[r.id,b,target,...origin,...dest].join(":"):null;if(!key){walkingState={key:null,loading:false,error:"Turn on location to get walking directions.",result:null};renderStart();return}const id=++walkingRequestId;walkingState={key,loading:true,error:"",result:null};renderStart();const f=window.calculateRydeWalkingRoute;if(!f){walkingState={key,loading:false,error:"Amazon walking directions are unavailable right now.",result:null};renderStart();return}f([origin[1],origin[0]],[dest[1],dest[0]]).then(result=>{if(id!==walkingRequestId)return;walkingState={key,loading:false,error:"",result};renderStart()}).catch(e=>{if(id!==walkingRequestId)return;walkingState={key,loading:false,error:e.message||"Could not calculate walking directions.",result:null};renderStart()})}function walkingBoxHTML(r,b,d,target,title){const stop=routeStopPosition(r,b),origin=d==="from"?(hasGps()&&onCampus(nearState.pos)?nearState.pos:BYU_CAMPUS_CENTER):nearState.pos,dest=target==="campus"?BYU_CAMPUS_CENTER:stop,ok=!!(origin&&dest),key=ok?[r.id,b,target,...origin,...dest].join(":"):null,cur=walkingState.key===key,res=cur&&walkingState.result,err=cur&&walkingState.error,steps=res?.steps||[];return `<div class="walk-box"><b>${title}</b>${!ok?'<span class="sub">Turn on location to get walking directions.</span>':""}<button type="button" class="walk-action" data-walk-route="${target}" ${!ok||cur&&walkingState.loading?"disabled":""}>${cur&&walkingState.loading?"Getting directions…":res?"Refresh directions":"Get directions"}</button>${res?`<div class="walk-summary">${walkingDistanceText(res.summary)} · ${walkingDurationText(res.summary)} walk</div><ol class="walk-directions">${steps.map(s=>`<li>${esc(walkingStepText(s))}</li>`).join("")}</ol>`:""}${err?`<span class="walk-error" role="status">${esc(err)}</span>`:""}</div>`}
+const NEAR_RADIUS_MI=1.5;
 let nearState={status:"idle",pos:null,source:null,message:""};
 function milesBetween(a,b){const R0=3958.8,rad=x=>x*Math.PI/180,dLat=rad(b[0]-a[0]),dLon=rad(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLon/2)**2;return 2*R0*Math.asin(Math.sqrt(h))}
 const walkMinutes=mi=>Math.max(1,Math.round(mi*1.25*20)); // straight line x1.25 for streets, at 3 mph
@@ -925,7 +925,7 @@ function renderStart(){
   const r=R.find(x=>x.id==startState.id);if(!r)return home();
   layout(2);showRoutes([r.id]);fit(r);gStops.innerHTML="";
   $("app").classList.remove("map-mode");$("navRoutes").classList.add("active");$("navMap").classList.remove("active");
-  const p=tripPlan(r),name=j=>esc(r.stops[j][0]),destName=name(p.dest);const boardName=esc(r.stops[p.board][0]);
+  const p=tripPlan(r),name=j=>esc(r.stops[j][0]),destName=name(p.dest);
   // Scheduled time at each stop along the ride, starting from the next departure at the boarding stop.
   const times=[upcoming(r,p.board,1)[0]||null];
   for(let i=1;i<p.path.length;i++)times.push(times[i-1]?arrivalAfter(r,p.path[i],times[i-1]):null);
@@ -950,7 +950,7 @@ function renderStart(){
    </div>
    <ol class="stop-strip">
      <li class="strip-stop you"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">${youAreHereHTML()}</div></li>
-     <li class="strip-walk">${walkingBoxHTML(r,p.board,p.d,"stop",p.d==="from"?`Walk from campus to ${boardName}`:`Walk from your location to ${boardName}`)}${p.d==="to"&&!(hasGps()&&onCampus(nearState.pos))?walkingBoxHTML(r,p.board,p.d,"campus","Walking alternative · walk to BYU campus"):""}</li>
+     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b><span class="sub">Walking directions will appear here.</span></div></li>
      ${p.path.map(stopItem).join("")}
    </ol>
    <p class="sub sched-foot">Times after boarding are estimated from the published schedule, not live.</p>
@@ -965,7 +965,7 @@ sheet.addEventListener("click",e=>{
     document.getElementById("welcomeIntro")?.remove();
   }
 });
-document.addEventListener("click",e=>{const walk=e.target.closest("[data-walk-route]");if(walk&&startState){const r=R.find(x=>x.id==startState.id);if(r){const p=tripPlan(r);requestWalkingDirections(r,p.board,p.d,walk.dataset.walkRoute)}return}
+document.addEventListener("click",e=>{
   const ds=e.target.closest("[data-dir-set]");if(ds){
    const v=ds.dataset.dirSet;dirOverride=v==="auto"||v===autoDir()?null:v;
    if(startState){startState.board=null;startState.dest=null}
