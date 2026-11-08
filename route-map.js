@@ -1,3 +1,44 @@
+
+
+BYU-Route-main (12).zip
+this is my project. in the route map. the trip distance and trip time isn't showing when you click on a specific route
+
+12:07 AM
+Fixed the route summary behavior. Selecting a route now immediately shows a calculating message, then displays the trip distance and time when the route response arrives. If the request can’t run, the panel reports that trip information is unavailable instead of staying hidden.
+
+Download the fixed project
+
+12:08 AM
+which files did you change
+
+12:09 AM
+I changed one file: route-map.js.
+
+12:09 AM
+
+BYU-Route-main%20(9).zip
+its still not working. This is the version that was working before i made changes to the search
+
+12:15 AM
+The earlier working version confirms the issue: the trip distance and time fields were no longer being updated. I’ve restored updates to both fields and made the selected route name appear in the panel title.
+
+Changed file: route-map.js
+
+Download the updated project
+
+12:16 AM
+which files were updated
+
+12:16 AM
+Only route-map.js was updated.
+
+12:16 AM
+
+
+
+this
+BYU-Route-main
+route-map.js
 /* BYU Ryde — clean MapLibre route-map implementation.
  * Owns one map instance, one base-route source, one stop source,
  * one calculated-route source, and all route-map event handlers.
@@ -405,6 +446,10 @@
 
     // Give the selected route immediate feedback while Amazon Location is
     // calculating its road distance and travel time.
+    const title = el('rydeNavTitle');
+    if (title) title.textContent = route.name;
+    if (el('rydeNavDistance')) el('rydeNavDistance').textContent = '…';
+    if (el('rydeNavTime')) el('rydeNavTime').textContent = '…';
     showSummary(true, `${route.name} · Calculating trip distance and time…`);
 
     requestId++;
@@ -452,7 +497,19 @@
 
   function formatRouteSummary(route, summary) {
     if (!summary) {
+    const distanceNode = el('rydeNavDistance');
+    const timeNode = el('rydeNavTime');
+    const title = el('rydeNavTitle');
+    if (title) title.textContent = route.name;
+
+    const unavailable = () => {
+      if (distanceNode) distanceNode.textContent = '—';
+      if (timeNode) timeNode.textContent = '—';
       return `${route.name} · Trip information unavailable`;
+    };
+
+    if (!summary) {
+      return unavailable();
     }
 
     const distance = Number(summary.Distance ?? summary.distance);
@@ -472,6 +529,7 @@
     ) {
       console.error(`Invalid route summary for ${route.name}:`, summary);
       return `${route.name} · Trip information unavailable`;
+      return unavailable();
     }
 
     let distanceMiles;
@@ -485,15 +543,21 @@
     } else {
       console.error(`Unknown distance unit for ${route.name}:`, summary);
       return `${route.name} · Trip information unavailable`;
+      return unavailable();
     }
 
     // Reject implausible values instead of displaying misleading mileage.
     if (!Number.isFinite(distanceMiles) || distanceMiles <= 0 || distanceMiles > 100) {
       console.error(`Unexpected distance for ${route.name}:`, summary);
       return `${route.name} · Trip information unavailable`;
+      return unavailable();
     }
 
     return `${route.name} · ${distanceMiles.toFixed(1)} miles · ${Math.max(1, Math.round(duration / 60))} min`;
+    const minutes = Math.max(1, Math.round(duration / 60));
+    if (distanceNode) distanceNode.textContent = `${distanceMiles.toFixed(1)} mi`;
+    if (timeNode) timeNode.textContent = `${minutes} min`;
+    return `${route.name} · Trip distance and time`;
   }
 
   function buildRouteSummary(routeResult) {
