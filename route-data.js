@@ -20,9 +20,9 @@ window.BYU_RYDE_ROUTES = [
       [40.25176385171031, -111.64797127346249]
     ],
     stops: [
-      { waypoint: 1, label: 'West Origin' },
-      { waypoint: 3, label: 'West Stop 2' },
-      { waypoint: 4, label: 'West Stop 3' }
+      { waypoint: 1, label: 'Stop 1' },
+      { waypoint: 3, label: 'Stop 2' },
+      { waypoint: 4, label: 'Stop 3' }
     ],
     awsRequest: {
       Origin: [-111.64797127346249, 40.25176385171031],
@@ -85,15 +85,14 @@ window.BYU_RYDE_ROUTES = [
       [40.25176385171031, -111.64797127346249]
     ],
     stops: [
-      { waypoint: 1, label: 'Branbury Origin' },
-      { waypoint: 4, label: 'Branbury Stop 2' },
-      { waypoint: 5, label: 'Branbury Stop 3' }
+      { waypoint: 1, label: 'Stop 1' },
+      { waypoint: 4, label: 'Stop 2' },
+      { waypoint: 5, label: 'Stop 3' }
     ],
     awsRequest: {
       Origin: [-111.64797127346249, 40.25176385171031],
       Destination: [-111.64797127346249, 40.25176385171031],
       Waypoints: [
-        { Position: [-111.649, 40.252] },
         { Position: [-111.65078478448287, 40.25303388627964] },
         { Position: [-111.66801553294589, 40.25799387953086] },
         { Position: [-111.66634322030261, 40.257205142718675] },
@@ -119,9 +118,9 @@ window.BYU_RYDE_ROUTES = [
       [40.24776213721756, -111.64585807083019]
     ],
     stops: [
-      { waypoint: 1, label: 'King Henry Stop 1' },
-      { waypoint: 5, label: 'King Henry Stop 2' },
-      { waypoint: 6, label: 'King Henry Stop 3' }
+      { waypoint: 1, label: 'Stop 1' },
+      { waypoint: 5, label: 'Stop 2' },
+      { waypoint: 6, label: 'Stop 3' }
     ]
   },
 
@@ -137,6 +136,11 @@ window.BYU_RYDE_ROUTES = [
       [40.25236068357427, -111.65557838602749],
       [40.25057438146655, -111.64654259379873],
       [40.25176385171031, -111.64797127346249]
+    ],
+    stops: [
+      { waypoint: 1, label: 'Stop 1' },
+      { waypoint: 2, label: 'Stop 2' },
+      { waypoint: 3, label: 'Stop 3' }
     ],
     awsRequest: {
       Origin: [-111.64797127346249, 40.25176385171031],
@@ -171,9 +175,9 @@ window.BYU_RYDE_ROUTES = [
       [40.24776213721756, -111.64585807083019]
     ],
     stops: [
-      { waypoint: 1, label: 'South Joaquin Stop 1' },
-      { waypoint: 3, label: 'South Joaquin Stop 2' },
-      { waypoint: 4, label: 'South Joaquin Stop 3' }
+      { waypoint: 1, label: 'Stop 1' },
+      { waypoint: 3, label: 'Stop 2' },
+      { waypoint: 4, label: 'Stop 3' }
     ],
     awsRequest: {
       Origin: [-111.64585807083019, 40.24776213721756],
@@ -203,9 +207,9 @@ window.BYU_RYDE_ROUTES = [
       [40.25176385171031, -111.64797127346249]
     ],
     stops: [
-      { waypoint: 1, label: 'Wymount Stop 1' },
-      { waypoint: 2, label: 'Wymount Stop 2' },
-      { waypoint: 4, label: 'Wymount Stop 3' }
+      { waypoint: 1, label: 'Stop 1' },
+      { waypoint: 2, label: 'Stop 2' },
+      { waypoint: 4, label: 'Stop 3' }
     ],
     awsRequest: {
       Origin: [-111.64797127346249, 40.25176385171031],
