@@ -1,4 +1,4 @@
-/* BYU Ryde — clean MapLibre route-map implementation.
+* BYU Ryde — clean MapLibre route-map implementation.
  * Owns one map instance, one base-route source, one stop source,
  * one calculated-route source, and all route-map event handlers.
  */
@@ -590,7 +590,7 @@
     // leg.Summary objects and direct Distance/Duration fields on each leg.
     const legs = routeResult?.Legs || routeResult?.legs || [];
     const values = legs.map(leg => {
-      const item = leg?.Summary || leg?.summary || leg;
+      const item = leg?.PedestrianLegDetails?.Summary || leg?.VehicleLegDetails?.Summary || leg?.FerryLegDetails?.Summary || leg?.Summary || leg?.summary || leg;
       const overview = item?.Overview || item?.overview || item;
       return {
         Distance: overview?.Distance ?? overview?.distance,
