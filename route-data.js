@@ -126,7 +126,24 @@ window.BYU_RYDE_ROUTES = [
       { waypoint: 1, label: 'Stop 1' },
       { waypoint: 5, label: 'Stop 2' },
       { waypoint: 6, label: 'Stop 3' }
-    ]
+    ],
+    useCalculatedGeometry: true,
+    awsRequest: {
+      Origin: [-111.64585807083019, 40.24776213721756],
+      Destination: [-111.64585807083019, 40.24776213721756],
+      Waypoints: [
+        { Position: [-111.64325407696927, 40.24584400566255] },
+        { Position: [-111.64194152598391, 40.2429843993915] },
+        { Position: [-111.63669173090204, 40.24117566469005] },
+        { Position: [-111.63926659636941, 40.2399435750647] },
+        { Position: [-111.64112298254757, 40.23999741942467] },
+        { Position: [-111.64386639524162, 40.24845807304695] }
+      ],
+      TravelMode: 'Car',
+      OptimizeRoutingFor: 'FastestRoute',
+      Traffic: { Usage: 'UseTrafficData' },
+      TravelStepType: 'TurnByTurn'
+    }
   },
 
   // HERITAGE OVERFLOW PARKING
