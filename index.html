@@ -869,7 +869,7 @@ function mapPage(){
   if(window.initRydeRouteMap)window.initRydeRouteMap();
   if(window.resizeRydeMap)window.resizeRydeMap();
 }
-function detail(id){
+function detail(id){startTrip(id);return;
   $("app").classList.remove("map-mode");$("navRoutes").classList.add("active");$("navMap").classList.remove("active");
   sel=R.find(r=>r.id==id);const r=sel;if(!r)return home();setHash(`#/route/${r.id}`);layout(2);startState=null;
   showRoutes([r.id]);fit(r);
