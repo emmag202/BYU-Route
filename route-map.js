@@ -1,4 +1,4 @@
-* BYU Ryde — clean MapLibre route-map implementation.
+/* BYU Ryde — clean MapLibre route-map implementation.
  * Owns one map instance, one base-route source, one stop source,
  * one calculated-route source, and all route-map event handlers.
  */
@@ -28,51 +28,8 @@
   const calculatedRouteCache = new Map();
   let listenersAttached = false;
 
-  const el = id => document.getElementById(id);  const apiKey = () => window.BYU_RYDE_AWS_API_KEY || '';
-
-  async function calculateWalkingRoute(origin, destination) {
-    if (!apiKey()) throw new Error('Amazon Location API key is missing.');
-
-    const response = await fetch(
-      `https://routes.geo.${REGION}.amazonaws.com/v2/routes?key=${encodeURIComponent(apiKey())}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          Origin: origin,
-          Destination: destination,
-          TravelMode: 'Pedestrian',
-          TravelStepType: 'TurnByTurn',
-          LegGeometryFormat: 'Simple',
-          LegAdditionalFeatures: ['Summary']
-        })
-      }
-    );
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(
-        data.message || data.Message ||
-        `Amazon Location returned HTTP ${response.status}.`
-      );
-    }
-
-    const route = data.Routes?.[0];
-    const leg = route?.Legs?.[0];
-    const details = leg?.PedestrianLegDetails;
-    const summary = buildRouteSummary(route) || (details?.TravelSteps?.length ? { Distance: details.TravelSteps.reduce((total, step) => total + (Number(step.Distance) || 0), 0), DurationSeconds: details.TravelSteps.reduce((total, step) => total + (Number(step.Duration) || 0), 0), DistanceUnit: 'Meters' } : null);
-    if (!leg || !summary) throw new Error('Amazon Location did not return a walking route.');
-
-    return {
-      summary,
-      steps: details?.TravelSteps || [],
-      coordinates: Array.isArray(leg.Geometry?.LineString)
-        ? leg.Geometry.LineString
-        : []
-    };
-  }
-
-  window.calculateRydeWalkingRoute = calculateWalkingRoute;
+  const el = id => document.getElementById(id);
+  const apiKey = () => window.BYU_RYDE_AWS_API_KEY || '';
 
   const routeFeatureCollection = routes => ({
     type: 'FeatureCollection',
@@ -590,7 +547,7 @@
     // leg.Summary objects and direct Distance/Duration fields on each leg.
     const legs = routeResult?.Legs || routeResult?.legs || [];
     const values = legs.map(leg => {
-      const item = leg?.PedestrianLegDetails?.Summary || leg?.VehicleLegDetails?.Summary || leg?.FerryLegDetails?.Summary || leg?.Summary || leg?.summary || leg;
+      const item = leg?.Summary || leg?.summary || leg;
       const overview = item?.Overview || item?.overview || item;
       return {
         Distance: overview?.Distance ?? overview?.distance,
