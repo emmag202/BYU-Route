@@ -455,7 +455,6 @@
   }
 
   function formatRouteSummary(route, summary) {
-    if (!summary) {
     const distanceNode = el('rydeNavDistance');
     const timeNode = el('rydeNavTime');
     const title = el('rydeNavTitle');
@@ -487,7 +486,6 @@
       !Number.isFinite(duration) || duration <= 0
     ) {
       console.error(`Invalid route summary for ${route.name}:`, summary);
-      return `${route.name} · Trip information unavailable`;
       return unavailable();
     }
 
@@ -501,18 +499,15 @@
       distanceMiles = distance / 1.609344;
     } else {
       console.error(`Unknown distance unit for ${route.name}:`, summary);
-      return `${route.name} · Trip information unavailable`;
       return unavailable();
     }
 
     // Reject implausible values instead of displaying misleading mileage.
     if (!Number.isFinite(distanceMiles) || distanceMiles <= 0 || distanceMiles > 100) {
       console.error(`Unexpected distance for ${route.name}:`, summary);
-      return `${route.name} · Trip information unavailable`;
       return unavailable();
     }
 
-    return `${route.name} · ${distanceMiles.toFixed(1)} miles · ${Math.max(1, Math.round(duration / 60))} min`;
     const minutes = Math.max(1, Math.round(duration / 60));
     if (distanceNode) distanceNode.textContent = `${distanceMiles.toFixed(1)} mi`;
     if (timeNode) timeNode.textContent = `${minutes} min`;
