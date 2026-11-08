@@ -65,7 +65,6 @@ window.BYU_RYDE_ROUTES = [
     useCalculatedGeometry: true,
     points: [
       [40.25176385171031, -111.64797127346249], // Origin
-      [40.252, -111.649],                       // New intermediate coordinate
       [40.25303388627964, -111.65078478448287], // Waypoint 1
       [40.25799387953086, -111.66801553294589], // Waypoint 2
       [40.257205142718675, -111.66634322030261], // Waypoint 3
