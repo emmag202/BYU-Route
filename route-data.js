@@ -1,6 +1,6 @@
-
-// Route coordinates are stored as [latitude, longitude]. Routes marked useCalculatedGeometry
-// request road-following geometry from Amazon Location Routes V2.
+// Route coordinates are stored as [latitude, longitude].
+// Routes marked useCalculatedGeometry request road-following
+// geometry from Amazon Location Routes V2.
 
 window.BYU_RYDE_ROUTES = [
 
@@ -112,6 +112,7 @@ window.BYU_RYDE_ROUTES = [
     id: '104',
     name: 'King Henry',
     color: '#214baf',
+    useCalculatedGeometry: true,
     points: [
       [40.24776213721756, -111.64585807083019],
       [40.24584400566255, -111.64325407696927],
@@ -127,7 +128,6 @@ window.BYU_RYDE_ROUTES = [
       { waypoint: 5, label: 'Stop 2' },
       { waypoint: 6, label: 'Stop 3' }
     ],
-    useCalculatedGeometry: true,
     awsRequest: {
       Origin: [-111.64585807083019, 40.24776213721756],
       Destination: [-111.64585807083019, 40.24776213721756],
@@ -141,7 +141,9 @@ window.BYU_RYDE_ROUTES = [
       ],
       TravelMode: 'Car',
       OptimizeRoutingFor: 'FastestRoute',
-      Traffic: { Usage: 'UseTrafficData' },
+      Traffic: {
+        Usage: 'UseTrafficData'
+      },
       TravelStepType: 'TurnByTurn'
     }
   },
