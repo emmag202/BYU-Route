@@ -403,6 +403,10 @@
     setSelectedTab(routeId);
     setRouteStopVisibility(routeId);
 
+    // Give the selected route immediate feedback while Amazon Location is
+    // calculating its road distance and travel time.
+    showSummary(true, `${route.name} · Calculating trip distance and time…`);
+
     requestId++;
 
     removeCalculatedRoute();
@@ -423,7 +427,7 @@
     if (route.useCalculatedGeometry || route.id === '104') {
       await calculateRoadRoute(route, requestId, true);
     } else {
-      showSummary(false);
+      showSummary(true, `${route.name} · Trip information unavailable`);
     }
   }
 
@@ -544,7 +548,14 @@
   }
 
   async function calculateRoadRoute(route, currentRequest, showInfo) {
-    if (!route?.awsRequest || !apiKey()) return;
+    if (!route) return;
+
+    if (!route.awsRequest || !apiKey()) {
+      if (showInfo && currentRequest === requestId) {
+        showSummary(true, `${route.name} · Trip information unavailable`);
+      }
+      return;
+    }
 
     if (calculatedRouteCache.has(route.id)) {
       const cached = calculatedRouteCache.get(route.id);
