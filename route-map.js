@@ -477,8 +477,10 @@
       summary.durationSeconds ??
       summary.duration
     );
+    // Routes V2 reports distances in meters. Older/alternate responses may
+    // include DistanceUnit explicitly, so honor it when present.
     const unit = String(
-      summary.DistanceUnit ?? summary.distanceUnit ?? 'Kilometers'
+      summary.DistanceUnit ?? summary.distanceUnit ?? 'Meters'
     ).toLowerCase();
 
     if (
@@ -518,16 +520,26 @@
     // The Routes API normally supplies one summary for the complete route.
     const routeSummary = routeResult?.Summary || routeResult?.summary;
     if (routeSummary) {
-      const routeDistance = Number(routeSummary.Distance ?? routeSummary.distance);
+      const routeDistance = Number(
+        routeSummary.Distance ?? routeSummary.distance ??
+        routeSummary.Overview?.Distance ?? routeSummary.overview?.distance
+      );
       const routeDuration = Number(
         routeSummary.DurationSeconds ?? routeSummary.Duration ??
-        routeSummary.durationSeconds ?? routeSummary.duration
+        routeSummary.durationSeconds ?? routeSummary.duration ??
+        routeSummary.Overview?.Duration ?? routeSummary.overview?.duration
       );
       if (
         Number.isFinite(routeDistance) && routeDistance > 0 &&
         Number.isFinite(routeDuration) && routeDuration > 0
       ) {
-        return routeSummary;
+        return {
+          ...routeSummary,
+          Distance: routeDistance,
+          DurationSeconds: routeDuration,
+          DistanceUnit: routeSummary.DistanceUnit ??
+            routeSummary.distanceUnit ?? 'Meters'
+        };
       }
     }
 
@@ -536,12 +548,13 @@
     const legs = routeResult?.Legs || routeResult?.legs || [];
     const values = legs.map(leg => {
       const item = leg?.Summary || leg?.summary || leg;
+      const overview = item?.Overview || item?.overview || item;
       return {
-        Distance: item?.Distance ?? item?.distance,
-        Duration: item?.DurationSeconds ?? item?.Duration ??
-          item?.durationSeconds ?? item?.duration,
+        Distance: overview?.Distance ?? overview?.distance,
+        Duration: overview?.DurationSeconds ?? overview?.Duration ??
+          overview?.durationSeconds ?? overview?.duration,
         DistanceUnit: item?.DistanceUnit ?? item?.distanceUnit ??
-          leg?.DistanceUnit ?? leg?.distanceUnit ?? 'Kilometers'
+          leg?.DistanceUnit ?? leg?.distanceUnit ?? 'Meters'
       };
     });
 
@@ -600,7 +613,6 @@
           body: JSON.stringify({
             ...route.awsRequest,
             LegGeometryFormat: 'Simple',
-            DistanceUnit: 'Kilometers',
             Origin: route.awsRequest.Origin,
             Destination: route.awsRequest.Destination,
             TravelMode: route.awsRequest.TravelMode || 'Car',
