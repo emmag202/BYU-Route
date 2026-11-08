@@ -451,31 +451,96 @@
       return `${route.name} · Trip information unavailable`;
     }
 
-    const distance = Number(summary.Distance);
-    const duration = Number(summary.Duration ?? summary.DurationSeconds);
-    const unit = summary.DistanceUnit || 'Kilometers';
+    const distance = Number(summary.Distance ?? summary.distance);
+    const duration = Number(
+      summary.DurationSeconds ??
+      summary.Duration ??
+      summary.durationSeconds ??
+      summary.duration
+    );
+    const unit = String(
+      summary.DistanceUnit ?? summary.distanceUnit ?? 'Kilometers'
+    ).toLowerCase();
 
-    if (!Number.isFinite(distance) || !Number.isFinite(duration)) {
+    if (
+      !Number.isFinite(distance) || distance <= 0 ||
+      !Number.isFinite(duration) || duration <= 0
+    ) {
+      console.error(`Invalid route summary for ${route.name}:`, summary);
       return `${route.name} · Trip information unavailable`;
     }
 
     let distanceMiles;
 
-    if (unit === 'Miles') {
+    if (unit === 'miles' || unit === 'mile') {
       distanceMiles = distance;
-    } else if (unit === 'Meters') {
+    } else if (unit === 'meters' || unit === 'meter') {
       distanceMiles = distance / 1609.344;
-    } else {
-      // Amazon Location Routes commonly reports distance in kilometers.
+    } else if (unit === 'kilometers' || unit === 'kilometer' || unit === 'km') {
       distanceMiles = distance / 1.609344;
+    } else {
+      console.error(`Unknown distance unit for ${route.name}:`, summary);
+      return `${route.name} · Trip information unavailable`;
     }
 
-    if (!Number.isFinite(distanceMiles) || distanceMiles < 0 || distanceMiles > 100) {
+    // Reject implausible values instead of displaying misleading mileage.
+    if (!Number.isFinite(distanceMiles) || distanceMiles <= 0 || distanceMiles > 100) {
       console.error(`Unexpected distance for ${route.name}:`, summary);
       return `${route.name} · Trip information unavailable`;
     }
 
     return `${route.name} · ${distanceMiles.toFixed(1)} miles · ${Math.max(1, Math.round(duration / 60))} min`;
+  }
+
+  function buildRouteSummary(routeResult) {
+    // The Routes API normally supplies one summary for the complete route.
+    const routeSummary = routeResult?.Summary || routeResult?.summary;
+    if (routeSummary) {
+      const routeDistance = Number(routeSummary.Distance ?? routeSummary.distance);
+      const routeDuration = Number(
+        routeSummary.DurationSeconds ?? routeSummary.Duration ??
+        routeSummary.durationSeconds ?? routeSummary.duration
+      );
+      if (
+        Number.isFinite(routeDistance) && routeDistance > 0 &&
+        Number.isFinite(routeDuration) && routeDuration > 0
+      ) {
+        return routeSummary;
+      }
+    }
+
+    // Some responses expose summary values per leg. Support both nested
+    // leg.Summary objects and direct Distance/Duration fields on each leg.
+    const legs = routeResult?.Legs || routeResult?.legs || [];
+    const values = legs.map(leg => {
+      const item = leg?.Summary || leg?.summary || leg;
+      return {
+        Distance: item?.Distance ?? item?.distance,
+        Duration: item?.DurationSeconds ?? item?.Duration ??
+          item?.durationSeconds ?? item?.duration,
+        DistanceUnit: item?.DistanceUnit ?? item?.distanceUnit ??
+          leg?.DistanceUnit ?? leg?.distanceUnit ?? 'Kilometers'
+      };
+    });
+
+    if (!values.length || values.some(item =>
+      !Number.isFinite(Number(item.Distance)) || Number(item.Distance) <= 0 ||
+      !Number.isFinite(Number(item.Duration)) || Number(item.Duration) <= 0
+    )) {
+      return null;
+    }
+
+    const units = new Set(values.map(item => String(item.DistanceUnit).toLowerCase()));
+    if (units.size !== 1) {
+      console.error('Route legs returned mixed distance units:', values);
+      return null;
+    }
+
+    return {
+      Distance: values.reduce((total, item) => total + Number(item.Distance), 0),
+      Duration: values.reduce((total, item) => total + Number(item.Duration), 0),
+      DistanceUnit: values[0].DistanceUnit
+    };
   }
 
   async function calculateRoadRoute(route, currentRequest, showInfo) {
@@ -540,29 +605,9 @@
         throw new Error('AWS did not return usable route geometry.');
       }
 
-      // Prefer the route-level summary. Fall back to adding leg summaries
-      // when the response only contains per-leg summary data.
-      let summary = routeResult?.Summary || null;
-
-      if (!summary) {
-        const legSummaries = (routeResult?.Legs || [])
-          .map(leg => leg.Summary)
-          .filter(Boolean);
-
-        if (legSummaries.length) {
-          summary = {
-            Distance: legSummaries.reduce(
-              (total, item) => total + (Number(item.Distance) || 0),
-              0
-            ),
-            Duration: legSummaries.reduce(
-              (total, item) => total + (Number(item.Duration) || 0),
-              0
-            ),
-            DistanceUnit: legSummaries[0].DistanceUnit || 'Kilometers'
-          };
-        }
-      }
+      // Read the complete route summary first. If it is absent, aggregate
+      // valid per-leg summaries or direct per-leg distance/duration values.
+      const summary = buildRouteSummary(routeResult);
 
       calculatedRouteCache.set(route.id, {
         coordinates,
