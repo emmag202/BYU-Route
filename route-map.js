@@ -28,8 +28,51 @@
   const calculatedRouteCache = new Map();
   let listenersAttached = false;
 
-  const el = id => document.getElementById(id);
-  const apiKey = () => window.BYU_RYDE_AWS_API_KEY || '';
+  const el = id => document.getElementById(id);  const apiKey = () => window.BYU_RYDE_AWS_API_KEY || '';
+
+  async function calculateWalkingRoute(origin, destination) {
+    if (!apiKey()) throw new Error('Amazon Location API key is missing.');
+
+    const response = await fetch(
+      `https://routes.geo.${REGION}.amazonaws.com/v2/routes?key=${encodeURIComponent(apiKey())}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Origin: origin,
+          Destination: destination,
+          TravelMode: 'Pedestrian',
+          TravelStepType: 'TurnByTurn',
+          LegGeometryFormat: 'Simple',
+          LegAdditionalFeatures: ['Summary']
+        })
+      }
+    );
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        data.message || data.Message ||
+        `Amazon Location returned HTTP ${response.status}.`
+      );
+    }
+
+    const route = data.Routes?.[0];
+    const leg = route?.Legs?.[0];
+    const details = leg?.PedestrianLegDetails;
+    const summary = buildRouteSummary(route);
+    if (!leg || !summary) throw new Error('Amazon Location did not return a walking route.');
+
+    return {
+      summary,
+      steps: details?.TravelSteps || [],
+      coordinates: Array.isArray(leg.Geometry?.LineString)
+        ? leg.Geometry.LineString
+        : []
+    };
+  }
+
+  window.calculateRydeWalkingRoute = calculateWalkingRoute;
 
   const routeFeatureCollection = routes => ({
     type: 'FeatureCollection',
