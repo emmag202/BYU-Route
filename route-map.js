@@ -1,3 +1,7 @@
+/* BYU Ryde — clean MapLibre route-map implementation.
+ * Owns one map instance, one base-route source, one stop source,
+ * one calculated-route source, and all route-map event handlers.
+ */
 (() => {
   'use strict';
 
@@ -448,7 +452,7 @@
     }
 
     const distance = Number(summary.Distance);
-    const duration = Number(summary.Duration);
+    const duration = Number(summary.Duration ?? summary.DurationSeconds);
     const unit = summary.DistanceUnit || 'Kilometers';
 
     if (!Number.isFinite(distance) || !Number.isFinite(duration)) {
@@ -466,7 +470,12 @@
       distanceMiles = distance / 1.609344;
     }
 
-    return `${route.name} · ${distanceMiles.toFixed(1)} miles · ${Math.round(duration / 60)} min`;
+    if (!Number.isFinite(distanceMiles) || distanceMiles < 0 || distanceMiles > 100) {
+      console.error(`Unexpected distance for ${route.name}:`, summary);
+      return `${route.name} · Trip information unavailable`;
+    }
+
+    return `${route.name} · ${distanceMiles.toFixed(1)} miles · ${Math.max(1, Math.round(duration / 60))} min`;
   }
 
   async function calculateRoadRoute(route, currentRequest, showInfo) {
@@ -497,6 +506,7 @@
           body: JSON.stringify({
             ...route.awsRequest,
             LegGeometryFormat: 'Simple',
+            DistanceUnit: 'Kilometers',
             Origin: route.awsRequest.Origin,
             Destination: route.awsRequest.Destination,
             TravelMode: route.awsRequest.TravelMode || 'Car',
