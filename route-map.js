@@ -1,3 +1,4 @@
+
 /* BYU Ryde — clean MapLibre route-map implementation.
  * Owns one map instance, one base-route source, one stop source,
  * one calculated-route source, and all route-map event handlers.
@@ -466,6 +467,7 @@
           },
           body: JSON.stringify({
             ...route.awsRequest,
+            LegGeometryFormat: 'Simple',
             Origin: route.awsRequest.Origin,
             Destination: route.awsRequest.Destination,
             TravelMode: route.awsRequest.TravelMode || 'Car',
