@@ -3,12 +3,3 @@ node_modules/
 global-bundle.pem
 npm-debug.log*
 ryde-lambda.zip
-.env.*
-!.env.example
-*.pem
-*.key
-*.p12
-*.pfx
-artifacts/
-*.crt
-*.cer

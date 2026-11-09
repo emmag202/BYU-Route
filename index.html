@@ -326,17 +326,13 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .near-btn{appearance:none;border:1px solid #002e5d;background:#002e5d;color:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
 .near-btn.ghosty{background:#fff;color:#002e5d}
 .near-btn:disabled{opacity:.6}
-/* Near-you cards are the primary, large cards. */
-.near-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:10px}
-.near-item{appearance:none;text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--card,#fff);border:1px solid #e1e7f0;border-left:6px solid var(--c);border-radius:14px;padding:21px 22px;display:flex;flex-direction:column;gap:4px;box-shadow:0 3px 12px #001b3810;transition:transform .12s,box-shadow .12s}
-.near-item:hover{transform:translateY(-2px);box-shadow:0 8px 20px #001b381a}
-.near-item:focus-visible{outline:3px solid #0047ba;outline-offset:2px}
-.near-route{font-size:22px;font-weight:800;line-height:1.2;color:#122f4e}
-.near-stop{font-size:14px;color:#5b697a;line-height:1.4}
-.near-label{margin-top:12px;font-size:11px;font-weight:750;letter-spacing:.6px;text-transform:uppercase;color:#556b82}
-.near-time{font-size:30px;font-weight:800;line-height:1.15;color:#0047ba;letter-spacing:-.4px}
-.near-none{margin-top:12px;font-size:15px;font-weight:650;color:#5b697a}
-@media(max-width:650px){.near-list{grid-template-columns:1fr;gap:12px}.near-item{padding:18px}.near-route{font-size:20px}.near-time{font-size:27px}}
+.near-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:10px}
+.near-item{background:var(--card,#fff);border:1px solid var(--line,#e5e7eb);border-left:6px solid var(--c);border-radius:8px;padding:11px 12px;display:flex;flex-direction:column;gap:8px}
+.near-open{appearance:none;text-align:left;font:inherit;color:inherit;background:none;border:0;padding:0;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+.near-start{margin-top:auto!important;padding:9px!important;font-size:14px!important}
+.near-route{font-weight:700}
+.near-stop{font-size:13px;color:#4b5563}
+.near-next{font-size:13px;font-weight:650}
 .day-picker{display:flex;gap:8px;overflow-x:auto;padding:4px 0 2px;margin-top:6px;scrollbar-width:thin}
 .day-chip{appearance:none;flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 12px;border:1px solid var(--line,#d1d5db);border-radius:10px;background:#fff;font:inherit;color:inherit;cursor:pointer;text-align:left}
 .day-chip-name{font-weight:700;font-size:14px}
@@ -438,24 +434,6 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .strip-tag{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:#eef2f6;color:#4a5b6e}
 .board .strip-tag,.dest .strip-tag{background:var(--c);color:#fff}.walk-box{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px dashed #b9c6d6;border-radius:10px;background:#fafbfd} 
 .strip-body .near-btn{margin-top:6px}
-/* Route cards are compact secondary cards (near-you cards are the large ones). */
-.home-body .rail{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
-.home-body .rc{padding:12px 14px;border-radius:10px;box-shadow:0 1px 4px #001b380d}
-.home-body .rc .route-name{font-size:13px}
-.home-body .rc .route-stop{font-size:16px;margin-top:2px;line-height:1.25}
-.home-body .rc .next-time{font-size:20px;margin-top:4px}
-.home-body .rc .next-in{font-size:.6em}
-.home-body .rc .next-day{font-size:.6em}
-@media(max-width:650px){.home-body .rail{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.home-body .rc{padding:10px 12px}.home-body .rc .route-stop{font-size:15px}.home-body .rc .next-time{font-size:18px}}
-/* "Show all times" */
-.all-times{margin-top:18px}
-.all-times[open]>summary{margin-bottom:6px}
-.at-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:4px 0 6px}
-.at-top .dir-switch{margin-top:0}
-.at-route{border-top:1px solid #e8edf2;padding:16px 0 4px}
-.at-route h3{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0;font-size:19px;font-weight:800;color:#122f4e;padding-left:10px;border-left:5px solid var(--c)}
-.at-route h3 span{font-size:13px;font-weight:600;color:#6a7a8c}
-.at-route .tt-table thead th{border-bottom-color:var(--c)}
 </style>
 </head>
 <body>
@@ -695,6 +673,9 @@ function cardHTML(r){
    <span class="route-stop" data-card-stops="${r.id}">${cardNextStop(r,rn)}</span>
    <span class="next-time" data-next-time="${r.id}">${nextTimeText(rn.next)}</span>
   </button>
+  <button type="button" class="start-btn" data-start="${r.id}">Start ▸</button>
+  <button class="more" data-more="${r.id}" aria-expanded="${open}">${open?"More times ▴":"More times ▾"}</button>
+  <div class="later${open?" open":""}" id="l${r.id}">${laterHTML(r,rn)}</div>
  </article>`;
 }
 function updateCard(r){
@@ -712,7 +693,6 @@ function refreshTimes(force){
  if(startState){renderStart();return}
  if(screen==2&&sel&&$("schedPanel")){$("schedPanel").innerHTML=schedulePanel(sel);return}
  R.forEach(updateCard);
- if(allTimesOpen&&$("allTimesBody"))$("allTimesBody").innerHTML=allTimesBody();
 }
 setInterval(()=>refreshTimes(),15000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshTimes(true)});
@@ -835,7 +815,7 @@ function nearYouHTML(){
  const list=nearSuggestions(nearState.pos),where=nearState.source==="home"?"your home":"you";
  let h=head(nearState.source==="home"?"Near your home":"Near you")+`<div class="near-actions">${locBtn}${homeBtn}</div></div>`;
  if(!list.length)h+=`<p class="sub">No Ryde stops within ${NEAR_RADIUS_MI} miles of ${where}.</p>`;
- else h+=`<div class="near-list">`+list.map(({r,d,label})=>{const t=nextPickupNear(r,label);return `<button type="button" class="near-item" data-open="${r.id}" style="--c:${r.color}" aria-label="Plan a trip on ${esc(r.name)}"><span class="near-route">${esc(r.name)}</span><span class="near-stop">${label?esc(label):"Closest point on route"} · ${d<0.1?"right here":`${d.toFixed(1)} mi`} · ~${walkMinutes(d)} min walk</span>${t?`<span class="near-label">Next pickup${label?"":` at ${esc(t.stop)}`}</span><span class="near-time">${fmtDeparture(t.time)}</span>`:`<span class="near-none">${r.service!=="daily"&&[0,6].includes(serviceNow().day)?"No weekend service":"No more pickups today"}</span>`}</button>`}).join("")+`</div>`;
+ else h+=`<div class="near-list">`+list.map(({r,d,label})=>{const t=nextPickupNear(r,label);return `<div class="near-item" style="--c:${r.color}"><button type="button" class="near-open" data-open="${r.id}" aria-label="View ${esc(r.name)} schedule"><span class="near-route">${esc(r.name)}</span><span class="near-stop">${label?esc(label):"Closest point on route"} · ${d<0.1?"right here":`${d.toFixed(1)} mi`} · ~${walkMinutes(d)} min walk</span><span class="near-next">${t?`${"Next"} pickup ${fmtDeparture(t.time)}${label?"":` at ${esc(t.stop)}`}`:r.service!=="daily"&&[0,6].includes(serviceNow().day)?"No weekend service":"No more pickups today"}</span></button><button type="button" class="start-btn near-start" data-start="${r.id}">Start ▸</button></div>`}).join("")+`</div>`;
  if(nearState.source==="gps"&&currentUser&&!homePlace)h+=`<button type="button" class="near-btn ghosty" data-near="save-home">Save this location as my home</button>`;
  return h+`</section>`;
 }
@@ -867,26 +847,6 @@ function showWelcomeIntro(){
   try{return sessionStorage.getItem("ryde_welcome_dismissed")!=="1"}
   catch{return true}
 }
-// ---- "Show all times": a traditional printed-style timetable for every route, below the route cards ----
-let allTimesOpen=false,allTimesDay=null;
-function allTimesBody(){
- const k=allTimesDay||todaySchedDay(),today=todaySchedDay();
- const sw=`<div class="dir-switch sched-day-switch" role="group" aria-label="Schedule day">${SCHED_DAYS.map(([v,l])=>`<button type="button" data-all-day="${v}" aria-pressed="${k===v}">${l}${v===today?" · today":""}</button>`).join("")}</div>`;
- const route=r=>{
-  const daily=r.service==="daily",rk=daily?"daily":k;
-  const body=!daily&&k==="wkd"
-   ?`<p class="sub">No weekend service.</p>`
-   :`<div class="tt-wrap">${timetableHTML(r,rk,"To campus",r.toCampus,r.toCampus.map(j=>esc(r.stops[j][0])))}${timetableHTML(r,rk,"Leaving campus",r.fromCampus,[`${esc(r.campusStop)} <span class="tt-sub">→ ${esc(housing(r).join(" / "))}</span>`])}</div>`;
-  return `<section class="at-route" style="--c:${r.color}" aria-label="${esc(r.name)} timetable"><h3>${esc(r.name)}<span>${runDays(r)}</span></h3>${body}</section>`;
- };
- return `<div class="at-top">${sw}${k==="fri"?'<span class="sub">Friday: buses stop earlier than Mon–Thu.</span>':""}</div>${R.map(route).join("")}<p class="sub sched-foot">Fall and Winter semesters; school holiday exceptions apply. Times are scheduled, not live.</p>`;
-}
-// Rendered only while open, so the home page stays light.
-const allTimesSection=()=>`<details class="info-collapsible all-times" id="allTimes"${allTimesOpen?" open":""}><summary>Show all times</summary><div id="allTimesBody">${allTimesOpen?allTimesBody():""}</div></details>`;
-document.addEventListener("toggle",e=>{
- if(e.target.id!=="allTimes")return;
- allTimesOpen=e.target.open;const b=$("allTimesBody");if(b)b.innerHTML=allTimesOpen?allTimesBody():"";
-},true);
 function home(filter=""){
   setHash("#/");layout(1);sel=null;startState=null;showRoutes(R.map(r=>r.id));view(0,0,840);
   $("app").classList.remove("map-mode");
@@ -904,7 +864,6 @@ function home(filter=""){
     </section>`:""}${f?"":nearYouHTML()}<div class="section-heading"><div><h2>Explore shuttle routes</h2></div><span class="sub">${list.length} routes</span></div>${dirBannerHTML()}`;
   if(!list.length){h+=`<div class="card">No routes match “${esc(filter.trim())}”.${suggestion?` Did you mean <button type="button" class="did-you-mean" data-suggest="${esc(suggestion)}">${esc(suggestion)}</button>?`:" Try another stop or neighborhood."}</div>`}
   else h+=`<div class="rail">`+list.map(cardHTML).join("")+`</div>`;
-  h+=allTimesSection();
   h+=`<div class="map-teaser"><div><h2>Want to see all the routes?</h2><p>Explore the official BYU Ryde route diagram, zoom in, and select a route.</p></div><button type="button" id="openMapFromHome">Explore route map →</button></div>
     <details class="info-collapsible"><summary>Service information, eligibility & contact</summary>${informationPanel()}</details></div>`;
   sheet.innerHTML=h;
@@ -1024,7 +983,6 @@ document.addEventListener("click",e=>{
    const v=ds.dataset.dirSet;dirOverride=v==="auto"||v===autoDir()?null:v;
    if(startState){startState.board=null;startState.dest=null}
    refreshScreen();return}
-  const ad=e.target.closest("[data-all-day]");if(ad){allTimesDay=ad.dataset.allDay;$("allTimesBody").innerHTML=allTimesBody();document.querySelector(`[data-all-day="${allTimesDay}"]`)?.focus();return}
   const sd=e.target.closest("[data-sched-day]");if(sd){
    const r=R.find(x=>x.id==sd.dataset.schedRoute),panel=$("schedPanel");if(!r||!panel)return;
    schedDayOf[r.id]=sd.dataset.schedDay;panel.innerHTML=schedulePanel(r);panel.querySelector(`[data-sched-day="${sd.dataset.schedDay}"]`)?.focus();return}
