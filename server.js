@@ -1,3 +1,4 @@
+// Express/EJS entry point, preserved PostgreSQL queries and Lambda handler; Lex backend workstream.
 require("dotenv").config();
 
 const fs = require("node:fs");
@@ -9,29 +10,26 @@ const cors = require("cors");
 const { Pool } = require("pg");
 const serverless = require("serverless-http");
 
+// Optional RDS configuration: the website must still start without database access.
 const required = ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_SSL_CA"];
 const missing = required.filter((name) => !process.env[name]);
-if (missing.length) {
-  console.error(`Missing settings in .env: ${missing.join(", ")}`);
-  process.exit(1);
+let pool = null;
+if (!missing.length) {
+  try {
+    pool = new Pool({
+      host: process.env.DB_HOST, port: Number(process.env.DB_PORT || 5432),
+      database: process.env.DB_NAME, user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      ssl: { ca: fs.readFileSync(path.resolve(process.env.DB_SSL_CA), "utf8"), rejectUnauthorized: true },
+      max: 5, connectionTimeoutMillis: 10000,
+    });
+    pool.on("error", () => console.error("Idle database connection failed."));
+  } catch {
+    console.error("Database unavailable: check DB_SSL_CA and database configuration.");
+  }
+} else {
+  console.warn(`Database unavailable: missing ${missing.join(", ")}. Routes and schedules remain available.`);
 }
-
-const caPath = path.resolve(process.env.DB_SSL_CA);
-if (!fs.existsSync(caPath)) {
-  console.error(`RDS certificate bundle not found: ${caPath}`);
-  process.exit(1);
-}
-
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT || 5432),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: { ca: fs.readFileSync(caPath, "utf8"), rejectUnauthorized: true },
-  max: 5,
-  connectionTimeoutMillis: 10000,
-});
 
 const scrypt = promisify(crypto.scrypt);
 const SESSION_DAYS = 7;
@@ -43,8 +41,8 @@ async function makePasswordHash(password) {
 }
 
 async function verifyPassword(password, storedHash) {
-  const [algorithm, saltHex, hashHex] = String(storedHash || "").split("$");
-  if (algorithm !== "scrypt" || !saltHex || !hashHex) return false;
+  if (!/^scrypt\$[a-f0-9]{32}\$[a-f0-9]{128}$/.test(String(storedHash || ""))) return false;
+  const [, saltHex, hashHex] = storedHash.split("$");
   const expected = Buffer.from(hashHex, "hex");
   if (!expected.length) return false;
   const actual = Buffer.from(await scrypt(password, Buffer.from(saltHex, "hex"), expected.length));
@@ -53,6 +51,14 @@ async function verifyPassword(password, storedHash) {
 
 function hashSessionToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+// Cookie transport is prepared but remains behind the unconditional account gate.
+function sessionCookieOptions() {
+  return { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/api" };
+}
+function setSessionCookie(res, token) {
+  res.cookie("ryde_session", token, { ...sessionCookieOptions(), maxAge: SESSION_DAYS * 86400000 });
 }
 
 async function createSession(userId) {
@@ -66,24 +72,28 @@ async function createSession(userId) {
   return token;
 }
 
-async function requireAuth(req, res, next) {
-  const match = /^Bearer\s+(.+)$/i.exec(req.get("authorization") || "");
-  if (!match) return res.status(401).json({ error: "Please sign in again." });
-  try {
-    const tokenHash = hashSessionToken(match[1].trim());
-    const result = await pool.query(
-      "SELECT user_id FROM appsession WHERE token_hash = $1 AND expires_at > CURRENT_TIMESTAMP",
-      [tokenHash],
-    );
-    if (!result.rows[0]) return res.status(401).json({ error: "Your session expired. Please sign in again." });
-    req.authUserId = Number(result.rows[0].user_id);
-    req.authTokenHash = tokenHash;
-    if (req.params.userId && Number(req.params.userId) !== req.authUserId) {
-      return res.status(403).json({ error: "You can only access your own account." });
-    }
-    next();
-  } catch (error) { next(error); }
+// Injectable query dependency lets authorization be tested without touching RDS.
+function buildRequireAuth(database) {
+  return async function requireAuth(req, res, next) {
+    const match = /(?:^|;\s*)ryde_session=([A-Za-z0-9_-]{43})(?:;|$)/.exec(req.get("cookie") || "");
+    if (!match) return res.status(401).json({ error: "Please sign in again." });
+    try {
+      const tokenHash = hashSessionToken(match[1].trim());
+      const result = await database.query(
+        "SELECT user_id FROM appsession WHERE token_hash = $1 AND expires_at > CURRENT_TIMESTAMP",
+        [tokenHash],
+      );
+      if (!result.rows[0]) return res.status(401).json({ error: "Your session expired. Please sign in again." });
+      req.authUserId = Number(result.rows[0].user_id);
+      req.authTokenHash = tokenHash;
+      if (req.params.userId && Number(req.params.userId) !== req.authUserId) {
+        return res.status(403).json({ error: "You can only access your own account." });
+      }
+      next();
+    } catch (error) { next(error); }
+  };
 }
+const requireAuth = buildRequireAuth(pool);
 
 const routeNames = {
   "101": "West Route",
@@ -97,6 +107,16 @@ const routeNames = {
 const routeKeys = Object.fromEntries(Object.entries(routeNames).map(([key, name]) => [name, key]));
 
 const app = express();
+app.disable("x-powered-by");
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+app.use((_req, res, next) => {
+  res.set("X-Content-Type-Options", "nosniff");
+  res.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+app.use(express.static(path.join(__dirname, "public"), { maxAge: process.env.NODE_ENV === "production" ? "1h" : 0 }));
+app.get(["/", "/index.html"], (_req, res) => res.render("index"));
 if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
   app.use(cors({
     origin(origin, callback) {
@@ -112,7 +132,19 @@ if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
 }
 app.use(express.json({ limit: "20kb" }));
 
-app.get("/api/health", (_req, res) => res.json({ ok: true }));
+app.get("/api/health", (_req, res) => res.json({
+  ok: true,
+  database: pool ? "configured-unverified" : "unavailable",
+  profiles: "disabled-pending-authentication",
+}));
+
+// Fail closed: neither a typed Net ID nor a URL user ID proves identity.
+// Preserve all queries below for the future authenticated account implementation.
+// There is intentionally no environment switch or shared browser key to bypass this.
+app.use(["/api/users", "/api/login", "/api/logout", "/api/me"], (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.status(503).json({ error: "Accounts, favorites, and saved addresses are unavailable until secure sign-in verification and the approved Lambda connection are ready. A Net ID or email alone does not verify identity." });
+});
 
 app.post("/api/login", async (req, res, next) => {
   try {
@@ -124,18 +156,18 @@ app.post("/api/login", async (req, res, next) => {
       [netId],
     );
     const user = result.rows[0];
-    if (!user) return res.status(404).json({ error: "Net ID does not exist." });
-    if (!user.password_hash) return res.status(409).json({ error: "This account needs a password. Choose Create an account and use the same Net ID and BYU email to set one." });
-    if (!(await verifyPassword(password, user.password_hash))) return res.status(401).json({ error: "Password is incorrect." });
+    if (!user || !user.password_hash || !(await verifyPassword(password, user.password_hash))) return res.status(401).json({ error: "Unable to sign in with those credentials." });
     const token = await createSession(user.user_id);
     delete user.password_hash;
-    res.json({ user, token });
+    setSessionCookie(res, token);
+    res.json({ user });
   } catch (error) { next(error); }
 });
 
 app.post("/api/logout", requireAuth, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM appsession WHERE token_hash = $1", [req.authTokenHash]);
+    res.clearCookie("ryde_session", sessionCookieOptions());
     res.status(204).end();
   } catch (error) { next(error); }
 });
@@ -167,16 +199,15 @@ app.post("/api/users", async (req, res, next) => {
     const result = await pool.query(
       `INSERT INTO appuser (name, net_id, email, password_hash)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (net_id) DO UPDATE
-         SET name = EXCLUDED.name, password_hash = EXCLUDED.password_hash
-         WHERE lower(appuser.email) = EXCLUDED.email AND appuser.password_hash IS NULL
+       ON CONFLICT (net_id) DO NOTHING
        RETURNING user_id, net_id, name, email`,
       [name, netId, email, passwordHash],
     );
     const user = result.rows[0];
     if (!user) return res.status(409).json({ error: "An account already exists with that Net ID. Sign in instead." });
     const token = await createSession(user.user_id);
-    res.json({ user, token });
+    setSessionCookie(res, token);
+    res.json({ user });
   } catch (error) { next(error); }
 });
 
@@ -273,20 +304,26 @@ app.delete("/api/users/:userId/home", async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+app.use("/api", (_req, res) => res.status(404).json({ error: "API endpoint not found." }));
 app.use((error, _req, res, _next) => {
   console.error(error.message);
   if (error.code === "23505") return res.status(409).json({ error: "An account already exists with that Net ID or email. Please sign in instead." });
+  if (error.type === "entity.parse.failed") return res.status(400).json({ error: "Invalid JSON body." });
+  if (error.type === "entity.too.large") return res.status(413).json({ error: "Request body is too large." });
+
   res.status(500).json({ error: "The database request failed. Check the local API and database connection." });
 });
 
 // API Gateway or a Lambda Function URL invokes this handler in AWS.
 exports.handler = serverless(app);
+exports.app = app;
+exports.authInternals = { makePasswordHash, verifyPassword, hashSessionToken, requireAuth, buildRequireAuth, sessionCookieOptions };
 
 // Keep the local workflow available for development in VS Code.
-if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
+if (require.main === module && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
   const port = Number(process.env.PORT || 3000);
-  app.listen(port, "127.0.0.1", () => console.log(`Ryde API listening at http://127.0.0.1:${port}`));
+  app.listen(port, process.env.HOST || "0.0.0.0", () => console.log(`BYU Ryde listening at http://localhost:${port}`));
 }
 
-process.on("SIGINT", async () => { await pool.end(); process.exit(0); });
-process.on("SIGTERM", async () => { await pool.end(); process.exit(0); });
+process.on("SIGINT", async () => { await pool?.end(); process.exit(0); });
+process.on("SIGTERM", async () => { await pool?.end(); process.exit(0); });

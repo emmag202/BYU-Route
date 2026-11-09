@@ -1,0 +1,56 @@
+<!-- Existing Ryde page shell; preserve IDs and script order. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BYU Ryde prototype</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="app">
+<%- include('partials/header') %>
+  <div class="mapwrap" id="mapwrap">
+    <div id="routeMap" aria-label="Interactive BYU shuttle route map"></div>
+    <!-- Keep original map controls hidden for backwards compatibility with app scripts. -->
+    <svg id="map" viewBox="0 0 400 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Legacy shuttle map"></svg>
+    <div class="mapcontrols" aria-hidden="true" style="display:none!important">
+      <button id="zoomIn" type="button" tabindex="-1" aria-hidden="true"></button>
+      <button id="zoomOut" type="button" tabindex="-1" aria-hidden="true"></button>
+      <button id="fitMap" type="button" tabindex="-1" aria-hidden="true"></button>
+    </div>
+    <div class="top hide" id="top" aria-hidden="true" style="display:none!important">
+      <input id="q" type="search" tabindex="-1" aria-hidden="true">
+      <button class="fab" id="locate" type="button" tabindex="-1" aria-hidden="true"></button>
+    </div>
+    <div class="map-route-picker" id="mapRoutePicker" aria-label="Legacy map route picker" style="display:none!important"></div>
+    <div class="aws-place-search" role="search" aria-label="Amazon Location place search">
+      <input id="awsPlaceQuery" type="search" placeholder="Search BYU buildings, places, or addresses" aria-label="Search places" autocomplete="off" aria-autocomplete="list" aria-controls="awsPlaceSuggestions">
+      <button id="awsPlaceSearch" type="button">Search</button>
+      <button id="awsNearbySearch" type="button">Nearby</button>
+      <div class="aws-place-suggestions" id="awsPlaceSuggestions" role="listbox" aria-label="Location suggestions" hidden></div>
+    </div>
+    <div class="aws-place-status" id="awsPlaceStatus" aria-live="polite"></div>
+    <div class="king-henry-stop-legend" id="kingHenryStopLegend" hidden aria-label="Map legend: selected route student pickup and drop-off stops">
+      <span class="legend-marker"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16.5V18a1 1 0 0 0 1 1h1v-2.5M17 16.5V19h1a1 1 0 0 0 1-1v-1.5M4 11h16M7 7h.01M17 7h.01M6 3.5h12A2.5 2.5 0 0 1 20.5 6v9A2.5 2.5 0 0 1 18 17.5H6A2.5 2.5 0 0 1 3.5 15V6A2.5 2.5 0 0 1 6 3.5Z"/></svg></span>
+      <span><strong>Student pickup &amp; drop-off</strong><small>Students can board or exit here</small></span>
+    </div>
+    <section class="ryde-nav-panel" id="rydeNavPanel" aria-live="polite" hidden>
+      <div class="ryde-nav-head"><strong id="rydeNavTitle">King Henry</strong><button type="button" id="rydeNavClose" aria-label="Close route summary">×</button></div>
+      <div class="ryde-nav-stats"><div><span id="rydeNavDistance">—</span><small>Trip distance</small></div><div><span id="rydeNavTime">—</span><small>Trip time</small></div></div>
+      <div class="ryde-nav-summary" id="rydeNavSummary">Calculating route…</div>
+    </section>
+    <nav class="route-tabs" id="routeTabs" aria-label="Choose a shuttle route"></nav>
+    <button class="back hide" id="back" aria-label="Back">←</button>
+  </div>
+  <div class="sheet" id="sheet"></div>
+  <div class="modalBack hide" id="profileModal"><section class="modal"><div id="profileContent"></div><button class="ghost" id="closeProfile">Close</button></section></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="/js/aws-config.js"></script>
+<script src="/js/route-data.js"></script>
+<script src="/js/route-map.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

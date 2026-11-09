@@ -17,5 +17,3 @@ CREATE INDEX IF NOT EXISTS appsession_user_id_idx
 
 CREATE INDEX IF NOT EXISTS appsession_expires_at_idx
   ON public.appsession(expires_at);
-
-
