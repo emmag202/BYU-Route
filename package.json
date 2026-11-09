@@ -2,18 +2,16 @@
   "name": "byu-ryde-local-api",
   "version": "1.0.0",
   "private": true,
-  "description": "BYU Ryde Express/EJS application with preserved Lambda API",
+  "description": "Local server-side API for the BYU Ryde static prototype",
   "scripts": {
-    "start": "node server.js",
-    "test": "node --test"
+    "start": "node server.js"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=20"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "ejs": "^7.0.2",
     "express": "^4.21.2",
     "pg": "^8.13.1",
     "serverless-http": "^3.2.0"

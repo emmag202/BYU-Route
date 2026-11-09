@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$requiredFiles = @("server.js", "views", "public", "package.json", "node_modules", "global-bundle.pem")
+$requiredFiles = @("server.js", "package.json", "node_modules", "global-bundle.pem")
 foreach ($name in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $name))) {
         throw "Required deployment item is missing: $name"
