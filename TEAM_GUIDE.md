@@ -1,4 +1,4 @@
-﻿# BYU Ryde team guide
+# BYU Ryde team guide
 
 ## Install and run
 
@@ -36,7 +36,7 @@ git commit -m "Describe your change"
 git push -u origin feature/short-task-name
 ```
 
-Open a GitHub Pull Request into `main` with the Trello card, behavior change and test results. Request teammate review. Never force-push or push directly to `main`. The migration branch is `feature/fullstack-ejs`; its current work has not been committed or pushed.
+Open a GitHub Pull Request into `main` with the Trello card, behavior change and test results. Request teammate review. Never force-push or push directly to `main`. The migration branch is `feature/fullstack-ejs`. Migration commit `24fe79b` already exists; the integration of Emma's `fd30f95` is a local, uncommitted merge for review. Do not switch branches or start another merge while this merge is pending. Inspect `git status`, `git diff --cached`, and `git diff`; commit/push only after approval.
 
 ## Shared configuration and bugs
 
@@ -45,3 +45,9 @@ Coordinate server/API contracts, public AWS key restrictions, SQL/migrations, np
 Accounts/favorites/home addresses deliberately return unavailable until verified authentication and ownership checks exist. Do not bypass this gate for a presentation using real users. Ask Emma/AWS administrator for approved identity integration, a test dataset, TLS bundle and existing Lambda access/authentication details; do not widen RDS access.
 
 Report bugs in a GitHub issue or Trello card with branch/commit, URL/hash, browser, viewport, steps, expected/actual result, screenshot and console/network errors. Remove names, emails, home addresses and credentials. See `TESTING.md` for remaining checks.
+
+## Emma account integration
+
+Emma's Create Account and Sign In forms, validation, and account options now live in `public/js/app.js`; EJS keeps the existing modal shell. `server.js` retains scrypt hashes, hashed seven-day revocable sessions, and ownership checks. Session transport is prepared for HttpOnly/SameSite=Strict cookies (Secure in production); the active browser never stores or sends bearer tokens. Account routes remain unconditionally blocked, including login/logout/me, until secure enrollment and infrastructure are ready. No environment setting bypasses the gate.
+
+`password-auth-migration.sql` is Emma's unexecuted schema change, outside `public/`. Never claim a passwordless account with just its Net ID/email; the inherited claim query was removed. Emma/AWS owner must approve verified enrollment/recovery, schema migration, non-production tests and the authenticated Lambda contract. CSRF and login-abuse protections must be implemented and tested before activation. Passwords here are intended as separate Ryde credentials, never BYU passwords. The untouched legacy GitHub Pages script uses Emma's original token design; it has not received the Node security changes and must be reviewed separately before publishing.

@@ -35,9 +35,9 @@ The original `index.html`, `route-map.js`, `route-data.js`, and `aws-config.js` 
 
 ## 5. Profiles, database and Lambda
 
-**Personal-data APIs are blocked with HTTP 503 pending secure sign-in.** The previous implementation treated a typed Net ID as identity and exposed profiles, favorites and home addresses through user IDs. The migrated UI explains this limitation. No database operation is represented as successful while blocked.
+**Personal-data APIs are blocked with HTTP 503 pending secure sign-in.** The previous implementation treated a typed Net ID as identity and exposed profiles, favorites and home addresses through user IDs. Emma's Create Account and Sign In interface is integrated into `public/js/app.js`. Account APIs (`/api/login`, `/api/logout`, `/api/me`, `/api/users`) remain blocked. Her scrypt hashing, hashed/expiring database sessions, and ownership checks are preserved behind that gate. Session transport is prepared as HttpOnly cookies, with no browser token storage. Existing passwordless accounts cannot be claimed by matching a Net ID/email. No database operation is represented as successful while blocked.
 
-All original parameterized SQL queries and strict RDS TLS verification remain in `server.js`. Optional settings are listed in `.env.example`; use a private `.env` and the administrator-provided certificate. Do not run `migrate-home.js` or change schemas as part of this migration.
+All original parameterized SQL queries and strict RDS TLS verification remain in `server.js`. Optional settings are listed in `.env.example`; use a private `.env` and the administrator-provided certificate. Do not run `migrate-home.js` or `password-auth-migration.sql`, or change schemas, without approval. Applying the password schema alone will not enable accounts.
 
 The existing Lambda `exports.handler` remains, and its package script now includes views and static assets. No AWS deployment has been performed. **The already deployed Lambda has not been secured by these local changes**; its owner must review its current public profile endpoints. Do not test it using real user IDs. GitHub Pages still points to that existing backend.
 

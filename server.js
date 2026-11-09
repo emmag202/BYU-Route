@@ -3,6 +3,8 @@ require("dotenv").config();
 
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
+const { promisify } = require("node:util");
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
@@ -28,6 +30,70 @@ if (!missing.length) {
 } else {
   console.warn(`Database unavailable: missing ${missing.join(", ")}. Routes and schedules remain available.`);
 }
+
+const scrypt = promisify(crypto.scrypt);
+const SESSION_DAYS = 7;
+
+async function makePasswordHash(password) {
+  const salt = crypto.randomBytes(16);
+  const derived = await scrypt(password, salt, 64);
+  return `scrypt$${salt.toString("hex")}$${Buffer.from(derived).toString("hex")}`;
+}
+
+async function verifyPassword(password, storedHash) {
+  if (!/^scrypt\$[a-f0-9]{32}\$[a-f0-9]{128}$/.test(String(storedHash || ""))) return false;
+  const [, saltHex, hashHex] = storedHash.split("$");
+  const expected = Buffer.from(hashHex, "hex");
+  if (!expected.length) return false;
+  const actual = Buffer.from(await scrypt(password, Buffer.from(saltHex, "hex"), expected.length));
+  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
+}
+
+function hashSessionToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+// Cookie transport is prepared but remains behind the unconditional account gate.
+function sessionCookieOptions() {
+  return { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/api" };
+}
+function setSessionCookie(res, token) {
+  res.cookie("ryde_session", token, { ...sessionCookieOptions(), maxAge: SESSION_DAYS * 86400000 });
+}
+
+async function createSession(userId) {
+  const token = crypto.randomBytes(32).toString("base64url");
+  const tokenHash = hashSessionToken(token);
+  await pool.query("DELETE FROM appsession WHERE expires_at <= CURRENT_TIMESTAMP");
+  await pool.query(
+    "INSERT INTO appsession (user_id, token_hash, expires_at) VALUES ($1, $2, CURRENT_TIMESTAMP + ($3 * INTERVAL '1 day'))",
+    [userId, tokenHash, SESSION_DAYS],
+  );
+  return token;
+}
+
+// Injectable query dependency lets authorization be tested without touching RDS.
+function buildRequireAuth(database) {
+  return async function requireAuth(req, res, next) {
+    const match = /(?:^|;\s*)ryde_session=([A-Za-z0-9_-]{43})(?:;|$)/.exec(req.get("cookie") || "");
+    if (!match) return res.status(401).json({ error: "Please sign in again." });
+    try {
+      const tokenHash = hashSessionToken(match[1].trim());
+      const result = await database.query(
+        "SELECT user_id FROM appsession WHERE token_hash = $1 AND expires_at > CURRENT_TIMESTAMP",
+        [tokenHash],
+      );
+      if (!result.rows[0]) return res.status(401).json({ error: "Your session expired. Please sign in again." });
+      req.authUserId = Number(result.rows[0].user_id);
+      req.authTokenHash = tokenHash;
+      if (req.params.userId && Number(req.params.userId) !== req.authUserId) {
+        return res.status(403).json({ error: "You can only access your own account." });
+      }
+      next();
+    } catch (error) { next(error); }
+  };
+}
+const requireAuth = buildRequireAuth(pool);
 
 const routeNames = {
   "101": "West Route",
@@ -75,16 +141,42 @@ app.get("/api/health", (_req, res) => res.json({
 // Fail closed: neither a typed Net ID nor a URL user ID proves identity.
 // Preserve all queries below for the future authenticated account implementation.
 // There is intentionally no environment switch or shared browser key to bypass this.
-app.use("/api/users", (_req, res) => {
+app.use(["/api/users", "/api/login", "/api/logout", "/api/me"], (_req, res) => {
   res.set("Cache-Control", "no-store");
-  res.status(503).json({ error: "Profiles, favorites, and saved addresses are unavailable until secure sign-in is implemented. A Net ID or email alone does not verify identity." });
+  res.status(503).json({ error: "Accounts, favorites, and saved addresses are unavailable until secure sign-in verification and the approved Lambda connection are ready. A Net ID or email alone does not verify identity." });
 });
 
-app.get("/api/users/by-net-id/:netId", async (req, res, next) => {
+app.post("/api/login", async (req, res, next) => {
+  try {
+    const netId = String(req.body.net_id || "").trim();
+    const password = String(req.body.password || "");
+    if (!netId || netId.length > 50 || !password || password.length > 128) return res.status(400).json({ error: "Enter your Net ID and password." });
+    const result = await pool.query(
+      "SELECT user_id, net_id, name, email, password_hash FROM appuser WHERE net_id = $1",
+      [netId],
+    );
+    const user = result.rows[0];
+    if (!user || !user.password_hash || !(await verifyPassword(password, user.password_hash))) return res.status(401).json({ error: "Unable to sign in with those credentials." });
+    const token = await createSession(user.user_id);
+    delete user.password_hash;
+    setSessionCookie(res, token);
+    res.json({ user });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/logout", requireAuth, async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM appsession WHERE token_hash = $1", [req.authTokenHash]);
+    res.clearCookie("ryde_session", sessionCookieOptions());
+    res.status(204).end();
+  } catch (error) { next(error); }
+});
+
+app.get("/api/me", requireAuth, async (req, res, next) => {
   try {
     const result = await pool.query(
-      "SELECT user_id, net_id, name, email FROM appuser WHERE net_id = $1",
-      [req.params.netId.trim()],
+      "SELECT user_id, net_id, name, email FROM appuser WHERE user_id = $1",
+      [req.authUserId],
     );
     res.json(result.rows[0] || null);
   } catch (error) { next(error); }
@@ -95,22 +187,31 @@ app.post("/api/users", async (req, res, next) => {
     const name = String(req.body.name || "").trim();
     const netId = String(req.body.net_id || "").trim();
     const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
     if (!name || !netId || !email || name.length > 100 || netId.length > 50 || email.length > 100) {
       return res.status(400).json({ error: "Enter a name, Net ID, and email within the allowed lengths." });
     }
     if (!/^[^\s@]+@byu\.edu$/.test(email)) {
       return res.status(400).json({ error: "Use a valid email address ending in @byu.edu." });
     }
+    if (password.length < 8 || password.length > 128) return res.status(400).json({ error: "Choose a password between 8 and 128 characters." });
+    const passwordHash = await makePasswordHash(password);
     const result = await pool.query(
-      `INSERT INTO appuser (name, net_id, email)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (net_id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email
+      `INSERT INTO appuser (name, net_id, email, password_hash)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (net_id) DO NOTHING
        RETURNING user_id, net_id, name, email`,
-      [name, netId, email],
+      [name, netId, email, passwordHash],
     );
-    res.json(result.rows[0]);
+    const user = result.rows[0];
+    if (!user) return res.status(409).json({ error: "An account already exists with that Net ID. Sign in instead." });
+    const token = await createSession(user.user_id);
+    setSessionCookie(res, token);
+    res.json({ user });
   } catch (error) { next(error); }
 });
+
+app.use("/api/users/:userId", requireAuth);
 
 app.get("/api/users/:userId/favorites", async (req, res, next) => {
   try {
@@ -206,15 +307,17 @@ app.delete("/api/users/:userId/home", async (req, res, next) => {
 app.use("/api", (_req, res) => res.status(404).json({ error: "API endpoint not found." }));
 app.use((error, _req, res, _next) => {
   console.error(error.message);
-  if (error.code === "23505") return res.status(409).json({ error: "That email is already associated with another Net ID." });
+  if (error.code === "23505") return res.status(409).json({ error: "An account already exists with that Net ID or email. Please sign in instead." });
   if (error.type === "entity.parse.failed") return res.status(400).json({ error: "Invalid JSON body." });
   if (error.type === "entity.too.large") return res.status(413).json({ error: "Request body is too large." });
+
   res.status(500).json({ error: "The database request failed. Check the local API and database connection." });
 });
 
 // API Gateway or a Lambda Function URL invokes this handler in AWS.
 exports.handler = serverless(app);
 exports.app = app;
+exports.authInternals = { makePasswordHash, verifyPassword, hashSessionToken, requireAuth, buildRequireAuth, sessionCookieOptions };
 
 // Keep the local workflow available for development in VS Code.
 if (require.main === module && !process.env.AWS_LAMBDA_FUNCTION_NAME) {

@@ -45,3 +45,47 @@ test('Lambda handler still serves health without opening a local listener',async
   assert.equal(response.statusCode,200);
   assert.equal(JSON.parse(response.body).ok,true);
 });
+
+test('account forms preserve Emma controls and never store session secrets',()=>{
+  const source=fs.readFileSync('public/js/app.js','utf8');
+  const content={innerHTML:''},modal={classList:{remove(){}}};
+  const context={currentUser:null,$:id=>id==='profileContent'?content:modal};
+  const forms=source.slice(source.indexOf('function showCreateAccountForm()'),source.indexOf('const addSheetHandle='));
+  vm.runInNewContext(forms,context);
+  context.openProfile(); assert.match(content.innerHTML,/id="showCreateAccount"/); assert.match(content.innerHTML,/id="showSignIn"/);
+  context.showCreateAccountForm();
+  for(const name of ['name','net_id','email','password','confirm_password']) assert.match(content.innerHTML,new RegExp(`name="${name}"`));
+  assert.match(content.innerHTML,/autocomplete="new-password"/); assert.match(content.innerHTML,/not enabled yet/);
+  context.showSignInForm(); assert.match(content.innerHTML,/id="signInForm"/); assert.match(content.innerHTML,/autocomplete="current-password"/);
+  assert.doesNotMatch(source,/localStorage\.setItem\("ryde_(auth_token|net_id)"/);
+  assert.doesNotMatch(source,/headers\.Authorization|Bearer /);
+  assert.match(source,/Passwords do not match/);
+});
+
+test('all account APIs remain blocked even with forged identity, tokens or cookies',async()=>{
+  for(const [method,path] of [['POST','/api/login'],['POST','/api/logout'],['GET','/api/me'],['POST','/api/users'],['GET','/api/users/999/home'],['GET','/api/users/by-net-id/example']]){
+    const r=await fetch(base+path,{method,headers:{Authorization:'Bearer forged',Cookie:'ryde_session='+ 'a'.repeat(43),'Content-Type':'application/json'},...(method==='POST'?{body:JSON.stringify({net_id:'example',email:'example@byu.edu',password:'test-only-password'})}:{})});
+    assert.equal(r.status,503);assert.equal(r.headers.get('set-cookie'),null);assert.equal(r.headers.get('cache-control'),'no-store');
+  }
+  assert.equal((await fetch(base+'/password-auth-migration.sql')).status,404);
+});
+
+test('scrypt passwords use independent salts, reject wrong passwords and malformed hashes',async()=>{
+  const {makePasswordHash,verifyPassword,hashSessionToken,sessionCookieOptions}=require('../server').authInternals;
+  const a=await makePasswordHash('test-only-password'),b=await makePasswordHash('test-only-password');
+  assert.notEqual(a,b);assert.equal(await verifyPassword('test-only-password',a),true);assert.equal(await verifyPassword('wrong',a),false);
+  for(const bad of ['', 'scrypt$00$ff',a+'$extra']) assert.equal(await verifyPassword('test-only-password',bad),false);
+  assert.equal(hashSessionToken('token').length,64);
+  const opts=sessionCookieOptions();assert.equal(opts.httpOnly,true);assert.equal(opts.sameSite,'strict');
+  const previous=process.env.NODE_ENV;process.env.NODE_ENV='production';assert.equal(sessionCookieOptions().secure,true);if(previous===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=previous;
+});
+
+test('session authorization rejects missing, expired and foreign sessions without real DB calls',async()=>{
+  const {buildRequireAuth,hashSessionToken}=require('../server').authInternals;
+  let queryCount=0,rows=[];const auth=buildRequireAuth({query:async(sql,args)=>{queryCount++;assert.match(sql,/expires_at > CURRENT_TIMESTAMP/);assert.deepEqual(args,[hashSessionToken('a'.repeat(43))]);return {rows};}});
+  async function attempt(cookie,userId){let status=200,next=false;const res={status(code){status=code;return this;},json(){}};await auth({get:()=>cookie,params:{userId}},res,err=>{assert.ifError(err);next=true;});return {status,next};}
+  assert.equal((await attempt('', '1')).status,401);assert.equal(queryCount,0);
+  assert.equal((await attempt('ryde_session='+'a'.repeat(43),'1')).status,401);
+  rows=[{user_id:1}];assert.equal((await attempt('ryde_session='+'a'.repeat(43),'2')).status,403);
+  assert.equal((await attempt('ryde_session='+'a'.repeat(43),'1')).next,true);
+});
