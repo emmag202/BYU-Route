@@ -198,9 +198,6 @@ function cardHTML(r){
    <span class="route-stop" data-card-stops="${r.id}">${cardNextStop(r,rn)}</span>
    <span class="next-time" data-next-time="${r.id}">${nextTimeText(rn.next)}</span>
   </button>
-  <button type="button" class="start-btn" data-start="${r.id}">Start ▸</button>
-  <button class="more" data-more="${r.id}" aria-expanded="${open}">${open?"More times ▴":"More times ▾"}</button>
-  <div class="later${open?" open":""}" id="l${r.id}">${laterHTML(r,rn)}</div>
  </article>`;
 }
 function updateCard(r){
@@ -218,6 +215,7 @@ function refreshTimes(force){
  if(startState){renderStart();return}
  if(screen==2&&sel&&$("schedPanel")){$("schedPanel").innerHTML=schedulePanel(sel);return}
  R.forEach(updateCard);
+ if(allTimesOpen&&$("allTimesBody"))$("allTimesBody").innerHTML=allTimesBody();
 }
 setInterval(()=>refreshTimes(),15000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshTimes(true)});
@@ -340,7 +338,7 @@ function nearYouHTML(){
  const list=nearSuggestions(nearState.pos),where=nearState.source==="home"?"your home":"you";
  let h=head(nearState.source==="home"?"Near your home":"Near you")+`<div class="near-actions">${locBtn}${homeBtn}</div></div>`;
  if(!list.length)h+=`<p class="sub">No Ryde stops within ${NEAR_RADIUS_MI} miles of ${where}.</p>`;
- else h+=`<div class="near-list">`+list.map(({r,d,label})=>{const t=nextPickupNear(r,label);return `<div class="near-item" style="--c:${r.color}"><button type="button" class="near-open" data-open="${r.id}" aria-label="View ${esc(r.name)} schedule"><span class="near-route">${esc(r.name)}</span><span class="near-stop">${label?esc(label):"Closest point on route"} · ${d<0.1?"right here":`${d.toFixed(1)} mi`} · ~${walkMinutes(d)} min walk</span><span class="near-next">${t?`${"Next"} pickup ${fmtDeparture(t.time)}${label?"":` at ${esc(t.stop)}`}`:r.service!=="daily"&&[0,6].includes(serviceNow().day)?"No weekend service":"No more pickups today"}</span></button><button type="button" class="start-btn near-start" data-start="${r.id}">Start ▸</button></div>`}).join("")+`</div>`;
+ else h+=`<div class="near-list">`+list.map(({r,d,label})=>{const t=nextPickupNear(r,label);return `<button type="button" class="near-item" data-open="${r.id}" style="--c:${r.color}" aria-label="Plan a trip on ${esc(r.name)}"><span class="near-route">${esc(r.name)}</span><span class="near-stop">${label?esc(label):"Closest point on route"} · ${d<0.1?"right here":`${d.toFixed(1)} mi`} · ~${walkMinutes(d)} min walk</span>${t?`<span class="near-label">Next pickup${label?"":` at ${esc(t.stop)}`}</span><span class="near-time">${fmtDeparture(t.time)}</span>`:`<span class="near-none">${r.service!=="daily"&&[0,6].includes(serviceNow().day)?"No weekend service":"No more pickups today"}</span>`}</button>`}).join("")+`</div>`;
  if(nearState.source==="gps"&&currentUser&&!homePlace)h+=`<button type="button" class="near-btn ghosty" data-near="save-home">Save this location as my home</button>`;
  return h+`</section>`;
 }
@@ -372,6 +370,26 @@ function showWelcomeIntro(){
   try{return sessionStorage.getItem("ryde_welcome_dismissed")!=="1"}
   catch{return true}
 }
+// ---- "Show all times": a traditional printed-style timetable for every route, below the route cards ----
+let allTimesOpen=false,allTimesDay=null;
+function allTimesBody(){
+ const k=allTimesDay||todaySchedDay(),today=todaySchedDay();
+ const sw=`<div class="dir-switch sched-day-switch" role="group" aria-label="Schedule day">${SCHED_DAYS.map(([v,l])=>`<button type="button" data-all-day="${v}" aria-pressed="${k===v}">${l}${v===today?" · today":""}</button>`).join("")}</div>`;
+ const route=r=>{
+  const daily=r.service==="daily",rk=daily?"daily":k;
+  const body=!daily&&k==="wkd"
+   ?`<p class="sub">No weekend service.</p>`
+   :`<div class="tt-wrap">${timetableHTML(r,rk,"To campus",r.toCampus,r.toCampus.map(j=>esc(r.stops[j][0])))}${timetableHTML(r,rk,"Leaving campus",r.fromCampus,[`${esc(r.campusStop)} <span class="tt-sub">→ ${esc(housing(r).join(" / "))}</span>`])}</div>`;
+  return `<section class="at-route" style="--c:${r.color}" aria-label="${esc(r.name)} timetable"><h3>${esc(r.name)}<span>${runDays(r)}</span></h3>${body}</section>`;
+ };
+ return `<div class="at-top">${sw}${k==="fri"?'<span class="sub">Friday: buses stop earlier than Mon–Thu.</span>':""}</div>${R.map(route).join("")}<p class="sub sched-foot">Fall and Winter semesters; school holiday exceptions apply. Times are scheduled, not live.</p>`;
+}
+// Rendered only while open, so the home page stays light.
+const allTimesSection=()=>`<details class="info-collapsible all-times" id="allTimes"${allTimesOpen?" open":""}><summary>Show all times</summary><div id="allTimesBody">${allTimesOpen?allTimesBody():""}</div></details>`;
+document.addEventListener("toggle",e=>{
+ if(e.target.id!=="allTimes")return;
+ allTimesOpen=e.target.open;const b=$("allTimesBody");if(b)b.innerHTML=allTimesOpen?allTimesBody():"";
+},true);
 function home(filter=""){
   setHash("#/");layout(1);sel=null;startState=null;showRoutes(R.map(r=>r.id));view(0,0,840);
   $("app").classList.remove("map-mode");
@@ -389,6 +407,7 @@ function home(filter=""){
     </section>`:""}${f?"":nearYouHTML()}<div class="section-heading"><div><h2>Explore shuttle routes</h2></div><span class="sub">${list.length} routes</span></div>${dirBannerHTML()}`;
   if(!list.length){h+=`<div class="card">No routes match “${esc(filter.trim())}”.${suggestion?` Did you mean <button type="button" class="did-you-mean" data-suggest="${esc(suggestion)}">${esc(suggestion)}</button>?`:" Try another stop or neighborhood."}</div>`}
   else h+=`<div class="rail">`+list.map(cardHTML).join("")+`</div>`;
+  h+=allTimesSection();
   h+=`<div class="map-teaser"><div><h2>Want to see all the routes?</h2><p>Explore the official BYU Ryde route diagram, zoom in, and select a route.</p></div><button type="button" id="openMapFromHome">Explore route map →</button></div>
     <details class="info-collapsible"><summary>Service information, eligibility & contact</summary>${informationPanel()}</details></div>`;
   sheet.innerHTML=h;
@@ -508,6 +527,7 @@ document.addEventListener("click",e=>{
    const v=ds.dataset.dirSet;dirOverride=v==="auto"||v===autoDir()?null:v;
    if(startState){startState.board=null;startState.dest=null}
    refreshScreen();return}
+  const ad=e.target.closest("[data-all-day]");if(ad){allTimesDay=ad.dataset.allDay;$("allTimesBody").innerHTML=allTimesBody();document.querySelector(`[data-all-day="${allTimesDay}"]`)?.focus();return}
   const sd=e.target.closest("[data-sched-day]");if(sd){
    const r=R.find(x=>x.id==sd.dataset.schedRoute),panel=$("schedPanel");if(!r||!panel)return;
    schedDayOf[r.id]=sd.dataset.schedDay;panel.innerHTML=schedulePanel(r);panel.querySelector(`[data-sched-day="${sd.dataset.schedDay}"]`)?.focus();return}

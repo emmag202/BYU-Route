@@ -320,13 +320,17 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .near-btn{appearance:none;border:1px solid #002e5d;background:#002e5d;color:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
 .near-btn.ghosty{background:#fff;color:#002e5d}
 .near-btn:disabled{opacity:.6}
-.near-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:10px}
-.near-item{background:var(--card,#fff);border:1px solid var(--line,#e5e7eb);border-left:6px solid var(--c);border-radius:8px;padding:11px 12px;display:flex;flex-direction:column;gap:8px}
-.near-open{appearance:none;text-align:left;font:inherit;color:inherit;background:none;border:0;padding:0;display:flex;flex-direction:column;gap:3px;cursor:pointer}
-.near-start{margin-top:auto!important;padding:9px!important;font-size:14px!important}
-.near-route{font-weight:700}
-.near-stop{font-size:13px;color:#4b5563}
-.near-next{font-size:13px;font-weight:650}
+/* Near-you cards are the primary, large cards. */
+.near-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:10px}
+.near-item{appearance:none;text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--card,#fff);border:1px solid #e1e7f0;border-left:6px solid var(--c);border-radius:14px;padding:21px 22px;display:flex;flex-direction:column;gap:4px;box-shadow:0 3px 12px #001b3810;transition:transform .12s,box-shadow .12s}
+.near-item:hover{transform:translateY(-2px);box-shadow:0 8px 20px #001b381a}
+.near-item:focus-visible{outline:3px solid #0047ba;outline-offset:2px}
+.near-route{font-size:22px;font-weight:800;line-height:1.2;color:#122f4e}
+.near-stop{font-size:14px;color:#5b697a;line-height:1.4}
+.near-label{margin-top:12px;font-size:11px;font-weight:750;letter-spacing:.6px;text-transform:uppercase;color:#556b82}
+.near-time{font-size:30px;font-weight:800;line-height:1.15;color:#0047ba;letter-spacing:-.4px}
+.near-none{margin-top:12px;font-size:15px;font-weight:650;color:#5b697a}
+@media(max-width:650px){.near-list{grid-template-columns:1fr;gap:12px}.near-item{padding:18px}.near-route{font-size:20px}.near-time{font-size:27px}}
 .day-picker{display:flex;gap:8px;overflow-x:auto;padding:4px 0 2px;margin-top:6px;scrollbar-width:thin}
 .day-chip{appearance:none;flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 12px;border:1px solid var(--line,#d1d5db);border-radius:10px;background:#fff;font:inherit;color:inherit;cursor:pointer;text-align:left}
 .day-chip-name{font-weight:700;font-size:14px}
@@ -428,3 +432,21 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .strip-tag{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:#eef2f6;color:#4a5b6e}
 .board .strip-tag,.dest .strip-tag{background:var(--c);color:#fff}.walk-box{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px dashed #b9c6d6;border-radius:10px;background:#fafbfd} 
 .strip-body .near-btn{margin-top:6px}
+/* Route cards are compact secondary cards (near-you cards are the large ones). */
+.home-body .rail{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.home-body .rc{padding:12px 14px;border-radius:10px;box-shadow:0 1px 4px #001b380d}
+.home-body .rc .route-name{font-size:13px}
+.home-body .rc .route-stop{font-size:16px;margin-top:2px;line-height:1.25}
+.home-body .rc .next-time{font-size:20px;margin-top:4px}
+.home-body .rc .next-in{font-size:.6em}
+.home-body .rc .next-day{font-size:.6em}
+@media(max-width:650px){.home-body .rail{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.home-body .rc{padding:10px 12px}.home-body .rc .route-stop{font-size:15px}.home-body .rc .next-time{font-size:18px}}
+/* "Show all times" */
+.all-times{margin-top:18px}
+.all-times[open]>summary{margin-bottom:6px}
+.at-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:4px 0 6px}
+.at-top .dir-switch{margin-top:0}
+.at-route{border-top:1px solid #e8edf2;padding:16px 0 4px}
+.at-route h3{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0;font-size:19px;font-weight:800;color:#122f4e;padding-left:10px;border-left:5px solid var(--c)}
+.at-route h3 span{font-size:13px;font-weight:600;color:#6a7a8c}
+.at-route .tt-table thead th{border-bottom-color:var(--c)}
