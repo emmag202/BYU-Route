@@ -2,6 +2,8 @@ require("dotenv").config();
 
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
+const { promisify } = require("node:util");
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
@@ -30,6 +32,58 @@ const pool = new Pool({
   max: 5,
   connectionTimeoutMillis: 10000,
 });
+
+const scrypt = promisify(crypto.scrypt);
+const SESSION_DAYS = 7;
+
+async function makePasswordHash(password) {
+  const salt = crypto.randomBytes(16);
+  const derived = await scrypt(password, salt, 64);
+  return `scrypt$${salt.toString("hex")}$${Buffer.from(derived).toString("hex")}`;
+}
+
+async function verifyPassword(password, storedHash) {
+  const [algorithm, saltHex, hashHex] = String(storedHash || "").split("$");
+  if (algorithm !== "scrypt" || !saltHex || !hashHex) return false;
+  const expected = Buffer.from(hashHex, "hex");
+  if (!expected.length) return false;
+  const actual = Buffer.from(await scrypt(password, Buffer.from(saltHex, "hex"), expected.length));
+  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
+}
+
+function hashSessionToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+async function createSession(userId) {
+  const token = crypto.randomBytes(32).toString("base64url");
+  const tokenHash = hashSessionToken(token);
+  await pool.query("DELETE FROM appsession WHERE expires_at <= CURRENT_TIMESTAMP");
+  await pool.query(
+    "INSERT INTO appsession (user_id, token_hash, expires_at) VALUES ($1, $2, CURRENT_TIMESTAMP + ($3 * INTERVAL '1 day'))",
+    [userId, tokenHash, SESSION_DAYS],
+  );
+  return token;
+}
+
+async function requireAuth(req, res, next) {
+  const match = /^Bearer\s+(.+)$/i.exec(req.get("authorization") || "");
+  if (!match) return res.status(401).json({ error: "Please sign in again." });
+  try {
+    const tokenHash = hashSessionToken(match[1].trim());
+    const result = await pool.query(
+      "SELECT user_id FROM appsession WHERE token_hash = $1 AND expires_at > CURRENT_TIMESTAMP",
+      [tokenHash],
+    );
+    if (!result.rows[0]) return res.status(401).json({ error: "Your session expired. Please sign in again." });
+    req.authUserId = Number(result.rows[0].user_id);
+    req.authTokenHash = tokenHash;
+    if (req.params.userId && Number(req.params.userId) !== req.authUserId) {
+      return res.status(403).json({ error: "You can only access your own account." });
+    }
+    next();
+  } catch (error) { next(error); }
+}
 
 const routeNames = {
   "101": "West Route",
@@ -60,11 +114,37 @@ app.use(express.json({ limit: "20kb" }));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-app.get("/api/users/by-net-id/:netId", async (req, res, next) => {
+app.post("/api/login", async (req, res, next) => {
+  try {
+    const netId = String(req.body.net_id || "").trim();
+    const password = String(req.body.password || "");
+    if (!netId || netId.length > 50 || !password || password.length > 128) return res.status(400).json({ error: "Enter your Net ID and password." });
+    const result = await pool.query(
+      "SELECT user_id, net_id, name, email, password_hash FROM appuser WHERE net_id = $1",
+      [netId],
+    );
+    const user = result.rows[0];
+    if (!user) return res.status(404).json({ error: "Net ID does not exist." });
+    if (!user.password_hash) return res.status(409).json({ error: "This account needs a password. Choose Create an account and use the same Net ID and BYU email to set one." });
+    if (!(await verifyPassword(password, user.password_hash))) return res.status(401).json({ error: "Password is incorrect." });
+    const token = await createSession(user.user_id);
+    delete user.password_hash;
+    res.json({ user, token });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/logout", requireAuth, async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM appsession WHERE token_hash = $1", [req.authTokenHash]);
+    res.status(204).end();
+  } catch (error) { next(error); }
+});
+
+app.get("/api/me", requireAuth, async (req, res, next) => {
   try {
     const result = await pool.query(
-      "SELECT user_id, net_id, name, email FROM appuser WHERE net_id = $1",
-      [req.params.netId.trim()],
+      "SELECT user_id, net_id, name, email FROM appuser WHERE user_id = $1",
+      [req.authUserId],
     );
     res.json(result.rows[0] || null);
   } catch (error) { next(error); }
@@ -75,22 +155,32 @@ app.post("/api/users", async (req, res, next) => {
     const name = String(req.body.name || "").trim();
     const netId = String(req.body.net_id || "").trim();
     const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
     if (!name || !netId || !email || name.length > 100 || netId.length > 50 || email.length > 100) {
       return res.status(400).json({ error: "Enter a name, Net ID, and email within the allowed lengths." });
     }
     if (!/^[^\s@]+@byu\.edu$/.test(email)) {
       return res.status(400).json({ error: "Use a valid email address ending in @byu.edu." });
     }
+    if (password.length < 8 || password.length > 128) return res.status(400).json({ error: "Choose a password between 8 and 128 characters." });
+    const passwordHash = await makePasswordHash(password);
     const result = await pool.query(
-      `INSERT INTO appuser (name, net_id, email)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (net_id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email
+      `INSERT INTO appuser (name, net_id, email, password_hash)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (net_id) DO UPDATE
+         SET name = EXCLUDED.name, password_hash = EXCLUDED.password_hash
+         WHERE lower(appuser.email) = EXCLUDED.email AND appuser.password_hash IS NULL
        RETURNING user_id, net_id, name, email`,
-      [name, netId, email],
+      [name, netId, email, passwordHash],
     );
-    res.json(result.rows[0]);
+    const user = result.rows[0];
+    if (!user) return res.status(409).json({ error: "An account already exists with that Net ID. Sign in instead." });
+    const token = await createSession(user.user_id);
+    res.json({ user, token });
   } catch (error) { next(error); }
 });
+
+app.use("/api/users/:userId", requireAuth);
 
 app.get("/api/users/:userId/favorites", async (req, res, next) => {
   try {
@@ -185,7 +275,7 @@ app.delete("/api/users/:userId/home", async (req, res, next) => {
 
 app.use((error, _req, res, _next) => {
   console.error(error.message);
-  if (error.code === "23505") return res.status(409).json({ error: "That email is already associated with another Net ID." });
+  if (error.code === "23505") return res.status(409).json({ error: "An account already exists with that Net ID or email. Please sign in instead." });
   res.status(500).json({ error: "The database request failed. Check the local API and database connection." });
 });
 

@@ -29,17 +29,19 @@ The browser calls the API; only the API connects to PostgreSQL. Database credent
 
 For local development, the API listens only on this laptop. For AWS deployment, run `npm install` and `./package-lambda.ps1` to create `ryde-lambda.zip`; the package script intentionally excludes `.env`. In Lambda, set the database environment variables, attach the function to the same VPC as RDS, and permit its security group to reach RDS on port 5432. Create a Function URL with CORS origin `https://emmag202.github.io`, then replace `API_BASE_URL` in `index.html` with that URL before pushing to GitHub Pages.
 
+Before deploying password-based sign-in, run `password-auth-migration.sql` once against the RDS database. Existing profiles can set their first password by choosing **Create an account** and entering the same Net ID and BYU email they already use. Configure the Function URL CORS methods to include `GET`, `POST`, `PUT`, and `DELETE`, and allowed headers to include `content-type` and `authorization`.
+
 The published timetable display is still hard-coded in `index.html`; profile and favorite-route data use the API.
 
 ## 5. Verifying the Vertical Slice
 
 Our vertical slice is **Save Profile**.
 
-1. Open the application and navigate to the profile section.
-2. Enter a Net ID, name, and email.
-3. Click **Save Profile** and confirm the saved information appears.
-4. Refresh the page and reopen the profile section.
-5. Confirm the saved information is still there.
+1. Open the application and choose **Create an account**.
+2. Enter a name, Net ID, BYU email, and password.
+3. Confirm the profile appears, then sign out.
+4. Sign in with the same Net ID and password and confirm the profile returns.
+5. Refresh the page and confirm the signed-in profile and saved data remain available.
 
 The profile is stored in the RDS `appuser` table and retrieved after refreshing, demonstrating persistent data storage. Favorite routes are stored in `favoriteroute`.
 
