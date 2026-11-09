@@ -12,36 +12,36 @@ Our relational database models users, routes, stops, buses, and their relationsh
 
 ## 3. Tech Stack
 
-- **HTML, CSS, JavaScript:** Frontend interface, map, schedules, and user interactions.
-- **Node.js and Express:** Local server-side API for profile and favorite-route requests.
+- **EJS, CSS, JavaScript:** Frontend interface, map, schedules, and user interactions.
+- **Node.js and Express:** Page rendering, static assets, and the preserved database API (currently protected by a fail-closed account gate).
 - **Amazon RDS for PostgreSQL:** Stores user profiles, favorite routes, route data, stops, and timetable data.
 
 The browser calls the API; only the API connects to PostgreSQL. Database credentials belong in local configuration, never in `index.html` or GitHub.
 
-## 4. Run Locally
+## 4. Run locally
 
-1. Install Node.js 20 or later.
-2. In this folder, copy `.env.example` to `.env` and fill in the RDS endpoint and database password.
-3. Download the AWS RDS global certificate bundle as `global-bundle.pem` into this folder. The bundle is ignored by Git.
-4. Open a terminal in this folder and run `npm install`, then `npm start`.
-5. In another VS Code terminal, start Live Server for `index.html` (usually `http://127.0.0.1:5500`).
-6. The RDS security group must allow PostgreSQL (port 5432) from this laptop's current public IP.
+**Start with [TEAM_GUIDE.md](TEAM_GUIDE.md)** for file locations and the team Git workflow. See [DEPLOYMENT.md](DEPLOYMENT.md) for hosting preparation and [TESTING.md](TESTING.md) for validation and remaining checks.
 
-For local development, the API listens only on this laptop. For AWS deployment, run `npm install` and `./package-lambda.ps1` to create `ryde-lambda.zip`; the package script intentionally excludes `.env`. In Lambda, set the database environment variables, attach the function to the same VPC as RDS, and permit its security group to reach RDS on port 5432. Create a Function URL with CORS origin `https://emmag202.github.io`, then replace `API_BASE_URL` in `index.html` with that URL before pushing to GitHub Pages.
+Install Node.js 22 or later, then:
 
-The published timetable display is still hard-coded in `index.html`; profile and favorite-route data use the API.
+```bash
+npm install
+npm start
+```
 
-## 5. Verifying the Vertical Slice
+Open **http://localhost:3000**. Express renders `views/index.ejs`; styling and browser code live in `public/`. No Live Server or database credentials are required for routes and schedules. Timetables remain the team's existing browser data in `public/js/app.js`.
 
-Our vertical slice is **Save Profile**.
+The original `index.html`, `route-map.js`, `route-data.js`, and `aws-config.js` remain unchanged for GitHub Pages. They are a legacy static version, not the Node source. Coordinate equivalent changes when maintaining both versions. Express never serves the repository root.
 
-1. Open the application and navigate to the profile section.
-2. Enter a Net ID, name, and email.
-3. Click **Save Profile** and confirm the saved information appears.
-4. Refresh the page and reopen the profile section.
-5. Confirm the saved information is still there.
+## 5. Profiles, database and Lambda
 
-The profile is stored in the RDS `appuser` table and retrieved after refreshing, demonstrating persistent data storage. Favorite routes are stored in `favoriteroute`.
+**Personal-data APIs are blocked with HTTP 503 pending secure sign-in.** The previous implementation treated a typed Net ID as identity and exposed profiles, favorites and home addresses through user IDs. The migrated UI explains this limitation. No database operation is represented as successful while blocked.
+
+All original parameterized SQL queries and strict RDS TLS verification remain in `server.js`. Optional settings are listed in `.env.example`; use a private `.env` and the administrator-provided certificate. Do not run `migrate-home.js` or change schemas as part of this migration.
+
+The existing Lambda `exports.handler` remains, and its package script now includes views and static assets. No AWS deployment has been performed. **The already deployed Lambda has not been secured by these local changes**; its owner must review its current public profile endpoints. Do not test it using real user IDs. GitHub Pages still points to that existing backend.
+
+The historical Save Profile vertical slice demonstrated RDS `appuser` persistence and `favoriteroute` persistence. Its original demo and ERD are retained below; it cannot be repeated on the migrated app until authentication and per-user authorization are implemented. An email suffix check is not authentication.
 
 Link to DEMO Video:
 https://drive.google.com/file/d/1teh6GizUji3yptUHIkroI10ENTW-uH7p/view?usp=sharing
