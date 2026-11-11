@@ -57,7 +57,8 @@ test('account forms preserve Emma controls and never store session secrets',()=>
   context.openProfile(); assert.match(content.innerHTML,/id="showCreateAccount"/); assert.match(content.innerHTML,/id="showSignIn"/);
   context.showCreateAccountForm();
   for(const name of ['name','net_id','email','password','confirm_password']) assert.match(content.innerHTML,new RegExp(`name="${name}"`));
-  assert.match(content.innerHTML,/autocomplete="new-password"/); assert.match(content.innerHTML,/School demo only/);
+  assert.match(content.innerHTML,/autocomplete="new-password"/); assert.match(content.innerHTML,/>Username<input/);
+  assert.doesNotMatch(source,/School demo only|fictional|Demo username|example\.test|isDemoEmail/);
   context.showSignInForm(); assert.match(content.innerHTML,/id="signInForm"/); assert.match(content.innerHTML,/autocomplete="current-password"/);
   assert.doesNotMatch(source,/localStorage\.setItem\("ryde_(auth_token|net_id)"/);
   assert.doesNotMatch(source,/headers\.Authorization|Bearer /);

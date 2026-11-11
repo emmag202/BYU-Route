@@ -2,7 +2,7 @@
 
 University IS demo: **Render (Express + EJS) -> existing AWS Lambda -> existing private RDS PostgreSQL**.
 
-Fictional accounts can sign up, log in, favorite routes, save a demo location, and reload their saved data after refresh. Use a demo username, an `@example.test` email, and a new password. This is not BYU identity verification. Maps, schedules, navigation, and styling remain the team's existing frontend.
+Accounts can sign up with any valid email address, log in, favorite routes, save a location, and reload their saved data after refresh. Use a username, email, and password. This is not BYU identity verification. Maps, schedules, navigation, and styling remain the team's existing frontend.
 
 ## Run and test
 
@@ -74,9 +74,18 @@ The first should return `{"ok":true,"schema":"ryde_demo"}`; the second should re
 }
 ```
 
+## Update an existing installation to accept any email
+
+1. Run `npm test` and `./package-lambda.ps1`. Upload **artifacts/ryde-lambda.zip** to the existing **us-east-1 / byu-ryde-api** function under **Code -> Upload from -> .zip file**, then save. Wait for the update to finish.
+2. Set **DEMO_SETUP_ENABLED=true** in environment variables and temporarily set **Runtime settings -> Handler** to **server.setup**. Preserve the existing DB settings. The DB login must own `ryde_demo.appuser` (or have equivalent privileges).
+3. In **Test**, invoke `{"action":"remove-demo-email-constraint"}`. Expect `{"ok":true,"schema":"ryde_demo"}`. This repeatable action removes only the original `appuser_email_check` after verifying its definition; it preserves all tables, rows, UNIQUE constraints, and other CHECK constraints. An unexpected definition fails without changes. Do not run `install-demo-schema` for this update.
+4. Immediately restore **server.handler** and remove **DEMO_SETUP_ENABLED**, even if the test fails. Save both changes and wait for completion.
+5. When ready to release, commit/push the reviewed code to Render's configured branch, then use **Manual Deploy -> Deploy latest commit** on the existing Render service (or let enabled auto-deploy finish). Keep its build/start commands and environment unchanged. If the Lambda ARN uses an alias/version, point that existing release target at the updated code before deploying Render.
+6. Verify signup with Gmail/BYU/Outlook, sign out/in, and refresh saved favorites/home. Duplicate emails must still fail.
+
 ## Render setup and deployment
 
-Use the existing Express Render service, recorded as **byu-ryde-team4-section4**. Confirm its repository/branch and auto-deploy setting before pushing. Keep work on **feature/fullstack-ejs**; do not change main. Build: **npm ci --omit=dev**. Start: **npm start**. Set Node version to **22** in Render's runtime setting or `NODE_VERSION=22`.
+Use the existing Express Render service, recorded as **byu-ryde-team4-section4**. Confirm its repository/branch and auto-deploy setting before pushing. Use the configured deployment branch (currently main). Build: **npm ci --omit=dev**. Start: **npm start**. Set Node version to **22** in Render's runtime setting or `NODE_VERSION=22`.
 
 | Render variable | Value |
 | --- | --- |
@@ -97,7 +106,7 @@ The browser's existing **Amazon Location public API key** is separate from backe
 
 1. Open the Render URL; create `demo-rider` / `demo-rider@example.test` with a new password.
 2. Favorite a route, save a public campus/demo location, and refresh. Saved data should return from PostgreSQL.
-3. Sign out and back in; confirm persistence. A second fictional account must have separate data. Changing account IDs in API URLs must return 403.
+3. Sign out and back in; confirm persistence. A second account must have separate data. Changing account IDs in API URLs must return 403.
 4. Anonymous Function URL access should still return AWS 403.
 
 Passwords use salted scrypt hashes; only session hashes are stored in PostgreSQL. Cookies are HttpOnly/Secure/SameSite=Strict in production. Account writes require the exact origin and custom request header; SQL uses parameters and ownership checks. DB TLS verifies the RDS CA. A simple per-process limiter allows 20 requests/minute per peer IP; Render may share a proxy IP, so wait one minute if you see 429 during a demo. No distributed infrastructure is added.
