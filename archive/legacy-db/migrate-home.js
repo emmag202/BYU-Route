@@ -1,3 +1,4 @@
+// Archived legacy public-schema migration. Not used by the current demo.
 // One-time migration: creates the user_home table.
 // Uses the same .env and RDS certificate as server.js.
 // Run from the API folder:  node migrate-home.js

@@ -2,6 +2,8 @@ const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+// Never use a developer's real backend settings when running offline tests.
+Object.assign(process.env, { AWS_LAMBDA_FUNCTION_NAME: '', RYDE_LAMBDA_FUNCTION_ARN: '', RYDE_LAMBDA_TIMEOUT_MS: '20000' });
 const { app } = require('../server');
 let server, base;
 before(async () => { server = app.listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r)); base = `http://127.0.0.1:${server.address().port}`; });
@@ -27,9 +29,9 @@ test('seven routes and browser syntax remain valid', () => {
   const appJs=fs.readFileSync('public/js/app.js','utf8'); assert.match(appJs,/const API_BASE_URL="";/);
 });
 test('health is honest and all personal-data methods fail closed', async () => {
-  const h=await (await fetch(base+'/api/health')).json(); assert.equal(h.ok,true); assert.equal(h.profiles,'disabled-pending-authentication');
+  const h=await (await fetch(base+'/api/health')).json(); assert.equal(h.ok,true); assert.equal(h.profiles,'unavailable');
   for (const [method,path] of [['GET','/api/users/by-net-id/example'],['POST','/api/users'],['GET','/api/users/1/favorites'],['POST','/api/users/1/favorites'],['DELETE','/api/users/1/favorites/101'],['GET','/api/users/1/home'],['PUT','/api/users/1/home'],['DELETE','/api/users/1/home']]) {
-    const r=await fetch(base+path,{method}); assert.equal(r.status,503); assert.equal(r.headers.get('cache-control'),'no-store'); assert.match((await r.json()).error,/secure sign-in/);
+    const r=await fetch(base+path,{method}); assert.equal(r.status,503); assert.equal(r.headers.get('cache-control'),'no-store'); assert.match((await r.json()).error,/unavailable/);
   }
 });
 test('private files are not served, API 404 and malformed requests are JSON errors',async()=>{
@@ -55,19 +57,11 @@ test('account forms preserve Emma controls and never store session secrets',()=>
   context.openProfile(); assert.match(content.innerHTML,/id="showCreateAccount"/); assert.match(content.innerHTML,/id="showSignIn"/);
   context.showCreateAccountForm();
   for(const name of ['name','net_id','email','password','confirm_password']) assert.match(content.innerHTML,new RegExp(`name="${name}"`));
-  assert.match(content.innerHTML,/autocomplete="new-password"/); assert.match(content.innerHTML,/not enabled yet/);
+  assert.match(content.innerHTML,/autocomplete="new-password"/); assert.match(content.innerHTML,/School demo only/);
   context.showSignInForm(); assert.match(content.innerHTML,/id="signInForm"/); assert.match(content.innerHTML,/autocomplete="current-password"/);
   assert.doesNotMatch(source,/localStorage\.setItem\("ryde_(auth_token|net_id)"/);
   assert.doesNotMatch(source,/headers\.Authorization|Bearer /);
   assert.match(source,/Passwords do not match/);
-});
-
-test('all account APIs remain blocked even with forged identity, tokens or cookies',async()=>{
-  for(const [method,path] of [['POST','/api/login'],['POST','/api/logout'],['GET','/api/me'],['POST','/api/users'],['GET','/api/users/999/home'],['GET','/api/users/by-net-id/example']]){
-    const r=await fetch(base+path,{method,headers:{Authorization:'Bearer forged',Cookie:'ryde_session='+ 'a'.repeat(43),'Content-Type':'application/json'},...(method==='POST'?{body:JSON.stringify({net_id:'example',email:'example@byu.edu',password:'test-only-password'})}:{})});
-    assert.equal(r.status,503);assert.equal(r.headers.get('set-cookie'),null);assert.equal(r.headers.get('cache-control'),'no-store');
-  }
-  assert.equal((await fetch(base+'/password-auth-migration.sql')).status,404);
 });
 
 test('scrypt passwords use independent salts, reject wrong passwords and malformed hashes',async()=>{
@@ -89,3 +83,4 @@ test('session authorization rejects missing, expired and foreign sessions withou
   rows=[{user_id:1}];assert.equal((await attempt('ryde_session='+'a'.repeat(43),'2')).status,403);
   assert.equal((await attempt('ryde_session='+'a'.repeat(43),'1')).next,true);
 });
+

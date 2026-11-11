@@ -2,7 +2,7 @@
   "name": "byu-ryde-local-api",
   "version": "1.0.0",
   "private": true,
-  "description": "BYU Ryde Express/EJS application with preserved Lambda API",
+  "description": "BYU Ryde: Express/EJS, IAM-signed Lambda, and existing RDS PostgreSQL",
   "scripts": {
     "start": "node server.js",
     "test": "node --test"
@@ -11,7 +11,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "cors": "^2.8.5",
+    "@aws-sdk/client-lambda": "^3.1165.0",
     "dotenv": "^16.4.7",
     "ejs": "^7.0.2",
     "express": "^4.21.2",
