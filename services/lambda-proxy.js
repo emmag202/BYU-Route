@@ -79,7 +79,7 @@ function validBody(method, path, body) {
   if (Object.keys(body).some(k => !keys.includes(k))) return null;
   const text = (key, max, min = 1) => typeof body[key] === 'string' && body[key].trim().length >= min && body[key].length <= max;
   if (keys.includes('password') && (!text('net_id', 50) || !text('password', 128, path === '/api/users' ? 8 : 1))) return null;
-  if (path === '/api/users' && (!text('name', 100) || !text('email', 100) || !/^[^\s@]+@example\.test$/i.test(body.email))) return null;
+  if (path === '/api/users' && (!text('name', 100) || !text('email', 100) || !/^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(body.email.trim()))) return null;
   if (keys.includes('route_key') && (typeof body.route_key !== 'string' || !/^10[1-7]$/.test(body.route_key))) return null;
   if (keys.includes('lat') && (!text('label', 200) || typeof body.lat !== 'number' || typeof body.lng !== 'number' ||
     !Number.isFinite(body.lat) || !Number.isFinite(body.lng) || Math.abs(body.lat) > 90 || Math.abs(body.lng) > 180)) return null;

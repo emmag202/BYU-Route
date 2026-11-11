@@ -8,7 +8,7 @@ test('Render -> signed Invoke -> Lambda: accounts, refresh persistence, ownershi
     DB_SSL_CA: 'package.json', RYDE_LAMBDA_FUNCTION_ARN: '', DEMO_SETUP_ENABLED: 'false',
   });
   const users = [], sessions = new Map(), favorites = new Map(), homes = new Map();
-  let pools = 0, invocations = 0, setupSql;
+  let pools = 0, invocations = 0, setupSql, migrationCalls = 0;
   require('pg').Pool = class {
     constructor(config) {
       pools++;
@@ -21,10 +21,21 @@ test('Render -> signed Invoke -> Lambda: accounts, refresh persistence, ownershi
       return { query: async sql => { setupSql = sql; }, release() {} };
     }
     async query(sql, args = []) {
+      if (sql.startsWith('DO $$')) {
+        migrationCalls++;
+        assert.match(sql, /conrelid = 'ryde_demo.appuser'::regclass/);
+        assert.match(sql, /conname = 'appuser_email_check' AND contype = 'c'/);
+        assert.match(sql, /pg_get_expr\(conbin, conrelid\)/);
+        assert.match(sql, /RAISE EXCEPTION/);
+        assert.match(sql, /DROP CONSTRAINT IF EXISTS appuser_email_check/);
+        assert.doesNotMatch(sql, /DROP TABLE|CASCADE|DELETE FROM|TRUNCATE|ADD CONSTRAINT/);
+        return { rows: [] };
+      }
       assert.match(sql, /ryde_demo\./);
       assert.doesNotMatch(sql, /public\./);
       if (sql.startsWith('INSERT INTO ryde_demo.appuser')) {
         if (users.some(u => u.net_id === args[1])) return { rows: [] };
+        if (users.some(u => u.email === args[2])) throw Object.assign(Error('duplicate email'), { code: '23505' });
         const user = { user_id: users.length + 1, name: args[0], net_id: args[1], email: args[2], password_hash: args[3] };
         users.push(user);
         const { password_hash, ...safeUser } = user;
@@ -98,17 +109,25 @@ test('Render -> signed Invoke -> Lambda: accounts, refresh persistence, ownershi
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
     }
-    const signup = (name) => call('POST', '/api/users', {
-      name, net_id: name, email: name + '@example.test', password: 'demo-test-password',
+    const signup = (name, email = name + '@example.test') => call('POST', '/api/users', {
+      name, net_id: name, email, password: 'demo-test-password',
     });
     try {
       await assert.rejects(lambda.setup({ action: 'install-demo-schema' }), /disabled/);
+      await assert.rejects(lambda.setup({ action: 'remove-demo-email-constraint' }), /disabled/);
       process.env.DEMO_SETUP_ENABLED = 'true';
       assert.deepEqual(await lambda.setup({ action: 'install-demo-schema' }), { ok: true, schema: 'ryde_demo' });
       assert.match(setupSql, /CREATE SCHEMA IF NOT EXISTS ryde_demo/);
       assert.match(setupSql, /BEGIN;/); assert.match(setupSql, /COMMIT;/);
       assert.doesNotMatch(setupSql, /ALTER TABLE public/);
       assert.equal((await lambda.setup({ action: 'check-demo-database' })).database, 'connected');
+      assert.match(setupSql, /email VARCHAR\(100\) NOT NULL UNIQUE,/);
+      assert.doesNotMatch(setupSql, /@example\.test/);
+      for (let i = 0; i < 2; i++) {
+        assert.deepEqual(await lambda.setup({ action: 'remove-demo-email-constraint' }), { ok: true, schema: 'ryde_demo' });
+      }
+      assert.equal(migrationCalls, 2);
+      await assert.rejects(lambda.setup({ action: 'arbitrary-sql' }), /Unknown/);
       process.env.DEMO_SETUP_ENABLED = 'false';
       assert.equal(pools, 1, 'Render must not construct a database pool even with DB env values');
       assert.equal((await call('GET', '/api/me')).status, 401);
@@ -143,6 +162,23 @@ test('Render -> signed Invoke -> Lambda: accounts, refresh persistence, ownershi
       assert.equal((await call('GET', '/api/me', null, cookie)).status, 401);
       const login = await call('POST', '/api/login', { net_id: 'demo-one', password: 'demo-test-password' });
       assert.equal(login.status, 200);
+      for (const [i, email] of ['Rider+tag@GMAIL.com', 'rider@byu.edu', 'rider@outlook.com', 'rider@custom.example', 'rider@sub.custom.example'].entries()) {
+        const result = await signup('provider-' + i, email);
+        assert.equal(result.status, 200, email);
+        assert.equal((await result.json()).user.email, email.toLowerCase());
+      }
+      assert.equal((await signup('duplicate-email', 'RIDER@BYU.EDU')).status, 409);
+      for (const email of ['missing-at', '@gmail.com', 'rider@', 'two@@gmail.com', 'has space@gmail.com', 'rider@-invalid.com', 'rider@domain..com']) {
+        const before = invocations;
+        assert.equal((await signup('invalid-email', email)).status, 400, email);
+        assert.equal(invocations, before, 'Render rejects malformed email before Invoke');
+        const direct = await lambda.handler({
+          version: '2.0', rawPath: '/api/users', headers: { 'content-type': 'application/json' },
+          requestContext: { http: { method: 'POST', path: '/api/users', sourceIp: '127.0.0.1' } },
+          body: JSON.stringify({ name: 'Invalid', net_id: 'invalid', email, password: 'test-password' }),
+        }, {});
+        assert.equal(direct.statusCode, 400, 'Lambda independently rejects ' + email);
+      }
       assert.ok(invocations > 10);
     } finally { await new Promise(resolve => server.close(resolve)); }
   }

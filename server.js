@@ -149,7 +149,7 @@ app.post("/api/login", async (req, res, next) => {
   try {
     const netId = String(req.body.net_id || "").trim();
     const password = String(req.body.password || "");
-    if (!netId || netId.length > 50 || !password || password.length > 128) return res.status(400).json({ error: "Enter your demo username and password." });
+    if (!netId || netId.length > 50 || !password || password.length > 128) return res.status(400).json({ error: "Enter your username and password." });
     const result = await pool.query(
       "SELECT user_id, net_id, name, email, password_hash FROM ryde_demo.appuser WHERE net_id = $1",
       [netId],
@@ -190,10 +190,10 @@ app.post("/api/users", async (req, res, next) => {
     const email = String(req.body.email || "").trim().toLowerCase();
     const password = String(req.body.password || "");
     if (!name || !netId || !email || name.length > 100 || netId.length > 50 || email.length > 100) {
-      return res.status(400).json({ error: "Enter a name, demo username, and email within the allowed lengths." });
+      return res.status(400).json({ error: "Enter a name, username, and email within the allowed lengths." });
     }
-    if (!/^[^\s@]+@example\.test$/.test(email)) {
-      return res.status(400).json({ error: "Use a fictional email ending in @example.test." });
+    if (!/^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(email)) {
+      return res.status(400).json({ error: "Enter a valid email address." });
     }
     if (password.length < 8 || password.length > 128) return res.status(400).json({ error: "Choose a password between 8 and 128 characters." });
     const passwordHash = await makePasswordHash(password);
@@ -205,7 +205,7 @@ app.post("/api/users", async (req, res, next) => {
       [name, netId, email, passwordHash],
     );
     const user = result.rows[0];
-    if (!user) return res.status(409).json({ error: "An account already exists with that demo username. Sign in instead." });
+    if (!user) return res.status(409).json({ error: "An account already exists with that username. Sign in instead." });
     const token = await createSession(user.user_id);
     setSessionCookie(res, token);
     res.json({ user });
@@ -309,7 +309,7 @@ app.use("/api", (_req, res) => res.status(404).json({ error: "API endpoint not f
 app.use((error, _req, res, _next) => {
   // Parser/DB exception messages can contain request values. Log only a classification.
   console.error('API request failed:', error.type || error.code || 'unexpected-error');
-  if (error.code === "23505") return res.status(409).json({ error: "An account already exists with that demo username or email. Please sign in instead." });
+  if (error.code === "23505") return res.status(409).json({ error: "An account already exists with that username or email. Please sign in instead." });
   if (error.type === "entity.parse.failed") return res.status(400).json({ error: "Invalid JSON body." });
   if (error.type === "entity.too.large") return res.status(413).json({ error: "Request body is too large." });
 
@@ -341,6 +341,30 @@ exports.setup = async (event) => {
       console.error("Demo schema setup failed:", error.code || "unexpected-error");
       throw new Error("Demo schema setup failed; check CloudWatch classification and DB privileges.");
     } finally { client.release(); }
+    return { ok: true, schema: "ryde_demo" };
+  }
+  if (event?.action === "remove-demo-email-constraint") {
+    // Only the original schema's email-domain CHECK may be removed.
+    // One atomic statement; repeat invocations are harmless once it is absent.
+    await pool.query(`DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conrelid = 'ryde_demo.appuser'::regclass
+            AND conname = 'appuser_email_check'
+        ) THEN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conrelid = 'ryde_demo.appuser'::regclass
+              AND conname = 'appuser_email_check' AND contype = 'c'
+              AND regexp_replace(pg_get_expr(conbin, conrelid), '[()[:space:]]', '', 'g')
+                = 'email::text~~''%@example.test''::text'
+          ) THEN
+            RAISE EXCEPTION 'Unexpected appuser_email_check definition; no changes made';
+          END IF;
+          ALTER TABLE ryde_demo.appuser DROP CONSTRAINT IF EXISTS appuser_email_check;
+        END IF;
+      END; $$;`);
     return { ok: true, schema: "ryde_demo" };
   }
   if (event?.action === "check-demo-database") {
