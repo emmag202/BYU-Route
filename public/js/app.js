@@ -472,6 +472,17 @@ function tripPlan(r){
   const dest=startState.dest??r.toCampus[0];
   return {d,board:last,dest,path:[last,...r.toCampus.slice(0,r.toCampus.indexOf(dest)+1)]};
 }
+function googleMapsWalkLink(r,stopIndex){
+  const geo=(window.BYU_RYDE_ROUTES||[]).find(x=>String(x.id)===String(r.id));
+  const stop=geo?.stops?.[stopIndex];
+  const point=stop&&geo.points?.[stop.waypoint-1];
+  if(!point||!Number.isFinite(point[0])||!Number.isFinite(point[1]))return "";
+  const url=new URL("https://www.google.com/maps/dir/");
+  url.searchParams.set("api","1");
+  url.searchParams.set("destination",`${point[0]},${point[1]}`);
+  url.searchParams.set("travelmode","walking");
+  return url.toString();
+}
 function youAreHereHTML(){
   if(nearState.status==="locating")return `<b>You are here</b><span class="sub">Finding your location…</span>`;
   if(hasGps())return `<b>You are here</b><span class="sub">Using your phone's location${nearState.acc?` (±${Math.round(nearState.acc)} m)`:""} · ${onCampus(nearState.pos)?"on campus":"off campus"}</span>`;
@@ -482,6 +493,7 @@ function renderStart(){
   layout(2);showRoutes([r.id]);fit(r);gStops.innerHTML="";
   $("app").classList.remove("map-mode");$("navRoutes").classList.add("active");$("navMap").classList.remove("active");
   const p=tripPlan(r),name=j=>esc(r.stops[j][0]),destName=name(p.dest);
+  const walkUrl=googleMapsWalkLink(r,p.board);
   // Scheduled time at each stop along the ride, starting from the next departure at the boarding stop.
   const times=[upcoming(r,p.board,1)[0]||null];
   for(let i=1;i<p.path.length;i++)times.push(times[i-1]?arrivalAfter(r,p.path[i],times[i-1]):null);
@@ -506,7 +518,7 @@ function renderStart(){
    </div>
    <ol class="stop-strip">
      <li class="strip-stop you"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">${youAreHereHTML()}</div></li>
-     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b><span class="sub">Walking directions will appear here.</span></div></li>
+     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b>${walkUrl?`<a class="walk-directions" href="${esc(walkUrl)}" target="_blank" rel="noopener noreferrer">Walking directions in Google Maps <span aria-hidden="true">↗</span></a>`:'<span class="sub">Walking directions are unavailable for this stop.</span>'}</div></li>
      ${p.path.map(stopItem).join("")}
    </ol>
    <p class="sub sched-foot">Times after boarding are estimated from the published schedule, not live.</p>

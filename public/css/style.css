@@ -431,6 +431,8 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .strip-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .strip-tag{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:#eef2f6;color:#4a5b6e}
 .board .strip-tag,.dest .strip-tag{background:var(--c);color:#fff}.walk-box{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px dashed #b9c6d6;border-radius:10px;background:#fafbfd} 
+.walk-directions{align-self:flex-start;margin-top:5px;padding:6px 10px;border:1px solid #c9d6e5;border-radius:7px;background:#fff;color:#0645ad;font-size:13px;font-weight:700;text-decoration:none}
+.walk-directions:hover,.walk-directions:focus-visible{background:#edf4ff;border-color:#0645ad;text-decoration:underline}
 .strip-body .near-btn{margin-top:6px}
 /* Route cards are compact secondary cards (near-you cards are the large ones). */
 .home-body .rail{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
