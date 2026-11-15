@@ -61,6 +61,7 @@ const { COOKIE, TOKEN, sessionCookieOptions, readSession, csrfAllowed, createRat
 
 const routes = [
   ['POST', /^\/api\/(login|users)$/], ['POST', /^\/api\/logout$/], ['GET', /^\/api\/me$/],
+  ['GET', /^\/api\/academic-calendar\/no-class-days$/],
   ['GET', /^\/api\/users\/[1-9]\d{0,9}\/(favorites|home)$/],
   ['POST', /^\/api\/users\/[1-9]\d{0,9}\/favorites$/],
   ['DELETE', /^\/api\/users\/[1-9]\d{0,9}\/favorites\/10[1-7]$/],
@@ -103,7 +104,8 @@ function createAccountProxy({ api, origin, rateLimit = createRateLimit(), produc
     // This is a conservative per-process scaffold, not distributed account-abuse protection.
     if (!rateLimit(req.ip)) return res.status(429).json({ error: 'Too many requests. Please wait before trying again.' });
     const session = readSession(req.get('cookie'));
-    if (!['/api/login', '/api/users'].includes(path) && !session) return res.status(401).json({ error: 'Please sign in again.' });
+    const publicCalendarRead = req.method === 'GET' && path === '/api/academic-calendar/no-class-days';
+    if (!publicCalendarRead && !['/api/login', '/api/users'].includes(path) && !session) return res.status(401).json({ error: 'Please sign in again.' });
     const body = validBody(req.method, path, req.body);
     if (body === null) return res.status(400).json({ error: 'Invalid account request.' });
     try {

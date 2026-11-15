@@ -28,7 +28,7 @@ const R=[
 const USER={x:150,y:352}; // user location (near Route 11 stop)
 const $=id=>document.getElementById(id);
 const svg=$("map"),sheet=$("sheet"),q=$("q");
-let currentUser=null,favoriteRouteIds=new Set(),homePlace=null;
+let currentUser=null,favoriteRouteIds=new Set(),homePlace=null,noClassDays=[];
 function updateProfileButton(){
   const button=document.getElementById("profileBtn");
   if(!button)return;
@@ -46,6 +46,7 @@ async function loadSavedUser(){
  updateProfileButton();
 }
 async function loadFavorites(){favoriteRouteIds.clear();if(!currentUser)return;const ids=await apiRequest(`/api/users/${currentUser.user_id}/favorites`);(ids||[]).forEach(id=>favoriteRouteIds.add(String(id)))}
+async function loadNoClassDays(){try{noClassDays=await apiRequest("/api/academic-calendar/no-class-days")||[]}catch{noClassDays=[]}}
 // Saved home address: one per user, stored via /api/users/:id/home as {label, lat, lng}.
 async function loadHome(){homePlace=null;if(currentUser){try{homePlace=await apiRequest(`/api/users/${currentUser.user_id}/home`)}catch(error){homePlace=null}}window.showRydeHome?.(homePlace)}
 async function saveHome(label,lat,lng){homePlace=await apiRequest(`/api/users/${currentUser.user_id}/home`,{method:"PUT",body:JSON.stringify({label,lat,lng})});window.showRydeHome?.(homePlace);return homePlace}
@@ -389,6 +390,24 @@ document.addEventListener("toggle",e=>{
  if(e.target.id!=="allTimes")return;
  allTimesOpen=e.target.open;const b=$("allTimesBody");if(b)b.innerHTML=allTimesOpen?allTimesBody():"";
 },true);
+function noClassDaysNoticeHTML(){
+  if(!noClassDays.length)return "";
+  const dateLabel=iso=>{
+    const [year,month,day]=iso.split("-").map(Number);
+    return new Intl.DateTimeFormat("en-US",{weekday:"short",month:"short",day:"numeric",timeZone:"America/Denver"}).format(new Date(Date.UTC(year,month-1,day,12)));
+  };
+  const items=noClassDays.slice(0,3).map(item=>{
+    const range=item.start_date===item.end_date?dateLabel(item.start_date):`${dateLabel(item.start_date)}–${dateLabel(item.end_date)}`;
+    return `<li><b>${esc(range)}</b><span>${esc(item.label)}</span></li>`;
+  }).join("");
+  const source=esc(noClassDays[0].source_url||"https://academiccalendar.byu.edu/");
+  return `<aside class="academic-notice" aria-label="Upcoming BYU no-class dates">
+    <div class="academic-notice-head"><span>BYU ACADEMIC CALENDAR</span><b>Upcoming dates with no classes</b></div>
+    <ul>${items}</ul>
+    <p>Academic-calendar information only; it does not confirm bus-service changes.</p>
+    <a href="${source}" target="_blank" rel="noopener noreferrer">View official calendar ↗</a>
+  </aside>`;
+}
 function home(filter=""){
   setHash("#/");layout(1);sel=null;startState=null;showRoutes(R.map(r=>r.id));view(0,0,840);
   $("app").classList.remove("map-mode");
@@ -403,7 +422,7 @@ function home(filter=""){
       <p>Find shuttle routes, check published departure times, explore the route map, and save your favorite routes.</p>
       <p class="welcome-note">This is a prototype for planning trips, not live GPS tracking.</p></div>
       <button class="welcome-dismiss" type="button" id="welcomeDismiss">Got it</button>
-    </section>`:""}${f?"":nearYouHTML()}<div class="section-heading"><div><h2>Explore shuttle routes</h2></div><span class="sub">${list.length} routes</span></div>${dirBannerHTML()}`;
+    </section>`:""}${noClassDaysNoticeHTML()}${f?"":nearYouHTML()}<div class="section-heading"><div><h2>Explore shuttle routes</h2></div><span class="sub">${list.length} routes</span></div>${dirBannerHTML()}`;
   if(!list.length){h+=`<div class="card">No routes match “${esc(filter.trim())}”.${suggestion?` Did you mean <button type="button" class="did-you-mean" data-suggest="${esc(suggestion)}">${esc(suggestion)}</button>?`:" Try another stop or neighborhood."}</div>`}
   else h+=`<div class="rail">`+list.map(cardHTML).join("")+`</div>`;
   h+=allTimesSection();
@@ -634,7 +653,7 @@ sheet.addEventListener("click",async e=>{if(e.target.id!=="favoriteBtn")return;i
 // Draw the routes first; profile data loads in the background so an API issue can't blank the page.
 async function start(){
  buildMap();renderFromHash();updateProfileButton();locateRider();
- try{await loadSavedUser()}catch(err){console.error("Could not load saved profile:",err)}
+ try{await Promise.all([loadSavedUser(),loadNoClassDays()])}catch(err){console.error("Could not load saved data:",err)}
  refreshHome();
  const fb=$("favoriteBtn");if(fb&&sel)fb.textContent=favoriteRouteIds.has(String(sel.id))?"★ Favorite route":"☆ Add to favorites";
 }

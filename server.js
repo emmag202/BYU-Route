@@ -131,7 +131,7 @@ app.get("/api/health", (_req, res) => res.json({
 }));
 
 // Web requests always go through the IAM-signed proxy. There is no direct RDS fallback.
-const accountPaths = ["/api/users", "/api/login", "/api/logout", "/api/me"];
+const accountPaths = ["/api/users", "/api/login", "/api/logout", "/api/me", "/api/academic-calendar"];
 app.use(accountPaths, (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
@@ -209,6 +209,22 @@ app.post("/api/users", async (req, res, next) => {
     const token = await createSession(user.user_id);
     setSessionCookie(res, token);
     res.json({ user });
+  } catch (error) { next(error); }
+});
+
+app.get("/api/academic-calendar/no-class-days", async (_req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT to_char(start_date, 'YYYY-MM-DD') AS start_date,
+              to_char(end_date, 'YYYY-MM-DD') AS end_date,
+              label, source_url
+       FROM ryde_demo.academic_no_class_day
+       WHERE end_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'America/Denver')::date
+         AND start_date <= (CURRENT_TIMESTAMP AT TIME ZONE 'America/Denver')::date + 60
+       ORDER BY start_date
+       LIMIT 8`,
+    );
+    res.json(result.rows);
   } catch (error) { next(error); }
 });
 
