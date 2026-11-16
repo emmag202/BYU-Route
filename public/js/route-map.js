@@ -10,14 +10,17 @@
   const SOURCE_ROUTES = 'byu-routes';
   const SOURCE_STOPS = 'byu-stops';
   const SOURCE_CALCULATED = 'byu-calculated-route';
+  const SOURCE_TRIP = 'byu-trip-route';
   const LAYER_ROUTES = 'byu-route-lines';
   const LAYER_STOPS = 'byu-route-stops';
   const LAYER_CALCULATED = 'byu-calculated-route-line';
+  const LAYER_TRIP = 'byu-trip-route-line';
   const START = [-111.64585807083019, 40.24776213721756];
   const ROUTES = window.BYU_RYDE_ROUTES || [];
 
   let map = null;
   let activeRouteId = null;
+  let pendingTripSelection = null;
   let requestId = 0;
   let placeMarkers = [];
   let homeMarker = null;
@@ -268,6 +271,159 @@
     }
   }
 
+  function removeTripRoute() {
+    if (!map) return;
+    if (map.getLayer(LAYER_TRIP)) map.removeLayer(LAYER_TRIP);
+    if (map.getSource(SOURCE_TRIP)) map.removeSource(SOURCE_TRIP);
+  }
+
+  function renderTripRoute(route, coordinates) {
+    const data = {
+      type: 'FeatureCollection',
+      features: coordinates.length < 2 ? [] : [{
+        type: 'Feature',
+        properties: { id: route.id, name: route.name, color: route.color },
+        geometry: { type: 'LineString', coordinates }
+      }]
+    };
+    const existing = map.getSource(SOURCE_TRIP);
+    if (existing) existing.setData(data);
+    else map.addSource(SOURCE_TRIP, { type: 'geojson', data });
+    if (!map.getLayer(LAYER_TRIP)) {
+      map.addLayer({
+        id: LAYER_TRIP,
+        type: 'line',
+        source: SOURCE_TRIP,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'color'], 'line-width': 9, 'line-opacity': 1 }
+      });
+    }
+  }
+
+  function tripCoordinates(route, trip) {
+    const stops = route.stops || [];
+    const stopIndex = trip.direction === 'to' ? trip.board : trip.dest;
+    const geoStop = stops[stops.length - 1 - stopIndex];
+    const campusStop = stops[0];
+    const originIndex = trip.direction === 'to'
+      ? Number(geoStop?.waypoint) - 1
+      : Number(campusStop?.waypoint) - 1;
+    const destinationIndex = trip.direction === 'to'
+      ? route.points.length - 1
+      : Number(geoStop?.waypoint) - 1;
+
+    if (!Number.isInteger(originIndex) || !Number.isInteger(destinationIndex) ||
+        originIndex < 0 || destinationIndex < 0 ||
+        originIndex >= route.points.length || destinationIndex >= route.points.length) {
+      return null;
+    }
+
+    const [originLat, originLon] = route.points[originIndex];
+    const [destinationLat, destinationLon] = route.points[destinationIndex];
+    const low = Math.min(originIndex, destinationIndex);
+    const high = Math.max(originIndex, destinationIndex);
+    const waypoints = route.points.slice(low + 1, high).map(([lat, lon]) => ({
+      Position: [lon, lat]
+    }));
+
+    return {
+      Origin: [originLon, originLat],
+      Destination: [destinationLon, destinationLat],
+      Waypoints: waypoints
+    };
+  }
+
+  async function selectTrip(trip) {
+    if (!map || !map.isStyleLoaded() || !trip) {
+      pendingTripSelection = trip || null;
+      return;
+    }
+    const route = ROUTES.find(item => item.id === String(trip.routeId));
+    if (!route) return;
+
+    const routeRequest = tripCoordinates(route, trip);
+    if (!routeRequest) {
+      showSummary(true, `${route.name} · Stop coordinates unavailable`);
+      return;
+    }
+
+    pendingTripSelection = trip;
+    activeRouteId = route.id;
+    setSelectedTab(route.id);
+    setRouteStopVisibility(null);
+    requestId++;
+    const currentRequest = requestId;
+    const title = el('rydeNavTitle');
+    const distanceNode = el('rydeNavDistance');
+    const timeNode = el('rydeNavTime');
+    if (title) title.textContent = route.name;
+    if (distanceNode) distanceNode.textContent = '…';
+    if (timeNode) timeNode.textContent = Number.isFinite(Number(trip.estimatedMinutes)) && Number(trip.estimatedMinutes) > 0
+      ? `~${Math.round(Number(trip.estimatedMinutes))} min`
+      : '…';
+    const fromLabel = trip.originLabel || (trip.direction === 'to' ? 'Selected stop' : 'MOA');
+    const toLabel = trip.destinationLabel || (trip.direction === 'to' ? 'MOA' : 'Selected stop');
+    showSummary(true, `${fromLabel} → ${toLabel} · ${trip.estimatedMinutes ? 'Estimated from the published schedule' : 'Calculating trip estimate…'}`);
+
+    ensureBaseLayers();
+    removeTripRoute();
+    const routeLine = map.getLayer(LAYER_ROUTES);
+    const stopLayer = map.getLayer(LAYER_STOPS);
+    if (routeLine) map.setFilter(LAYER_ROUTES, ['==', ['get', 'id'], route.id]);
+    if (stopLayer) map.setFilter(LAYER_STOPS, ['==', ['get', 'id'], '__trip_segment_only__']);
+    renderCalculatedRoutes([]);
+
+    try {
+      if (!apiKey()) throw new Error('Amazon Location API key is missing.');
+      const response = await fetch(
+        `https://routes.geo.${REGION}.amazonaws.com/v2/routes?key=${encodeURIComponent(apiKey())}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...route.awsRequest,
+            ...routeRequest,
+            LegGeometryFormat: 'Simple',
+            TravelMode: route.awsRequest.TravelMode || 'Car',
+            OptimizeRoutingFor: route.awsRequest.OptimizeRoutingFor || 'FastestRoute',
+            Traffic: route.awsRequest.Traffic || { Usage: 'UseTrafficData' },
+            TravelStepType: route.awsRequest.TravelStepType || 'TurnByTurn',
+            Instructions: true,
+            LegAdditionalFeatures: ['Summary']
+          })
+        }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || data.Message || `Amazon Routes returned HTTP ${response.status}.`);
+      const routeResult = data.Routes?.[0];
+      const coordinates = readRouteGeometry(data);
+      if (coordinates.length < 2) throw new Error('AWS did not return usable trip geometry.');
+      if (currentRequest !== requestId || pendingTripSelection !== trip) return;
+      renderTripRoute(route, coordinates);
+      const bounds = coordinates.reduce(
+        (result, point) => result.extend(point),
+        new maplibregl.LngLatBounds(coordinates[0], coordinates[0])
+      );
+      map.fitBounds(bounds, { padding: { top: 90, bottom: 140, left: 40, right: 40 }, maxZoom: 16, duration: 600 });
+      const summary = buildRouteSummary(routeResult);
+      formatRouteSummary(route, summary);
+      if (Number.isFinite(Number(trip.estimatedMinutes)) && Number(trip.estimatedMinutes) > 0) {
+        if (timeNode) timeNode.textContent = `~${Math.round(Number(trip.estimatedMinutes))} min`;
+        showSummary(true, `${fromLabel} → ${toLabel} · Estimated from the published schedule`);
+      } else {
+        showSummary(true, `${fromLabel} → ${toLabel} · Estimated bus trip`);
+      }
+    } catch (error) {
+      console.error(`Could not calculate ${route.name} trip:`, error);
+      if (currentRequest === requestId) {
+        showSummary(true, `${fromLabel} → ${toLabel} · Time estimate unavailable`);
+        if (distanceNode) distanceNode.textContent = '—';
+        if (!(Number.isFinite(Number(trip.estimatedMinutes)) && Number(trip.estimatedMinutes) > 0) && timeNode) timeNode.textContent = '—';
+        if (trip.estimatedMinutes) showSummary(true, `${fromLabel} → ${toLabel} · Estimated from the published schedule`);
+      }
+    }
+  }
+
   function renderCalculatedRoutes(routeIds) {
     if (!map) return;
 
@@ -370,6 +526,8 @@
 
     requestId++;
     activeRouteId = null;
+    pendingTripSelection = null;
+    removeTripRoute();
 
     showSummary(false);
     setSelectedTab(null);
@@ -400,6 +558,8 @@
     if (!route || !map || !map.isStyleLoaded()) return;
 
     activeRouteId = routeId;
+    pendingTripSelection = null;
+    removeTripRoute();
     setSelectedTab(routeId);
     setRouteStopVisibility(routeId);
 
@@ -1168,7 +1328,8 @@
         if (id) selectRoute(id);
       });
 
-      showAllRoutes();
+      if (pendingTripSelection) selectTrip(pendingTripSelection);
+      else showAllRoutes();
       map.resize();
     });
 
@@ -1181,6 +1342,12 @@
 
   // Compatibility entry points used by the existing application shell.
   window.initRydeRouteMap = initialize;
+  window.showRydeTrip = trip => {
+    pendingTripSelection = trip || null;
+    if (!map || !map.isStyleLoaded()) return;
+    if (trip) selectTrip(trip);
+    else showAllRoutes();
+  };
   window.resizeRydeMap = () => {
     if (map) map.resize();
   };

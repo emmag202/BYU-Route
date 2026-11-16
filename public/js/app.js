@@ -436,12 +436,14 @@ function home(filter=""){
     const fresh=$("routeSearch");fresh.focus();fresh.setSelectionRange(at,at);
   })}
 }
-function mapPage(){
-  setHash("#/map");layout(1);sel=null;startState=null;showRoutes(R.map(r=>r.id));view(0,0,840);
+function mapPage(trip=null){
+  const hash=trip?`#/map?route=${encodeURIComponent(trip.routeId)}&board=${encodeURIComponent(trip.board)}&dest=${encodeURIComponent(trip.dest)}&direction=${encodeURIComponent(trip.direction)}&origin=${encodeURIComponent(trip.originLabel)}&destination=${encodeURIComponent(trip.destinationLabel)}&minutes=${encodeURIComponent(trip.estimatedMinutes??"")}`:"#/map";
+  setHash(hash);layout(1);sel=null;startState=null;showRoutes(R.map(r=>r.id));view(0,0,840);
   $("app").classList.add("map-mode");
   $("navMap").classList.add("active");$("navRoutes").classList.remove("active");
   if(window.initRydeRouteMap)window.initRydeRouteMap();
   if(window.resizeRydeMap)window.resizeRydeMap();
+  if(window.showRydeTrip)window.showRydeTrip(trip);
 }
 function detail(id){startTrip(id);return;
   $("app").classList.remove("map-mode");$("navRoutes").classList.add("active");$("navMap").classList.remove("active");
@@ -466,7 +468,13 @@ function renderFromHash(){
   routing=true;
   try{
     const h=location.hash,m=h.match(/^#\/(route|start)\/([^/]+)$/),ok=m&&R.some(r=>r.id==m[2]);
-    if(h==="#/map")mapPage();
+    if(h==="#/map"||h.startsWith("#/map?")){
+      const params=new URLSearchParams(h.split("?")[1]||"");
+      const routeId=params.get("route"),board=Number(params.get("board")),dest=Number(params.get("dest")),direction=params.get("direction");
+      const estimatedMinutes=Number(params.get("minutes"));
+      const trip=routeId&&Number.isInteger(board)&&Number.isInteger(dest)&&["to","from"].includes(direction)?{routeId,board,dest,direction,originLabel:params.get("origin")||"Selected stop",destinationLabel:params.get("destination")||"MOA",estimatedMinutes:Number.isFinite(estimatedMinutes)&&estimatedMinutes>0?estimatedMinutes:null}:null;
+      mapPage(trip);
+    }
     else if(ok&&m[1]==="route")detail(m[2]);
     else if(ok)startTrip(m[2]);
     else{if(!sameHash(h,"#/"))history.replaceState(null,"","#/");home()}
@@ -517,6 +525,7 @@ function renderStart(){
   const times=[upcoming(r,p.board,1)[0]||null];
   for(let i=1;i<p.path.length;i++)times.push(times[i-1]?arrivalAfter(r,p.path[i],times[i-1]):null);
   const boardT=times[0],rideStops=p.path.length-1;
+  const scheduledRideMinutes=times.at(-1)&&times[0]?Math.max(1,Math.round(times.at(-1).min-times[0].min)):null;
   const countdown=i=>{const left=p.path.length-1-i;return left===0?"Your stop":left===1?`1 stop to ${destName}`:`${left} stops to ${destName}`} 
   const choiceKind=p.d==="to"?"board":"dest",chosen=p.d==="to"?p.board:p.dest;
   const choices=`<div class="trip-choice"><span class="sub">${p.d==="to"?"Where are you getting on?":"Where are you getting off?"}</span><div class="dir-switch" role="group">${r.toCampus.map(j=>`<button type="button" data-trip-${choiceKind}="${j}" aria-pressed="${j===chosen}">${name(j)}</button>`).join("")}</div></div>`;
@@ -534,6 +543,7 @@ function renderStart(){
      <div class="start-time">${boardT?nextTimeText(boardT):"None scheduled"}</div>
      <p>Get on at <b>${name(p.board)}</b>, ride <b>${rideStops} stop${rideStops===1?"":"s"}</b>, get off at <b>${destName}</b>.${rideStops>1?` You'll pass ${rideStops-1} stop${rideStops===2?"":"s"} before your destination.`:""}</p>
      ${choices}
+     <button type="button" class="cta" data-view-trip data-estimated-minutes="${scheduledRideMinutes??""}">View trip</button>
    </div>
    <ol class="stop-strip">
      <li class="strip-stop you"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">${youAreHereHTML()}</div></li>
@@ -564,6 +574,7 @@ document.addEventListener("click",e=>{
   const st=e.target.closest("[data-start]");if(st){startTrip(st.dataset.start);return}
   const tb=e.target.closest("[data-trip-board]");if(tb&&startState){startState.board=Number(tb.dataset.tripBoard);renderStart();return}
   const td=e.target.closest("[data-trip-dest]");if(td&&startState){startState.dest=Number(td.dataset.tripDest);renderStart();return}
+  const viewTrip=e.target.closest("[data-view-trip]");if(viewTrip&&startState){const r=R.find(x=>x.id===startState.id),p=tripPlan(r),estimatedMinutes=Number(viewTrip.dataset.estimatedMinutes);if(r)mapPage({routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d,originLabel:r.stops[p.board][0],destinationLabel:r.stops[p.dest][0],estimatedMinutes:Number.isFinite(estimatedMinutes)&&estimatedMinutes>0?estimatedMinutes:null});return}
   const sg=e.target.closest("[data-suggest]");if(sg){home(sg.dataset.suggest);const s=$("routeSearch");if(s){s.focus();s.setSelectionRange(s.value.length,s.value.length)}return}
   const nb=e.target.closest("[data-near]");if(nb){
    const a=nb.dataset.near;
