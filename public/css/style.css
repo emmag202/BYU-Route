@@ -487,3 +487,73 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .routes-footer{padding:18px 0 4px;font-size:12px;text-align:right}.routes-footer a{color:#526a85;text-underline-offset:3px}.routes-footer a:focus-visible{outline:3px solid #0047ba;outline-offset:4px}
 
 .route-walking-links{display:grid;gap:10px;margin:18px 0}.route-walking-links h2{font-size:18px;margin:0}.route-walking-links .walk-directions{min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box}
+
+/* Mobile polish: preserve the desktop layout and all existing screen behavior. */
+@media(max-width:650px){
+ body{font-size:16px;line-height:1.5}
+ .byuhead{height:auto;min-height:114px;flex:none;flex-wrap:wrap;gap:8px 10px;padding:10px 16px}
+ .byumark{font-size:21px}.rydetitle{font-size:18px}
+ .profileBtn{height:44px;min-width:80px;padding:0 12px;font-size:14px;margin-left:auto}
+ .header-nav{order:4;width:100%;margin:0;gap:6px}
+ .header-nav button{flex:1;min-width:0;min-height:44px;padding:8px 6px;font-size:15px;line-height:1.2;white-space:nowrap}
+ .header-nav button.active{box-shadow:inset 0 -3px 0 #80b8ff}
+ .pad{padding-left:16px;padding-right:16px}
+ .hero{padding:26px 16px}.hero h1{font-size:32px;line-height:1.12;letter-spacing:-.7px}
+ .hero p{font-size:16px;line-height:1.5;margin-bottom:18px}
+ .hero-search{padding:0 12px;gap:8px}.hero-search input{min-width:0;height:54px;font-size:16px}
+ .home-body{padding-top:20px}.home-body>section{margin-bottom:26px}
+ .section-heading{align-items:baseline;gap:10px;margin-bottom:12px}.section-heading h2,.near-head h2{font-size:24px;line-height:1.25}
+ .sub,.route-note,.section-heading p,.near-head .sub{font-size:14px;color:#4d6075;line-height:1.5}
+ .welcome-intro p{font-size:15px}.welcome-intro .welcome-note{font-size:14px}.welcome-eyebrow{font-size:12px}
+ .home-body .rail{grid-template-columns:minmax(0,1fr);gap:10px}
+ .home-body .rc{padding:14px;border-radius:12px}
+ .home-body .rc .route-open{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding-right:0;min-width:0}
+ .home-body .rc .route-name{grid-column:1/-1;padding-right:44px;font-size:18px;line-height:1.3;overflow-wrap:anywhere}
+ .home-body .rc .route-stop{font-size:15px;line-height:1.4;margin:0;align-self:center;overflow-wrap:anywhere}
+ .home-body .rc .next-time{font-size:27px;line-height:1.15;margin:0;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+ .home-body .rc .next-in,.home-body .rc .next-day{display:block;margin:4px 0 0;font-size:13px;color:#4d6075;line-height:1.3}
+ .favorite-star{width:44px;height:44px;top:5px;right:6px;font-size:26px}
+ .near-card .near-item{padding:16px 52px 16px 16px}.near-route{font-size:21px;line-height:1.3}.near-stop{font-size:15px;line-height:1.45}.near-label{font-size:14px}.near-time{font-size:30px}
+ .near-head{flex-wrap:wrap;gap:8px}.near-actions{flex-wrap:wrap}.near-btn{min-height:44px;font-size:14px}
+ .dir-banner{padding:16px}.dir-banner h2{font-size:23px}.dir-toggle{flex-wrap:wrap;gap:8px}.dir-toggle-actions{flex-wrap:wrap}
+ .dir-btn,.dir-switch button,.day-chip,.welcome-dismiss,.map-teaser button{min-height:44px;font-size:15px}
+ .map-teaser{margin:22px 0;padding:18px}.map-teaser p{font-size:15px}
+ .detail-shell{padding-top:22px}.detail-shell h1{font-size:34px;line-height:1.15;overflow-wrap:anywhere}
+ .detail-head .route-days{font-size:15px;line-height:1.5}.detail-favorite{min-height:44px;font-size:16px}
+ .detail-shell .card{padding:16px}.detail-shell h2{font-size:23px}.detail-shell .sub{font-size:15px}
+ .cta,.ghost{min-height:44px;font-size:16px;white-space:normal}
+ .next-rows{grid-auto-flow:row;grid-template-columns:minmax(0,1fr);gap:16px}
+ .next-row b{font-size:17px;line-height:1.4}.tchips{flex-wrap:wrap;gap:8px}
+ .tchip{font-size:16px;padding:7px 10px}.tchip.next{font-size:18px;font-weight:800}
+ .line-stop{font-size:15px}.start-time{font-size:38px;line-height:1.2}.start-summary p{font-size:16px;line-height:1.55}
+ .trip-choice .dir-switch{display:flex;flex-wrap:wrap}.trip-choice .dir-switch button{white-space:normal;max-width:100%}
+ .stop-strip li{padding-left:30px}.strip-body{min-width:0;overflow-wrap:anywhere}.strip-body b{font-size:18px;line-height:1.4}.strip-tag{font-size:12px}
+ .walk-box{width:100%;padding:12px}.walk-directions{min-height:44px;font-size:15px;line-height:1.4;white-space:normal;max-width:100%}
+ .times-page{padding-top:22px}.times-page h1{font-size:32px;margin:0 0 8px}.times-page .field{font-size:16px}
+ .times-page select{display:block;width:100%;min-height:48px;font-size:16px;margin:6px 0 12px}
+ .sched-day-switch{display:flex;flex-wrap:wrap;gap:6px}.sched-day-switch button{flex:1;min-height:44px;padding:9px 8px;font-size:15px;white-space:nowrap}
+ .tt-wrap{display:block;max-width:100%}.tt{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-bottom:10px}
+ .tt-table{width:100%;min-width:max-content}.tt-table td{font-size:16px;padding:9px 10px}.tt-table thead th{font-size:15px;padding:9px 10px;max-width:180px;white-space:normal;min-width:105px}
+ .tt-table th.tt-hour{font-size:13px;color:#526579;padding:9px 6px 9px 0;min-width:46px}.tt-sub{font-size:13px}
+ .tt-table tr.past td{color:#64758a}.tt-table .tt-tag{font-size:12px!important}.tt-table thead th:first-child{min-width:46px}
+ .at-route h3{font-size:22px;line-height:1.4}.at-route h3 span{font-size:14px;color:#4d6075}.sched-foot{line-height:1.5}
+ .academic-notice{padding:14px}.academic-notice-head b{font-size:16px}.academic-notice p,.academic-notice a{font-size:14px}
+ .modalBack{inset:0;padding:16px;z-index:1000}.modal{max-width:100%;max-height:calc(100dvh - 32px);overflow-y:auto;padding:20px}
+ .field input{min-height:46px;font-size:16px}.favorite-confirm{max-height:calc(100dvh - 32px);overflow-y:auto}.favorite-confirm-actions button{min-height:44px}
+ .routes-footer{font-size:14px}.routes-footer a{display:inline-flex;align-items:center;min-height:44px}
+ /* Leave the map canvas clear between the top search and bottom route selector. */
+ .aws-place-search{right:64px;flex-wrap:wrap;gap:6px}.aws-place-search input{flex-basis:100%;height:44px;font-size:16px}
+ .aws-place-search button{min-height:44px;font-size:14px;padding:0 12px;flex:1}
+ .aws-place-suggestions{top:100px;max-height:40dvh;font-size:15px}.aws-place-suggestions button{min-height:44px}
+ .aws-place-status{top:112px;right:64px;font-size:14px;max-height:28dvh}
+ #routeMap .maplibregl-ctrl-group button{width:44px;height:44px}
+ .route-tabs{justify-content:flex-start;scrollbar-width:thin}.route-tabs>button{min-height:44px;font-size:14px;flex-shrink:0}
+ .ryde-nav-panel{bottom:82px;max-height:35dvh;overflow-y:auto;padding:12px 14px;font-size:15px}
+ .ryde-nav-summary{font-size:14px;line-height:1.4}.ryde-nav-head button{min-width:44px;min-height:44px}.ryde-nav-stats small{font-size:13px}
+ .king-henry-stop-legend{display:none}
+}
+@media(max-width:350px){
+ .byuhead{padding-left:12px;padding-right:12px}.header-nav button{font-size:14px}.pad{padding-left:12px;padding-right:12px}
+ .home-body .rc .next-time{font-size:25px}.home-body .rc .route-open{column-gap:8px}
+ .sched-day-switch{width:100%}.sched-day-switch button{font-size:14px;padding-left:6px;padding-right:6px}
+}
