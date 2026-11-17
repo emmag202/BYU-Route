@@ -138,8 +138,23 @@ History attributes Emma's account UI and Calvin's layout work; uncommitted chang
 
 ### OKR dashboard deployment
 
-Open `/okr` (also linked in the site header). Totals reload on opening, browser refresh, or **Refresh counters**. No login is needed. A trip is counted once when a rider opens a route and its itinerary renders; GPS updates and stop changes do not add events. Restoring a trip from browser history does not add an event. Walking directions open Google Maps for the boarding stop and record one click. Event failures do not interrupt trip planning and are not retried automatically.
+Open `/okr` directly and enter the team password. Totals reload on opening, browser refresh, or **Refresh counters**. A signed team cookie lasts 12 hours; the metrics API checks it on Render and Lambda. A trip is counted once when a rider opens a route and its itinerary renders; GPS updates and stop changes do not add events. Restoring a trip from browser history does not add an event. Walking directions open Google Maps for the boarding stop and record one click. Event failures do not interrupt trip planning and are not retried automatically.
 
 Deploy the changed `server.js`, `services/lambda-proxy.js`, `views/`, and `public/` through GitHub/Render. **Separately** run `./package-lambda.ps1` and upload the resulting `artifacts/ryde-lambda.zip` to AWS Lambda **byu-ryde-api**, keeping handler `server.handler` and existing environment variables/credentials. Deploy Lambda first so the new endpoints are ready for Render. GitHub/Render deployment does not update Lambda. Do not run schema setup; the dashboard uses the existing `ryde_demo.okr_dashboard` view and `analytics_events` table.
 
 After deployment, note `/okr` totals, create an account, save a favorite, open a route itinerary, and click walking directions. Refresh `/okr` and verify each relevant total increased. Routes Saved measures current favorites, so removing a favorite decreases it. Local automated tests use a mocked database; real PostgreSQL counts require this deployed check.
+
+
+### Final presentation deployment
+
+Favorites: open a route, choose **Save Favorite** / **Unsave Favorite**. **My profile** lists saved routes and opens them. For a home address, choose **Save home address** / **Update home address** in the profile, search on the map, select a suggestion (or a result marker), then choose **Save as home** in the popup. Remove it from the profile. All saved state uses the existing user API and reloads from PostgreSQL.
+
+Calendar: Emma's existing notice displays up to three upcoming date ranges returned by `/api/academic-calendar/no-class-days`. It loads on startup and refreshes the Routes home. No rows or an unavailable API hides the notice. The old Lambda package lacks this endpoint. No live database access was available during these edits, so whether production dates are populated is unverified. Run the first SELECT in `scripts/calendar-check.sql` in your existing database editor. Only if entries are missing, run the INSERT below it; it adds missing project dates without changing existing rows. Do not run `server.setup` or the full schema script.
+
+1. Privately set **OKR_ADMIN_PASSWORD** to the same nonempty shared password in Render's service **Environment** and AWS Lambda **byu-ryde-api ? Configuration ? Environment variables**. Keep all existing AWS/RDS settings. Do not put the value in source files. Changing this password invalidates existing team cookies.
+2. From the repository root, run `npm ci`, `npm test`, then `./package-lambda.ps1` in PowerShell. This builds and checks a fresh ZIP without deploying.
+3. In AWS Lambda **byu-ryde-api ? Code ? Upload from ? .zip file**, upload `artifacts/ryde-lambda.zip` and save. Keep handler `server.handler` and the existing runtime/configuration. If Render targets a Lambda alias, publish the new version and point that existing alias at it.
+4. Commit/push the changes on `main`, then use Render **Manual Deploy ? Deploy latest commit** (or its existing automatic deploy). Keep `APP_ORIGIN` set to the exact Render site origin. Render's usual `npm install` / `npm start` settings stay the same.
+5. Verify signup/login; save, refresh, open, and unsave a favorite; save/update/remove a home; and confirm the calendar API returns dates. Visit `/okr` privately, enter the shared password, and verify all four counters. An unauthenticated `/api/okr` request must return 401; normal student navigation has no dashboard link.
+
+No production database changes or deployments were performed by this implementation.

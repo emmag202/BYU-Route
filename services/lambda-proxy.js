@@ -1,4 +1,5 @@
 // Lex backend workstream: IAM-signed Lambda Invoke, never the public Function URL.
+const okrAccess = require('./okr-access');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 
 function backendError(status, message) {
@@ -108,6 +109,7 @@ function createAccountProxy({ api, origin, rateLimit = createRateLimit(), produc
     // Use the socket/Express IP, never a custom identity or forwarded-IP header.
     // This is a conservative per-process scaffold, not distributed account-abuse protection.
     if (!rateLimit(req.ip)) return res.status(429).json({ error: 'Too many requests. Please wait before trying again.' });
+    if (path === '/api/okr' && !okrAccess.authorized(req.get('cookie'))) return res.status(401).json({ error: 'Enter the team password at /okr.' });
     const session = readSession(req.get('cookie'));
     const publicCalendarRead = req.method === 'GET' && path === '/api/academic-calendar/no-class-days';
     if (!publicCalendarRead && !['/api/login', '/api/users', '/api/okr', '/api/events'].includes(path) && !session) return res.status(401).json({ error: 'Please sign in again.' });
@@ -119,7 +121,7 @@ function createAccountProxy({ api, origin, rateLimit = createRateLimit(), produc
       const result = await api.invoke({
         version: '2.0', routeKey: '$default', rawPath: path, rawQueryString: '',
         headers: { host: 'ryde-internal', 'content-type': 'application/json' },
-        cookies: session ? [`${COOKIE}=${session}`] : [],
+        cookies: [...(session ? [`${COOKIE}=${session}`] : []), ...(path === '/api/okr' ? [`${okrAccess.COOKIE}=${okrAccess.readToken(req.get('cookie'))}`] : [])],
         requestContext: { http: { method: req.method, path, protocol: 'HTTP/1.1', sourceIp: '127.0.0.1' } },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }), isBase64Encoded: false,
       });

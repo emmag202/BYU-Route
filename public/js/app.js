@@ -52,9 +52,9 @@ async function loadHome(){homePlace=null;if(currentUser){try{homePlace=await api
 async function saveHome(label,lat,lng){homePlace=await apiRequest(`/api/users/${currentUser.user_id}/home`,{method:"PUT",body:JSON.stringify({label,lat,lng})});window.showRydeHome?.(homePlace);return homePlace}
 async function clearHome(){await apiRequest(`/api/users/${currentUser.user_id}/home`,{method:"DELETE"});homePlace=null;window.showRydeHome?.(null);if(nearState.source==="home")nearState={status:"idle",pos:null,source:null,message:""};refreshHome()}
 window.onRydeSaveHome=async({label,lat,lng})=>{if(!currentUser){openProfile();return false}await saveHome(label,lat,lng);nearState={status:"idle",pos:null,source:null,message:""};return true};
-async function saveUser(name,net_id,email,password){const result=await apiRequest("/api/users",{method:"POST",body:JSON.stringify({name:name.trim(),net_id:net_id.trim(),email:email.trim(),password})});currentUser=result.user;await Promise.all([loadFavorites(),loadHome()]);updateProfileButton()}
-async function signIn(net_id,password){const result=await apiRequest("/api/login",{method:"POST",body:JSON.stringify({net_id:net_id.trim(),password})});currentUser=result.user;await Promise.all([loadFavorites(),loadHome()]);updateProfileButton()}
-async function signOut(){try{await apiRequest("/api/logout",{method:"POST"})}catch(error){alert(error.message||"Could not sign out.");return}currentUser=null;favoriteRouteIds.clear();homePlace=null;window.showRydeHome?.(null);if(nearState.source==="home")nearState={status:"idle",pos:null,source:null,message:""};localStorage.removeItem("ryde_auth_token");localStorage.removeItem("ryde_net_id");updateProfileButton();refreshHome()}
+async function saveUser(name,net_id,email,password){const result=await apiRequest("/api/users",{method:"POST",body:JSON.stringify({name:name.trim(),net_id:net_id.trim(),email:email.trim(),password})});currentUser=result.user;await Promise.all([loadFavorites(),loadHome()]);updateProfileButton();refreshScreen()}
+async function signIn(net_id,password){const result=await apiRequest("/api/login",{method:"POST",body:JSON.stringify({net_id:net_id.trim(),password})});currentUser=result.user;await Promise.all([loadFavorites(),loadHome()]);updateProfileButton();refreshScreen()}
+async function signOut(){try{await apiRequest("/api/logout",{method:"POST"})}catch(error){alert(error.message||"Could not sign out.");return}currentUser=null;favoriteRouteIds.clear();homePlace=null;window.showRydeHome?.(null);if(nearState.source==="home")nearState={status:"idle",pos:null,source:null,message:""};localStorage.removeItem("ryde_auth_token");localStorage.removeItem("ryde_net_id");updateProfileButton();refreshScreen()}
 async function toggleFavorite(route_id){if(!currentUser){openProfile();return}const id=String(route_id);if(favoriteRouteIds.has(id)){await apiRequest(`/api/users/${currentUser.user_id}/favorites/${encodeURIComponent(id)}`,{method:"DELETE"});favoriteRouteIds.delete(id)}else{await apiRequest(`/api/users/${currentUser.user_id}/favorites`,{method:"POST",body:JSON.stringify({route_key:id})});favoriteRouteIds.add(id)}}
 function showCreateAccountForm(){
   const c=$("profileContent");
@@ -64,7 +64,7 @@ function showSignInForm(){
   const c=$("profileContent");
   c.innerHTML=`<h1>Sign in</h1><div class="sub">Enter your username and password.</div><form id="signInForm" novalidate><label class="field">Username<input name="net_id" required maxlength="50" autocomplete="username"></label><label class="field">Password<input name="password" type="password" required maxlength="128" autocomplete="current-password"></label><div class="emailError formMessage hide" role="alert"></div><button class="cta" type="submit">Sign in</button><button class="ghost" type="button" id="backToAccountOptions">Back</button></form>`;
 }
-function openProfile(){const c=$("profileContent");if(currentUser)c.innerHTML=`<h1>Your Ryde profile</h1><div class="sub">Saved in the Ryde database</div><div class="card"><b>${esc(currentUser.name)}</b><div>${esc(currentUser.net_id)}</div><div class="sub">${esc(currentUser.email)}</div><div style="margin-top:10px"><b>${favoriteRouteIds.size}</b> favorite route${favoriteRouteIds.size===1?"":"s"}</div><div style="margin-top:10px"><b>Home:</b> ${homePlace?esc(homePlace.label):'<span class="sub">Not set — search an address on the map and tap “Save as home”.</span>'}</div>${homePlace?'<button class="ghost" id="clearHome" type="button" style="margin-top:8px">Remove home address</button>':""}</div><button class="ghost" id="switchUser">Sign out</button>`;else c.innerHTML=`<h1>Welcome to Ryde</h1><div class="sub">Choose an option to continue.</div><button class="cta" type="button" id="showCreateAccount">Create an account</button><button class="ghost" type="button" id="showSignIn">Sign in</button>`;$("profileModal").classList.remove("hide")}
+function openProfile(){const c=$("profileContent");if(currentUser)c.innerHTML=`<h1>Your Ryde profile</h1><div class="sub">Saved in the Ryde database</div><div class="card"><b>${esc(currentUser.name)}</b><div>${esc(currentUser.net_id)}</div><div class="sub">${esc(currentUser.email)}</div><div style="margin-top:10px"><b>${favoriteRouteIds.size}</b> favorite route${favoriteRouteIds.size===1?"":"s"}</div><div style="margin-top:10px"><b>Home:</b> ${homePlace?esc(homePlace.label):'<span class="sub">Not set — search an address on the map and tap “Save as home”.</span>'}</div><button class="ghost" id="chooseHome" type="button">${homePlace?"Update home address":"Save home address"}</button>${homePlace?'<button class="ghost" id="clearHome" type="button" style="margin-top:8px">Remove home address</button>':""}</div><h2>Favorite routes</h2>${favoriteRouteIds.size?[...favoriteRouteIds].map(id=>{const r=R.find(x=>String(x.id)===id);return r?`<button class="ghost" type="button" data-profile-route="${esc(id)}">Open ${esc(r.name)}</button>`:""}).join(""):"<p>No favorites yet. Open a route and choose Save Favorite.</p>"}<button class="ghost" id="switchUser">Sign out</button>`;else c.innerHTML=`<h1>Welcome to Ryde</h1><div class="sub">Choose an option to continue.</div><button class="cta" type="button" id="showCreateAccount">Create an account</button><button class="ghost" type="button" id="showSignIn">Sign in</button>`;$("profileModal").classList.remove("hide")}
 
 
 const addSheetHandle=()=>{
@@ -453,7 +453,7 @@ function detail(id){startTrip(id);return;
   sheet.innerHTML=`<div class="pad detail-shell" style="--c:${r.color}">
    <div class="detail-head"><h1>${esc(r.name)}</h1><div class="route-days">${runDays(r)}</div></div>
    <div id="schedPanel">${schedulePanel(r)}</div>
-   <button class="ghost" id="favoriteBtn">${favoriteRouteIds.has(String(r.id))?"★ Favorite route":"☆ Add to favorites"}</button>
+   <button class="ghost" id="favoriteBtn">${favoriteRouteIds.has(String(r.id))?"Unsave Favorite":"Save Favorite"}</button>
   </div>`;addSheetHandle();
 }
 
@@ -549,6 +549,7 @@ function renderStart(){
      <div class="start-time">${boardT?nextTimeText(boardT):"None scheduled"}</div>
      <p>Get on at <b>${name(p.board)}</b>, ride <b>${rideStops} stop${rideStops===1?"":"s"}</b>, get off at <b>${destName}</b>.${rideStops>1?` You'll pass ${rideStops-1} stop${rideStops===2?"":"s"} before your destination.`:""}</p>
      ${choices}
+     <button type="button" class="ghost" id="favoriteBtn" aria-pressed="${favoriteRouteIds.has(String(r.id))}">${favoriteRouteIds.has(String(r.id))?"Unsave Favorite":"Save Favorite"}</button>
      <button type="button" class="cta" data-view-trip data-estimated-minutes="${scheduledRideMinutes??""}">View trip</button>
    </div>
    <ol class="stop-strip">
@@ -648,7 +649,7 @@ sheet.addEventListener("keydown",e=>{
 
 $("profileBtn").onclick=openProfile;$("closeProfile").onclick=()=>$("profileModal").classList.add("hide");
 $("profileModal").addEventListener("click",e=>{if(e.target.id==="profileModal")$("profileModal").classList.add("hide");if(e.target.id==="clearHome"){e.target.disabled=true;clearHome().then(openProfile).catch(err=>{e.target.disabled=false;alert(err.message||"Could not remove home address.")})}if(e.target.id==="switchUser"){signOut().then(openProfile)}});
-$("profileContent").addEventListener("click",e=>{const button=e.target.closest("button");if(!button)return;if(button.id==="showCreateAccount")showCreateAccountForm();if(button.id==="showSignIn")showSignInForm();if(button.id==="backToAccountOptions")openProfile()});
+$("profileContent").addEventListener("click",e=>{const button=e.target.closest("button");if(!button)return;if(button.dataset.profileRoute){$("profileModal").classList.add("hide");startTrip(button.dataset.profileRoute);return}if(button.id==="chooseHome"){$("profileModal").classList.add("hide");mapPage();$("awsPlaceQuery").focus();$("awsPlaceStatus").textContent="Search for your home, select a result, then choose Save as home.";return}if(button.id==="showCreateAccount")showCreateAccountForm();if(button.id==="showSignIn")showSignInForm();if(button.id==="backToAccountOptions")openProfile()});
 $("profileContent").addEventListener("input",e=>{const form=e.target.closest("form");if(!form)return;const msg=form.querySelector(".formMessage");if(msg){msg.textContent="";msg.classList.add("hide")}});
 $("profileContent").addEventListener("submit",async e=>{
   const form=e.target;
@@ -668,13 +669,13 @@ $("profileContent").addEventListener("submit",async e=>{
     openProfile();
   }catch(error){msg.textContent=error.message||"Could not complete that request.";msg.classList.remove("hide")}
 });
-sheet.addEventListener("click",async e=>{if(e.target.id!=="favoriteBtn")return;if(!currentUser){openProfile();return}e.target.disabled=true;try{await toggleFavorite(sel.id);e.target.classList.toggle("on",favoriteRouteIds.has(String(sel.id)));e.target.textContent=favoriteRouteIds.has(String(sel.id))?"★ Favorite route":"☆ Add to favorites"}catch(err){alert(err.message||"Could not save favorite.")}finally{e.target.disabled=false}});
+sheet.addEventListener("click",async e=>{if(e.target.id!=="favoriteBtn")return;if(!currentUser){openProfile();return}e.target.disabled=true;try{await toggleFavorite(sel.id);e.target.classList.toggle("on",favoriteRouteIds.has(String(sel.id)));e.target.setAttribute("aria-pressed",String(favoriteRouteIds.has(String(sel.id))));e.target.textContent=favoriteRouteIds.has(String(sel.id))?"Unsave Favorite":"Save Favorite"}catch(err){alert(err.message||"Could not save favorite.")}finally{e.target.disabled=false}});
 
 // Draw the routes first; profile data loads in the background so an API issue can't blank the page.
 async function start(){
  buildMap();renderFromHash();updateProfileButton();locateRider();
  try{await Promise.all([loadSavedUser(),loadNoClassDays()])}catch(err){console.error("Could not load saved data:",err)}
  refreshHome();
- const fb=$("favoriteBtn");if(fb&&sel)fb.textContent=favoriteRouteIds.has(String(sel.id))?"★ Favorite route":"☆ Add to favorites";
+ const fb=$("favoriteBtn");if(fb&&sel){fb.textContent=favoriteRouteIds.has(String(sel.id))?"Unsave Favorite":"Save Favorite";fb.setAttribute("aria-pressed",String(favoriteRouteIds.has(String(sel.id))))}
 }
 start();

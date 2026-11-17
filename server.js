@@ -10,6 +10,7 @@ const { Pool } = require("pg");
 const serverless = require("serverless-http");
 const { createLambdaApi, createAccountProxy } = require("./services/lambda-proxy");
 const { readSession, sessionCookieOptions } = require("./services/account-security");
+const okrAccess = require("./services/okr-access");
 const lambdaApi = createLambdaApi();
 const isLambda = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
 
@@ -121,8 +122,22 @@ app.use((_req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, "public"), { maxAge: process.env.NODE_ENV === "production" ? "1h" : 0 }));
 app.get(["/", "/index.html"], (_req, res) => res.render("index"));
-app.get("/okr", (_req, res) => res.render("okr"));
+app.get("/okr", (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.render(okrAccess.authorized(req.get('cookie')) ? 'okr' : 'okr-login', { error: '', configured: Boolean(process.env.OKR_ADMIN_PASSWORD) });
+});
 app.use(express.json({ limit: "20kb" }));
+app.post('/okr/login', express.urlencoded({ extended: false, limit: '2kb' }), (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (!process.env.OKR_ADMIN_PASSWORD) return res.status(503).render('okr-login', { error: 'Team dashboard password is not configured.', configured: false });
+  if (typeof req.body.password !== 'string' || !okrAccess.equal(req.body.password, process.env.OKR_ADMIN_PASSWORD)) {
+    return res.status(401).render('okr-login', { error: 'Incorrect password.', configured: true });
+  }
+  res.cookie(okrAccess.COOKIE, okrAccess.createToken(), { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: okrAccess.HOURS * 3600000 });
+  res.redirect(303, '/okr');
+});
+// Protect totals on both Render and Lambda; interaction recording remains available to riders.
+app.use('/api/okr', okrAccess.requireOkr);
 
 app.get("/api/health", (_req, res) => res.json({
   ok: true,

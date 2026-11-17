@@ -59,6 +59,11 @@ test('account forms preserve Emma controls and never store session secrets',()=>
   for(const name of ['name','net_id','email','password','confirm_password']) assert.match(content.innerHTML,new RegExp(`name="${name}"`));
   assert.match(content.innerHTML,/autocomplete="new-password"/); assert.match(content.innerHTML,/>Username<input/);
   assert.doesNotMatch(source,/School demo only|fictional|Demo username|example\.test|isDemoEmail/);
+  context.currentUser={name:'Rider',net_id:'rider',email:'rider@example.test'};
+  context.favoriteRouteIds=new Set(['101']); context.homePlace=null;
+  context.R=[{id:'101',name:'West'}]; context.esc=s=>String(s);
+  context.openProfile(); assert.match(content.innerHTML,/data-profile-route="101"/); assert.match(content.innerHTML,/id="chooseHome"/);
+  context.homePlace={label:'Saved home'}; context.openProfile(); assert.match(content.innerHTML,/Saved home/); assert.match(content.innerHTML,/id="clearHome"/);
   context.showSignInForm(); assert.match(content.innerHTML,/id="signInForm"/); assert.match(content.innerHTML,/autocomplete="current-password"/);
   assert.doesNotMatch(source,/localStorage\.setItem\("ryde_(auth_token|net_id)"/);
   assert.doesNotMatch(source,/headers\.Authorization|Bearer /);

@@ -3,8 +3,11 @@ const assert = require('node:assert/strict');
 const express = require('express');
 const { createAccountProxy } = require('../services/lambda-proxy');
 
-test('public dashboard and supported events travel through proxy and Lambda SQL handlers', async () => {
+test('password-protected dashboard and supported events travel through proxy and Lambda SQL handlers', async () => {
   Object.assign(process.env, { AWS_LAMBDA_FUNCTION_NAME: 'byu-ryde-api', DB_HOST: 'offline', DB_NAME: 'offline', DB_USER: 'offline', DB_PASSWORD: 'offline', DB_SSL_CA: 'package.json' });
+  process.env.OKR_ADMIN_PASSWORD = 'offline-test-password';
+  const access = require('../services/okr-access');
+  const cookie = `${access.COOKIE}=${access.createToken()}`;
   const events = [];
   require('pg').Pool = class {
     on() {}
@@ -20,15 +23,33 @@ test('public dashboard and supported events travel through proxy and Lambda SQL 
   };
   const lambda = require('../server');
   const app = express(); app.use(express.json());
+  app.get('/okr', (req,res,next) => lambda.app(req,res,next));
+  app.post('/okr/login', (req,res,next) => lambda.app(req,res,next));
   app.use(createAccountProxy({ origin: 'https://ryde.example', api: { configured: true, invoke: event => lambda.handler(event, {}) } }));
   const server = app.listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r));
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
+    assert.equal((await fetch(base + '/api/okr')).status, 401);
+    const locked = await (await fetch(base + '/okr')).text();
+    assert.match(locked, /name="password"/); assert.doesNotMatch(locked, /data-metric=/);
+    const login = password => fetch(base + '/okr/login', { method: 'POST', redirect: 'manual', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ password }) });
+    assert.equal((await login('wrong')).status, 401);
+    const unlocked = await login(process.env.OKR_ADMIN_PASSWORD);
+    assert.equal(unlocked.status, 303);
+    const issuedCookie = unlocked.headers.get('set-cookie');
+    assert.match(issuedCookie, /HttpOnly/); assert.match(issuedCookie, /SameSite=Strict/);
+    assert.equal(access.authorized(issuedCookie), true);
+    assert.match(await (await fetch(base + '/okr', { headers: { Cookie: issuedCookie.split(';')[0] } })).text(), /data-metric="account_registrations"/);
+    const originalPassword = process.env.OKR_ADMIN_PASSWORD;
+    delete process.env.OKR_ADMIN_PASSWORD;
+    assert.equal(access.authorized(cookie), false);
+    process.env.OKR_ADMIN_PASSWORD = originalPassword;
+    assert.equal((await fetch(base + '/api/okr', { headers: { Cookie: cookie + 'tampered' } })).status, 401);
     const post = type => fetch(base + '/api/events', { method: 'POST', headers: { Origin: 'https://ryde.example', 'Content-Type': 'application/json', 'X-Ryde-Request': '1' }, body: JSON.stringify({ event_type: type }) });
     for (const type of ['trip_planned', 'directions_clicked']) assert.equal((await post(type)).status, 204);
     assert.equal((await post('unsupported')).status, 400);
     for (let i = 0; i < 2; i++) {
-      const response = await fetch(base + '/api/okr');
+      const response = await fetch(base + '/api/okr', { headers: { Cookie: cookie } });
       assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'no-store');
       assert.deepEqual((await response.json()).map(r => r.total), ['3', '2', '1', '1']);
     }
