@@ -496,8 +496,8 @@ function detail(id){
   sheet.innerHTML=`<div class="pad detail-shell" style="--c:${r.color}">
    <div class="detail-head"><h1>${esc(r.name)}</h1><div class="route-days">${runDays(r)}</div>${favoriteButton(r,true)}</div>
    <button type="button" class="cta" data-start="${r.id}">Plan trip</button>
-   ${routeWalkingLinksHTML(r)}
    <div id="schedPanel">${schedulePanel(r)}</div>
+   ${routeWalkingLinksHTML(r)}
   </div>`;addSheetHandle();
 }
 
