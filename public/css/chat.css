@@ -1,0 +1,46 @@
+/* Trip assistant (home page question box). Kept separate from style.css, which mirrors the Pages build. */
+.hero-chat{padding-right:8px}
+.hero-chat input{min-width:0}
+.hero-chat button{flex:none;appearance:none;border:0;border-radius:9px;background:#002e5d;color:#fff;font:inherit;font-weight:650;padding:11px 20px;cursor:pointer}
+.hero-chat button:disabled{opacity:.55;cursor:default}
+.chat-result{max-width:740px;margin-top:14px}
+.chat-note{margin:0 0 10px;color:#dce9fa;font-size:15px}
+.chat-chips{display:flex;flex-wrap:wrap;gap:8px}
+.chat-chip{appearance:none;border:1px solid #ffffff66;background:#ffffff1a;color:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:13px;text-align:left;cursor:pointer}
+.chat-chip:hover,.chat-chip:focus-visible{background:#ffffff33}
+.chat-plan{background:#fff;color:#132d48;border-radius:13px;padding:16px 18px;box-shadow:0 6px 20px #001a3a44}
+.hero .chat-plan p{color:inherit;font-size:14px;margin:0}
+.hero .chat-plan .chat-summary{font-weight:650;margin-bottom:10px}
+.chat-leg{border-top:1px solid #e3e7eb;padding:12px 0}
+.chat-leg-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin-bottom:8px}
+.chat-leg-head span:last-child{color:#626b75;font-size:13px}
+.chat-step{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#002e5d;color:#fff;font-size:12px;font-weight:700}
+.chat-best{border-left:4px solid var(--c,#002e5d);background:#f3f5f7;border-radius:8px;padding:10px 12px}
+.chat-mode{display:block;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#30465f;margin-bottom:4px}
+.chat-link{display:inline-block;appearance:none;border:0;background:none;padding:0;margin-top:8px;color:#0047ba;font:inherit;font-size:14px;font-weight:650;text-decoration:none;cursor:pointer}
+.chat-alts{margin:8px 0 0;padding-left:18px;font-size:13px;color:#30465f}
+.chat-alts li{margin-top:4px}
+.chat-alts a{color:#0047ba}
+.hero .chat-plan .chat-foot{border-top:1px solid #e3e7eb;padding-top:10px;color:#626b75;font-size:12px}
+@media (max-width:640px){.hero-chat button{padding:9px 14px}.chat-plan{padding:14px}}
+
+/* Waiting game (chatBusHTML in app.js): the bus position is set from JavaScript; wheels, bobbing
+   and exhaust are CSS. Mirroring the bus with scaleX(-1) also reverses the wheel spin. */
+.chat-loading-row{display:flex;align-items:center;gap:12px}
+.chat-loading .chat-note{margin:0}
+.chat-bus-controls{display:flex;gap:6px;margin-left:auto}
+.chat-bus-btn{appearance:none;width:36px;height:32px;border:1px solid #ffffff66;border-radius:8px;background:#ffffff1a;color:#fff;font-size:13px;cursor:pointer}
+.chat-bus-btn:hover,.chat-bus-btn:focus-visible{background:#ffffff33}
+.chat-bus-track{position:relative;height:64px;margin-top:6px;border-bottom:2px dashed #ffffff66}
+.chat-bus-car{position:absolute;left:0;bottom:-1px;width:132px;will-change:transform}
+.chat-bus-flip{transition:transform .3s ease}
+.chat-bus-flip.is-left{transform:scaleX(-1)}
+.chat-bus{display:block;overflow:visible}
+.chat-bus-wheel{transform-box:fill-box;transform-origin:center;animation:chat-bus-spin .55s linear infinite}
+.chat-bus-body{animation:chat-bus-bob .4s ease-in-out infinite alternate}
+.chat-bus-puff{fill:#ffffff99;opacity:0;animation:chat-bus-puff 1.1s ease-out infinite}
+.chat-bus-puff2{animation-delay:.55s}
+@keyframes chat-bus-spin{to{transform:rotate(360deg)}}
+@keyframes chat-bus-bob{from{transform:translateY(0)}to{transform:translateY(-1.5px)}}
+@keyframes chat-bus-puff{0%{opacity:.8;transform:translate(0,0) scale(.6)}100%{opacity:0;transform:translate(-14px,-4px) scale(1.6)}}
+@media (prefers-reduced-motion:reduce){.chat-bus *,.chat-bus-flip{animation:none!important;transition:none!important}}

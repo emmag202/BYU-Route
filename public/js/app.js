@@ -388,7 +388,163 @@ function locateRider(){
 // Location changes the home cards' direction and the Start screen's "you are here".
 function refreshScreen(){if(startState)renderStart();else if(location.hash==="#/times")timesPage();else if(screen===2&&sel)detail(sel.id);else refreshHome()}
 // Re-render only while the Routes home screen is showing, keeping whatever is typed in search.
-function refreshHome(){if(screen===1&&!sel&&location.hash!=="#/times"&&!$("app").classList.contains("map-mode")){const s=$("routeSearch");home(s?s.value:"")}}
+function refreshHome(){if(screen===1&&!sel&&location.hash!=="#/times"&&!$("app").classList.contains("map-mode")){const a=document.activeElement,typing=a&&a.id==="chatInput",at=typing?a.selectionStart:0;home();if(typing){const f=$("chatInput");f.focus();f.setSelectionRange(at,at)}}}
+
+/* ---- trip assistant: the home page question box (POST /api/chat) ---- */
+// The server turns the question into a plan; every sentence shown here is a template filled from that plan.
+const CHAT_EXAMPLES=["How do I get from Wyview to the Wilk at 9 am?","Plan my day: Raintree, then the Provo library, then University Place"];
+let chatState={q:"",busy:false,result:null,error:"",resolved:{}};
+function chatFormHTML(){
+  return `<form class="hero-search hero-chat" id="chatForm" autocomplete="off"><span aria-hidden="true">✦</span><input id="chatInput" type="text" maxlength="280" placeholder="e.g. Wyview to the Provo library at 3 pm" value="${esc(chatState.q)}" aria-label="Ask the trip assistant"><button type="submit" id="chatSend"${chatState.busy?" disabled":""}>Ask</button></form>
+    <div class="chat-result" id="chatResult" aria-live="polite">${chatResultHTML()}</div>`;
+}
+const chatChip=(label,attrs)=>`<button type="button" class="chat-chip" ${attrs}>${esc(label)}</button>`;
+const chatExamples=()=>`<div class="chat-chips">${CHAT_EXAMPLES.map((x,i)=>chatChip(x,`data-chat-example="${i}"`)).join("")}</div>`;
+function chatRydeLine(o){
+  return `Walk ${o.walkToMin} min to <b>${esc(o.board)}</b> · board at <b>${o.boardTime}</b> · get off at <b>${esc(o.alight)}</b> about ${o.offTime} · walk ${o.walkFromMin} min · arrive about <b>${o.arriveTime}</b>`;
+}
+function chatLegHTML(leg,i,n){
+  const route=id=>R.find(r=>r.id==id),first=leg.ryde[0];
+  let main,others="";
+  if(leg.best==="ryde"){
+    const r=route(first.routeId);
+    main=`<div class="chat-best" style="--c:${r?r.color:"#002e5d"}"><span class="chat-mode">Take The Ryde · ${esc(first.routeName)}</span><p>${chatRydeLine(first)}</p><button type="button" class="chat-link" data-open="${esc(first.routeId)}">Open ${esc(first.routeName)} schedule →</button></div>`;
+    if(leg.ryde[1])others+=`<li>Or the ${esc(leg.ryde[1].routeName)} route: ${chatRydeLine(leg.ryde[1])}</li>`;
+    others+=`<li>Walking the whole way: about ${leg.walk.minutes} min (${leg.walk.miles} mi)</li>`;
+  }else if(leg.best==="walk"){
+    main=`<div class="chat-best"><span class="chat-mode">Walk</span><p>About <b>${leg.walk.minutes} min</b> (${leg.walk.miles} mi) · arrive about <b>${leg.walk.arriveTime}</b></p></div>`;
+    if(first)others+=`<li>Or The Ryde, ${esc(first.routeName)} route: ${chatRydeLine(first)}</li>`;
+  }else{
+    main=`<div class="chat-best"><span class="chat-mode">Public transit</span><p>No Ryde shuttle covers this trip (${leg.walk.miles} mi). Check UTA buses, UVX and FrontRunner for live times.${n>1?` This plan allows about ${leg.transit.allowMin} min.`:""}</p><a class="chat-link" href="${esc(leg.transit.url)}" target="_blank" rel="noopener noreferrer">Open transit directions ↗</a></div>`;
+    if(leg.walk.minutes<=60)others+=`<li>Walking the whole way: about ${leg.walk.minutes} min (${leg.walk.miles} mi)</li>`;
+  }
+  if(leg.best!=="transit")others+=`<li><a href="${esc(leg.transit.url)}" target="_blank" rel="noopener noreferrer">Public transit alternative (UTA) ↗</a></li>`;
+  return `<div class="chat-leg"><div class="chat-leg-head">${n>1?`<span class="chat-step">${i+1}</span>`:""}<b>${esc(leg.from)} → ${esc(leg.to)}</b><span>leave ${leg.departTime}</span></div>${main}${others?`<ul class="chat-alts">${others}</ul>`:""}</div>`;
+}
+// Waiting game: a Ryde bus drives across the answer area and turns around at each end. The ◀ ▶ buttons
+// or the keyboard arrow keys turn it early. Decorative only; the text says what is happening.
+const CHAT_BUS_SPEED=110; // px per second
+const chatBus={x:0,dir:1,last:0,raf:0};
+function chatBusHTML(){
+  const wheel=x=>`<g class="chat-bus-wheel"><circle cx="${x}" cy="45" r="7.5" fill="#15202b"/><circle cx="${x}" cy="45" r="3.4" fill="#d6dee8"/><path d="M${x-6} 45h12M${x} 39v12" stroke="#d6dee8" stroke-width="1.6" stroke-linecap="round"/></g>`;
+  return `<div class="chat-loading">
+    <div class="chat-loading-row"><p class="chat-note">Planning your trip…</p><span class="chat-bus-controls"><button type="button" class="chat-bus-btn" data-bus-dir="-1" aria-label="Drive the bus left">◀</button><button type="button" class="chat-bus-btn" data-bus-dir="1" aria-label="Drive the bus right">▶</button></span></div>
+    <div class="chat-bus-track"><div class="chat-bus-car" style="transform:translateX(${chatBus.x}px)"><div class="chat-bus-flip${chatBus.dir<0?" is-left":""}"><svg class="chat-bus" viewBox="0 0 132 58" width="132" height="58" aria-hidden="true" focusable="false">
+      <circle class="chat-bus-puff" cx="16" cy="40" r="3"/><circle class="chat-bus-puff chat-bus-puff2" cx="16" cy="40" r="3"/>
+      <g class="chat-bus-body">
+        <rect x="20" y="8" width="90" height="34" rx="7" fill="#fff"/>
+        <path d="M96 8h6a8 8 0 0 1 8 8v26H96z" fill="#e8eef6"/>
+        <rect x="20" y="31" width="90" height="4" fill="#0062b8"/>
+        <rect x="26" y="13" width="14" height="11" rx="2" fill="#002e5d"/><rect x="44" y="13" width="14" height="11" rx="2" fill="#002e5d"/><rect x="62" y="13" width="14" height="11" rx="2" fill="#002e5d"/>
+        <rect x="80" y="13" width="11" height="22" rx="2" fill="#002e5d" opacity=".85"/>
+        <rect x="96" y="13" width="10" height="13" rx="2" fill="#002e5d"/>
+        <circle cx="107" cy="37" r="2" fill="#ffd75e"/>
+      </g>
+      ${wheel(38)}${wheel(92)}
+    </svg></div></div></div>
+  </div>`;
+}
+function chatBusTurn(dir){
+  if(chatBus.dir===dir)return;
+  chatBus.dir=dir;
+  const f=document.querySelector(".chat-bus-flip");if(f)f.classList.toggle("is-left",dir<0);
+}
+function chatBusTick(t){
+  if(!chatState.busy){chatBus.raf=0;return}
+  const car=document.querySelector(".chat-bus-car"),track=car&&car.parentElement;
+  if(car){
+    const dt=chatBus.last?Math.min(t-chatBus.last,50):0,max=track.clientWidth-car.offsetWidth;
+    // Still under reduced motion: the bus stays put, but the arrows still turn it.
+    if(max>10&&!matchMedia("(prefers-reduced-motion: reduce)").matches){
+      chatBus.x+=chatBus.dir*CHAT_BUS_SPEED*dt/1000;
+      if(chatBus.x>=max){chatBus.x=max;chatBusTurn(-1)}else if(chatBus.x<=0){chatBus.x=0;chatBusTurn(1)}
+    }else chatBus.x=Math.max(0,Math.min(chatBus.x,max));
+    car.style.transform=`translateX(${chatBus.x}px)`;
+  }
+  chatBus.last=t;chatBus.raf=requestAnimationFrame(chatBusTick);
+}
+function chatBusStart(){if(!chatBus.raf){chatBus.last=0;chatBus.raf=requestAnimationFrame(chatBusTick)}}
+document.addEventListener("keydown",e=>{
+  if(!chatState.busy||!document.querySelector(".chat-bus-car"))return;
+  const t=e.target;if(t&&(t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.isContentEditable))return;
+  if(e.key==="ArrowLeft"){chatBusTurn(-1);e.preventDefault()}
+  else if(e.key==="ArrowRight"){chatBusTurn(1);e.preventDefault()}
+});
+function chatResultHTML(){
+  const {busy,result:x,error}=chatState;
+  if(busy)return chatBusHTML();
+  if(error)return `<p class="chat-note">${esc(error)}</p>`;
+  if(!x)return chatExamples();
+  if(x.status==="unsupported")return `<p class="chat-note">I can plan trips around Utah Valley. Ask how to get somewhere, or list the places you need to visit in order.</p>${chatExamples()}`;
+  if(x.status==="outside-valley")return `<p class="chat-note">That is outside Utah Valley. I only plan trips between Santaquin and Lehi.</p>`;
+  if(x.status==="clarify"){
+    const picks=(x.candidates||[]).map((c,i)=>chatChip(c.label,`data-chat-pick="${i}"`)).join("");
+    if(x.reason==="no-origin")return `<p class="chat-note">Where are you starting from?</p><div class="chat-chips">${chatChip("Use my location",'data-chat-here="1"')}${picks}</div>`;
+    if(x.reason==="no-destination")return `<p class="chat-note">Where do you want to go? Name the place, for example “to the Provo library”.</p>`;
+    return picks?`<p class="chat-note">Which “${esc(x.phrase)}” do you mean?</p><div class="chat-chips">${picks}</div>`
+      :`<p class="chat-note">The map search couldn't find “${esc(x.phrase)}” in Utah Valley. Try its full name or street address.</p>`;
+  }
+  const u=x.understood,legs=x.plan.legs;
+  return `<div class="chat-plan"><p class="chat-summary">${esc(u.day)} · ${u.timeStated?`leaving ${u.time}`:`leaving now (${u.time})`}${x.plan.dwellMin?` · about ${x.plan.dwellMin} min at each stop`:""}</p>${legs.map((l,i)=>chatLegHTML(l,i,legs.length)).join("")}<p class="chat-foot">Ryde times come from the published schedule, not live tracking. Times after boarding are estimates.</p></div>`;
+}
+function paintChat(){const box=$("chatResult"),btn=$("chatSend");if(box)box.innerHTML=chatResultHTML();if(btn)btn.disabled=chatState.busy;if(chatState.busy)chatBusStart()}
+// Place search in the browser with the map's Amazon Location key (the same call the map page makes).
+// Used when the server asks for it; returns [] on any failure so the server can still answer.
+async function chatFindPlaces(lookup,region){
+  const key=window.BYU_RYDE_AWS_API_KEY||"",seen=new Set(),out=[];
+  if(!key)return out;
+  for(const q of (lookup.queries||[]).slice(0,3)){
+    try{
+      const r=await fetch(`https://places.geo.${region}.amazonaws.com/v2/search-text?key=${encodeURIComponent(key)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({QueryText:q,BiasPosition:lookup.bias,MaxResults:8})});
+      if(!r.ok)continue;
+      const data=await r.json();
+      for(const item of data.ResultItems||data.Results||[]){
+        const place=item.Place||item,pos=place.Position||item.Position,title=place.Title||item.Title||"",address=place.Address?.Label||item.Address?.Label||"";
+        const label=(address&&!address.startsWith(title)?`${title}, ${address}`:(address||title)).slice(0,200),lat=Number(pos?.[1]),lng=Number(pos?.[0]);
+        if(label&&Number.isFinite(lat)&&Number.isFinite(lng)&&!seen.has(label)){seen.add(label);out.push({label,lat,lng})}
+      }
+    }catch(err){console.warn("Place search failed:",err)}
+  }
+  return out.slice(0,12);
+}
+async function askAssistant(message,resolved={}){
+  message=String(message||"").trim();if(!message||chatState.busy)return;
+  chatBus.x=0;chatBus.dir=1;
+  chatState={q:message,busy:true,result:null,error:"",resolved};paintChat();
+  const body={message,resolved};
+  if(hasGps())body.here={label:"Your location",lat:nearState.pos[0],lng:nearState.pos[1]};
+  if(homePlace)body.home={label:String(homePlace.label),lat:Number(homePlace.lat),lng:Number(homePlace.lng)};
+  const send=()=>apiRequest("/api/chat",{method:"POST",body:JSON.stringify(body)});
+  try{
+    let result=await send();
+    if(result&&result.status==="lookup"){
+      // One round only: search here, then hand the results (even if empty) and the parsed question back.
+      body.found={};body.state=result.state;
+      await Promise.all(result.lookups.map(async l=>{body.found[l.slot]=await chatFindPlaces(l,result.region)}));
+      result=await send();
+      if(result&&result.status==="lookup")throw new Error("The trip assistant is unavailable right now.");
+    }
+    chatState.result=result;
+  }catch(err){chatState.error=err.message||"The trip assistant is unavailable right now."}
+  chatState.busy=false;paintChat();
+}
+sheet.addEventListener("submit",e=>{if(e.target.id!=="chatForm")return;e.preventDefault();const f=$("chatInput");f.blur();askAssistant(f.value)});
+sheet.addEventListener("input",e=>{if(e.target.id==="chatInput")chatState.q=e.target.value});
+sheet.addEventListener("click",e=>{
+  const bus=e.target.closest("[data-bus-dir]");if(bus){chatBusTurn(Number(bus.dataset.busDir));return}
+  const ex=e.target.closest("[data-chat-example]");
+  if(ex){const q=CHAT_EXAMPLES[Number(ex.dataset.chatExample)];const f=$("chatInput");if(f)f.value=q;askAssistant(q);return}
+  if(e.target.closest("[data-chat-here]")){
+    if(!navigator.geolocation){chatState.error="This browser can't share your location. Name your starting place instead.";paintChat();return}
+    const q=chatState.q,resolved=chatState.resolved;
+    navigator.geolocation.getCurrentPosition(
+      p=>{nearState={status:"ready",pos:[p.coords.latitude,p.coords.longitude],acc:p.coords.accuracy,source:"gps",message:""};askAssistant(q,resolved)},
+      ()=>{chatState.error="Couldn't get your location. Name your starting place instead.";chatState.result=null;paintChat()},
+      {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+    return}
+  const pick=e.target.closest("[data-chat-pick]"),x=chatState.result;
+  if(pick&&x&&x.status==="clarify"){const c=x.candidates[Number(pick.dataset.chatPick)];if(c)askAssistant(chatState.q,{...chatState.resolved,[x.slot]:c})}
+});
 
 /* ---- screens ---- */
 let screen=1,sel=null,timer=null,lostSignal=false;
@@ -456,8 +612,8 @@ function home(filter=""){
   const favorites=list.filter(r=>favoriteRouteIds.has(String(r.id)));
   const directory=f?list:list.filter(r=>!favoriteRouteIds.has(String(r.id)));
   const suggestion=!list.length&&f?didYouMean(f):null;
-  let h=`<section class="hero"><h1>Where do you want to go?</h1><p>Find your BYU shuttle route and its next scheduled departure.</p>
-    <label class="hero-search"><span aria-hidden="true">⌕</span><input id="routeSearch" type="search" placeholder="Search a location, stop, or route…" value="${esc(filter)}" aria-label="Find shuttle routes"></label></section>
+  let h=`<section class="hero"><h1>Where do you want to go?</h1><p>Ask how to get somewhere, or list the places you need to visit today.</p>
+    ${chatFormHTML()}</section>
     <div class="pad home-body">${showWelcomeIntro()?`<section class="welcome-intro" id="welcomeIntro" aria-label="Welcome to The Ryde">
       <div><span class="welcome-eyebrow">NEW TO THE RYDE?</span><h2>Welcome to The Ryde!</h2>
       <p>Find shuttle routes, check published departure times, explore the route map, and save your favorite routes.</p>
@@ -472,12 +628,6 @@ function home(filter=""){
   h+=`<div class="map-teaser"><div><h2>Want to see all the routes?</h2><p>Explore the official BYU Ryde route diagram, zoom in, and select a route.</p></div><button type="button" id="openMapFromHome">Explore route map →</button></div>
     <details class="info-collapsible"><summary>Service information, eligibility & contact</summary>${informationPanel()}</details><footer class="routes-footer"><a href="/okr">OKR Monitor</a></footer></div>`;
   sheet.innerHTML=h;
-  const search=$("routeSearch");
-  if(search){search.addEventListener("input",e=>{
-    const value=e.target.value,at=e.target.selectionStart;
-    home(value);
-    const fresh=$("routeSearch");fresh.focus();fresh.setSelectionRange(at,at);
-  })}
 }
 function mapPage(trip=null){
   const hash=trip?`#/map?route=${encodeURIComponent(trip.routeId)}&board=${encodeURIComponent(trip.board)}&dest=${encodeURIComponent(trip.dest)}&direction=${encodeURIComponent(trip.direction)}&origin=${encodeURIComponent(trip.originLabel)}&destination=${encodeURIComponent(trip.destinationLabel)}&minutes=${encodeURIComponent(trip.estimatedMinutes??"")}`:"#/map";

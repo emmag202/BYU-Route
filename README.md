@@ -102,6 +102,12 @@ After the reviewed changes reach Render's configured branch, deploy/restart the 
 
 The browser's existing **Amazon Location public API key** is separate from backend AWS credentials. In AWS, confirm its allowed website/referrer list includes the actual Render domain and its permissions remain limited to the map/search/routing features used by the app. Retain the Pages domain if teammates use it.
 
+## Trip assistant (home page question box)
+
+The home page question box posts to **POST /api/chat** on the Express server (never Lambda). Google Gemini reads the question into typed JSON fields, Amazon Location finds the places, and `services/trip-planner.js` builds the answer from the published timetable. Gemini's output is validated field by field; it never writes the answer and never supplies a time.
+
+Set `GEMINI_API_KEY` in `.env` locally and in Render's environment (`GEMINI_MODEL` overrides the default `gemini-3.5-flash-lite`). Without the key the box answers "not set up" and the rest of the site works. The typed question and public place names go to Gemini; rider coordinates stay on the server. Free-tier Gemini keys are rate-limited and Google may use free-tier requests to improve its products. UTA legs link out to live transit directions because the app holds no UTA schedule data. The GitHub Pages copy (`index.html`) has no server and keeps the old search bar.
+
 ## Demonstrate and diagnose
 
 1. Open the Render URL; create `demo-rider` / `demo-rider@example.test` with a new password.

@@ -11,6 +11,10 @@ const serverless = require("serverless-http");
 const { createLambdaApi, createAccountProxy } = require("./services/lambda-proxy");
 const { readSession, sessionCookieOptions } = require("./services/account-security");
 const okrAccess = require("./services/okr-access");
+const { createTripAssistant } = require("./services/trip-assistant");
+const { createGemini } = require("./services/gemini");
+const { createPlaceSearch } = require("./services/places");
+const { loadRydeData } = require("./services/ryde-data");
 const lambdaApi = createLambdaApi();
 const isLambda = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
 
@@ -144,6 +148,7 @@ app.get("/api/health", (_req, res) => res.json({
   database: pool ? "configured-unverified" : "unavailable",
   profiles: (pool || lambdaApi.configured) ? "demo-accounts" : "unavailable",
   lambda: lambdaApi.configured ? "configured-unverified" : "unavailable",
+  assistant: !isLambda && process.env.GEMINI_API_KEY ? "configured-unverified" : "unavailable",
 }));
 
 // Web requests always go through the IAM-signed proxy. There is no direct RDS fallback.
@@ -355,6 +360,14 @@ app.delete("/api/users/:userId/home", async (req, res, next) => {
     res.status(204).end();
   } catch (error) { next(error); }
 });
+
+// Trip assistant: runs on the web server only. The Lambda sits inside the database VPC and is not
+// given the Gemini key, so it never serves this path.
+if (!isLambda) {
+  app.post("/api/chat", createTripAssistant({
+    model: createGemini(), routes: loadRydeData(), searchPlaces: createPlaceSearch(), origin: process.env.APP_ORIGIN,
+  }));
+}
 
 app.use("/api", (_req, res) => res.status(404).json({ error: "API endpoint not found." }));
 app.use((error, _req, res, _next) => {
