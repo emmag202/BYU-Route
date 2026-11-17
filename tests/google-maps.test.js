@@ -26,9 +26,10 @@ test('Emma walking links preserve exact destinations and external-link behavior 
  assert.equal(context.googleMapsWalkLink({id:'missing'},0),'');
  assert.equal(context.googleMapsWalkLink({id:routes[0].id},999),'');
 });
-test('details expose Google Maps and itinerary retains Emma original boarding-stop walking link',()=>{
+test('combined route details keep walking links below the schedule with the existing map destinations',()=>{
  const detail=source.slice(source.indexOf('function detail('),source.indexOf('// ---- Start screen:'));
- assert.match(detail,/routeWalkingLinksHTML\(r\)/);assert.match(detail,/schedulePanel\(r\)/);assert.match(detail,/data-start=/);
- const itinerary=source.slice(source.indexOf('function renderStart('),source.indexOf('/* ---- events ---- */'));
- assert.match(itinerary,/googleMapsWalkLink\(r,p.board\)/);assert.match(itinerary,/Walking directions in Google Maps/);assert.match(itinerary,/data-directions/);
+ assert.match(detail,/renderStart\(\)/);assert.doesNotMatch(detail,/data-start=/);
+ const combined=source.slice(source.indexOf('function renderStart('),source.indexOf('/* ---- events ---- */'));
+ assert.match(combined,/routeWalkingLinksHTML\(r\)/);assert.match(combined,/schedulePanel\(r\)/);assert.match(combined,/data-view-trip/);
+ assert.ok(combined.indexOf('schedulePanel(r)')<combined.indexOf('routeWalkingLinksHTML(r)'));
 });

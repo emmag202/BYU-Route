@@ -639,16 +639,12 @@ function mapPage(trip=null){
   if(window.showRydeTrip)window.showRydeTrip(trip);
 }
 function detail(id){
-  $("app").classList.remove("map-mode");activeNav('navRoutes');
-  sel=R.find(r=>r.id==id);const r=sel;if(!r)return home();setHash(`#/route/${r.id}`);layout(2);startState=null;
-  showRoutes([r.id]);fit(r);
-  gStops.innerHTML="";
-  sheet.innerHTML=`<div class="pad detail-shell" style="--c:${r.color}">
-   <div class="detail-head"><h1>${esc(r.name)}</h1><div class="route-days">${runDays(r)}</div>${favoriteButton(r,true)}</div>
-   <button type="button" class="cta" data-start="${r.id}">Plan trip</button>
-   <div id="schedPanel">${schedulePanel(r)}</div>
-   ${routeWalkingLinksHTML(r)}
-  </div>`;addSheetHandle();
+ const r=R.find(x=>x.id==id);if(!r)return home();
+ const saved=routing&&history.state?.rydeTrip?.routeId===String(r.id)?history.state.rydeTrip:null;
+ if(saved)dirOverride=saved.direction;
+ setHash(`#/route/${r.id}`);sel=r;
+ startState={id:r.id,board:saved?.board??null,dest:saved?.dest??null,countIntent:!routing};
+ renderStart();
 }
 
 // ---- Start screen: you are here → walk to the stop → ride → get off ----
@@ -670,8 +666,11 @@ function renderFromHash(){
       const trip=routeId&&Number.isInteger(board)&&Number.isInteger(dest)&&["to","from"].includes(direction)?{routeId,board,dest,direction,originLabel:params.get("origin")||"Selected stop",destinationLabel:params.get("destination")||"MOA",estimatedMinutes:Number.isFinite(estimatedMinutes)&&estimatedMinutes>0?estimatedMinutes:null}:null;
       mapPage(trip);
     }
-    else if(ok&&m[1]==="route")detail(m[2]);
-    else if(ok)startTrip(m[2]);
+    else if(ok){
+      // Old itinerary bookmarks now open the combined route-details page.
+      if(m[1]==="start")history.replaceState(history.state,'',`#/route/${m[2]}`);
+      detail(m[2]);
+    }
     else{if(!sameHash(h,"#/"))history.replaceState(null,"","#/");home()}
     sheet.scrollTop=0;
   }finally{routing=false}
@@ -683,12 +682,8 @@ function recordEvent(event_type){
     .then(res=>{if(!res.ok)throw Error('Event not saved')})
     .catch(()=>console.warn('Ryde activity could not be saved.'));
 }
-function startTrip(id){
-  const r=R.find(x=>x.id==id);if(!r)return;
-  setHash(`#/start/${r.id}`);sel=r;startState={id:r.id,board:null,dest:null,countIntent:!routing};
-  if(!hasGps()&&nearState.status!=="locating")locateRider();else renderStart();
-  sheet.scrollTop=0;window.scrollTo?.(0,0);
-}
+// Compatibility entry point for existing route/trip links.
+function startTrip(id){detail(id)}
 function tripPlan(r){
   const d=getDir(),last=r.stops.length-1;
   if(d==="to"){
@@ -729,7 +724,6 @@ function renderStart(){
   layout(2);showRoutes([r.id]);fit(r);gStops.innerHTML="";
   $("app").classList.remove("map-mode");activeNav('navRoutes');
   const p=tripPlan(r),name=j=>esc(r.stops[j][0]),destName=name(p.dest);
-  const walkUrl=googleMapsWalkLink(r,p.board);
   // Scheduled time at each stop along the ride, starting from the next departure at the boarding stop.
   const times=[upcoming(r,p.board,1)[0]||null];
   for(let i=1;i<p.path.length;i++)times.push(times[i-1]?arrivalAfter(r,p.path[i],times[i-1]):null);
@@ -746,7 +740,8 @@ function renderStart(){
       <span class="sub">${t?`${i?"≈ ":""}${t.ahead?dayTag(t.ahead)+" ":""}${fmtDeparture(t.time)}`:"No scheduled time"}${role==="dest"?"":` · ${countdown(i)}`}</span></div></li>`;
   };
   sheet.innerHTML=`<div class="pad detail-shell start-shell" style="--c:${r.color}">
-   <div class="detail-head"><span class="dir-eyebrow">${p.d==="from"?"Heading home from campus":"Heading to campus"}</span><h1>${esc(r.name)}</h1></div>
+   <div class="detail-head"><span class="dir-eyebrow">${p.d==="from"?"Heading home from campus":"Heading to campus"}</span><h1>${esc(r.name)}</h1><div class="route-days">${runDays(r)}</div>${favoriteButton(r,true)}</div>
+   ${dirBannerHTML()}
    <div class="card start-summary">
      <span class="next-label">Next bus at ${name(p.board)}</span>
      <div class="start-time">${boardT?nextTimeText(boardT):"None scheduled"}</div>
@@ -756,11 +751,15 @@ function renderStart(){
    </div>
    <ol class="stop-strip">
      <li class="strip-stop you"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">${youAreHereHTML()}</div></li>
-     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b>${walkUrl?`<a data-directions class="walk-directions" href="${esc(walkUrl)}" target="_blank" rel="noopener noreferrer">Walking directions in Google Maps <span aria-hidden="true">↗</span></a>`:'<span class="sub">Walking directions are unavailable for this stop.</span>'}</div></li>
+     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b><span class="sub">Google Maps walking directions are below the departure schedule.</span></div></li>
      ${p.path.map(stopItem).join("")}
    </ol>
    <p class="sub sched-foot">Times after boarding are estimated from the published schedule, not live.</p>
+   <div id="schedPanel">${schedulePanel(r)}</div>
+   ${routeWalkingLinksHTML(r)}
   </div>`;addSheetHandle();
+  // Keep the selected trip when returning from its map or refreshing the route URL.
+  history.replaceState({...history.state,rydeTrip:{routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d}},'',location.hash);
   // Count the first completed itinerary render, never GPS/timer/stop-choice rerenders.
   if(!startState.recorded){startState.recorded=true;if(startState.countIntent)recordEvent('trip_planned')}
 }
@@ -786,7 +785,6 @@ document.addEventListener("click",e=>{
   const sd=e.target.closest("[data-sched-day]");if(sd){
    const r=R.find(x=>x.id==sd.dataset.schedRoute),panel=$("schedPanel");if(!r||!panel)return;
    schedDayOf[r.id]=sd.dataset.schedDay;panel.innerHTML=schedulePanel(r);panel.querySelector(`[data-sched-day="${sd.dataset.schedDay}"]`)?.focus();return}
-  const st=e.target.closest("[data-start]");if(st){startTrip(st.dataset.start);return}
   const tb=e.target.closest("[data-trip-board]");if(tb&&startState){startState.board=Number(tb.dataset.tripBoard);renderStart();return}
   const td=e.target.closest("[data-trip-dest]");if(td&&startState){startState.dest=Number(td.dataset.tripDest);renderStart();return}
   const viewTrip=e.target.closest("[data-view-trip]");if(viewTrip&&startState){const r=R.find(x=>x.id===startState.id),p=tripPlan(r),estimatedMinutes=Number(viewTrip.dataset.estimatedMinutes);if(r)mapPage({routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d,originLabel:r.stops[p.board][0],destinationLabel:r.stops[p.dest][0],estimatedMinutes:Number.isFinite(estimatedMinutes)&&estimatedMinutes>0?estimatedMinutes:null});return}

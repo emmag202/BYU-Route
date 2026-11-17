@@ -16,15 +16,19 @@ function setup() {
     currentUser:{user_id:7},favoriteRouteIds:new Set(),esc:String,
     document:{createElement:()=>dialog,body:{append:d=>nodes.set(d.id,d)},querySelectorAll:()=>[],querySelector:()=>null,addEventListener:(name,fn)=>events[name]=fn},
     openProfile:()=>calls.push(['profile']),apiRequest:async(path,options={})=>{calls.push([path,options]);return []},
-    location:{hash:'#/'},history:{pushState(_a,_b,h){context.location.hash=h},replaceState(_a,_b,h){context.location.hash=h}},
-    window:{addEventListener(){},scrollTo(){}},sheet:node(),screen:1,sel:null,startState:null,showRoutes(){},view(){},fit(){},gStops:node(),addSheetHandle(){},layout(n){context.screen=n},
+    location:{hash:'#/'},history:{state:null,pushState(a,_b,h){this.state=a;context.location.hash=h},replaceState(a,_b,h){this.state=a;context.location.hash=h}},
+    URLSearchParams,window:{addEventListener(){},scrollTo(){},showRydeTrip:trip=>calls.push(['map',trip])},sheet:node(),screen:1,sel:null,startState:null,showRoutes(){},view(){},fit(){},gStops:node(),addSheetHandle(){},layout(n){context.screen=n},
     q:{value:''},routeMatches:(r,f)=>!f||r.name.toLowerCase().includes(f),didYouMean:()=>null,showWelcomeIntro:()=>false,noClassDaysNoticeHTML:()=>'',nearYouHTML:()=>'<section>Nearby Trips</section>',dirBannerHTML:()=>'',cardHTML:r=>`<article>${r.name}</article>`,informationPanel:()=>'',routeWalkingLinksHTML:()=>'<div>Walking directions</div>',schedulePanel:()=>'<div>Full schedule</div>',
+    dirOverride:null,autoDir:()=>'to',getDir:()=>context.dirOverride||'to',routeNext:()=>({next:{j:0}}),upcoming:()=>[{time:'08:00',min:480,ahead:0}],arrivalAfter:(_r,_j,t)=>({...t,min:t.min+5}),nextTimeText:()=> '8:00 AM',fmtDeparture:t=>t,dayTag:()=>'',youAreHereHTML:()=>'<b>You are here</b>',recordEvent:type=>calls.push(['event',type]),
     SCHED_DAYS:[['mth','Mon-Thu'],['fri','Friday'],['wkd','Weekend']],todaySchedDay:()=>'mth',runDays:()=>'',housing:()=>[],timetableHTML:(r,k)=>`${r.name}:${k}` };
   vm.createContext(context);
   vm.runInContext(part('async function toggleFavorite(', 'function showCreateAccountForm()'),context);
   vm.runInContext(part('let allTimesOpen=', 'function noClassDaysNoticeHTML()'),context);
   vm.runInContext(part('function home(', 'function mapPage('),context);
-  vm.runInContext(part('function detail(', '// ---- Start screen:'),context);
+  vm.runInContext(part('function mapPage(', '// ---- Start screen:'),context);
+  vm.runInContext(part('function tripPlan(', 'function googleMapsWalkLink('),context);
+  vm.runInContext(part('function renderStart()', '/* ---- events ---- */'),context);
+  vm.runInContext(part('function refreshScreen()', '// Re-render only'),context);
   vm.runInContext(part('let routing=false;', 'function recordEvent('),context);
   vm.runInContext(part('function refreshHome()', '/* ---- screens ---- */'),context);
   return {context,calls,nodes,$,dialog,controls,events};
@@ -41,11 +45,11 @@ test('favorite confirmation cancels, saves, removes and handles failures through
   assert.equal(c.favoriteRouteIds.size,0);assert.equal(dialog.open,true);assert.equal(controls.get('.formMessage').textContent,'Offline');
   c.currentUser=null;c.confirmFavorite('101',node());assert.deepEqual(calls.at(-1),['profile']);
 });
-test('details and card stars share state while itinerary contains no favorite controls',()=>{
+test('combined details retain favorites, schedule and View Trip without a Plan Trip screen',()=>{
   const {context:c}=setup();assert.match(c.favoriteButton(c.R[0]),/aria-pressed="false"/);
-  c.detail('101');assert.match(c.sheet.innerHTML,/Save as Favorite/);assert.match(c.sheet.innerHTML,/Full schedule/);assert.match(c.sheet.innerHTML,/data-start="101"/);
+  c.detail('101');assert.match(c.sheet.innerHTML,/Save as Favorite/);assert.match(c.sheet.innerHTML,/Full schedule/);assert.match(c.sheet.innerHTML,/data-view-trip/);assert.doesNotMatch(c.sheet.innerHTML,/data-start=|>Plan trip</);
   c.favoriteRouteIds.add('101');c.detail('101');assert.match(c.sheet.innerHTML,/Favorited - Remove Favorite/);assert.match(c.favoriteButton(c.R[0]),/is-saved/);
-  assert.doesNotMatch(part('function renderStart()', '/* ---- events ---- */'),/data-favorite|favoriteBtn/);
+  assert.equal(c.location.hash,'#/route/101');
 });
 test('homepage keeps favorites, nearby, directory order and searches saved routes',()=>{
   const {context:c}=setup();c.favoriteRouteIds.add('101');c.home();
@@ -75,4 +79,23 @@ test('favorite synchronization updates details, duplicate stars, homepage and op
  c.document.querySelectorAll=()=>[star,details];c.favoriteRouteIds.add('101');c.syncFavoriteViews();
  assert.match(star.outerHTML,/is-saved/);assert.match(details.outerHTML,/Favorited - Remove Favorite/);assert.match(c.sheet.innerHTML,/<article>West/);assert.deepEqual(calls.at(-1),['profile']);
  c.favoriteRouteIds.delete('101');c.syncFavoriteViews();assert.match(details.outerHTML,/Save as Favorite/);assert.doesNotMatch(star.outerHTML,/is-saved/);
+});
+
+test('selected direction, stops and duration reach the trip map, and browser back restores them',()=>{
+ const {context:c,calls,events}=setup();
+ c.R[0].stops=[['Home A'],['Home B'],['Campus']];c.R[0].toCampus=[0,1];c.R[0].fromCampus=[2];
+ c.detail('101');
+ vm.runInContext(part('document.addEventListener("change"', '$("back").onclick'),c);
+ const click=(selector,dataset)=>events.click({target:{closest:s=>s===selector?{dataset}:null}});
+ click('[data-trip-board]',{tripBoard:'1'});assert.equal(c.tripPlan(c.R[0]).board,1);
+ click('[data-dir-set]',{dirSet:'from'});click('[data-trip-dest]',{tripDest:'1'});
+ assert.match(c.sheet.innerHTML,/data-trip-dest="1" aria-pressed="true"/);
+ const routeState=c.history.state;
+ click('[data-view-trip]',{estimatedMinutes:'5'});
+ const trip=calls.findLast(call=>call[0]==='map')[1];
+ assert.equal(trip.routeId,'101');assert.equal(trip.direction,'from');assert.equal(trip.board,2);assert.equal(trip.dest,1);assert.equal(trip.originLabel,'Campus');assert.equal(trip.destinationLabel,'Home B');assert.equal(trip.estimatedMinutes,5);
+ c.history.state=routeState;c.location.hash='#/route/101';c.renderFromHash();
+ assert.equal(c.tripPlan(c.R[0]).dest,1);assert.equal(c.tripPlan(c.R[0]).d,'from');
+ assert.equal(calls.filter(call=>call[0]==='event').length,1);
+ c.location.hash='#/start/101';c.renderFromHash();assert.equal(c.location.hash,'#/route/101');assert.match(c.sheet.innerHTML,/Full schedule/);
 });
