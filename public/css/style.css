@@ -485,3 +485,5 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 @media(max-width:480px){.byuhead{flex-wrap:wrap;height:auto;min-height:62px;padding:10px 12px;gap:8px}.header-nav{order:4;width:100%;justify-content:center}.header-nav button{flex:1}.profileBtn{margin-left:auto}.modalBack{inset:105px 0 0}}
 
 .routes-footer{padding:18px 0 4px;font-size:12px;text-align:right}.routes-footer a{color:#526a85;text-underline-offset:3px}.routes-footer a:focus-visible{outline:3px solid #0047ba;outline-offset:4px}
+
+.route-walking-links{display:grid;gap:10px;margin:18px 0}.route-walking-links h2{font-size:18px;margin:0}.route-walking-links .walk-directions{min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box}

@@ -496,6 +496,7 @@ function detail(id){
   sheet.innerHTML=`<div class="pad detail-shell" style="--c:${r.color}">
    <div class="detail-head"><h1>${esc(r.name)}</h1><div class="route-days">${runDays(r)}</div>${favoriteButton(r,true)}</div>
    <button type="button" class="cta" data-start="${r.id}">Plan trip</button>
+   ${routeWalkingLinksHTML(r)}
    <div id="schedPanel">${schedulePanel(r)}</div>
   </div>`;addSheetHandle();
 }
@@ -559,6 +560,14 @@ function googleMapsWalkLink(r,stopIndex){
   url.searchParams.set("destination",`${point[0]},${point[1]}`);
   url.searchParams.set("travelmode","walking");
   return url.toString();
+}
+// Keep Emma's original destinations and external-link behavior accessible from schedules too.
+function routeWalkingLinksHTML(r){
+ const links=r.stops.map((stop,index)=>{
+  const url=googleMapsWalkLink(r,index);
+  return url?`<div class="walk-box"><b>Walk to ${esc(stop[0])}</b><a class="walk-directions" data-directions href="${esc(url)}" target="_blank" rel="noopener noreferrer">Walking directions in Google Maps <span aria-hidden="true">&#8599;</span></a></div>`:'';
+ }).join('');
+ return links?`<section class="route-walking-links" aria-label="Walking directions to route stops"><h2>Walking directions to stops</h2>${links}</section>`:'';
 }
 function youAreHereHTML(){
   if(nearState.status==="locating")return `<b>You are here</b><span class="sub">Finding your location…</span>`;

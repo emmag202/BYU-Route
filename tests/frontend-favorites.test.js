@@ -18,7 +18,7 @@ function setup() {
     openProfile:()=>calls.push(['profile']),apiRequest:async(path,options={})=>{calls.push([path,options]);return []},
     location:{hash:'#/'},history:{pushState(_a,_b,h){context.location.hash=h},replaceState(_a,_b,h){context.location.hash=h}},
     window:{addEventListener(){},scrollTo(){}},sheet:node(),screen:1,sel:null,startState:null,showRoutes(){},view(){},fit(){},gStops:node(),addSheetHandle(){},layout(n){context.screen=n},
-    q:{value:''},routeMatches:(r,f)=>!f||r.name.toLowerCase().includes(f),didYouMean:()=>null,showWelcomeIntro:()=>false,noClassDaysNoticeHTML:()=>'',nearYouHTML:()=>'<section>Nearby Trips</section>',dirBannerHTML:()=>'',cardHTML:r=>`<article>${r.name}</article>`,informationPanel:()=>'',schedulePanel:()=>'<div>Full schedule</div>',
+    q:{value:''},routeMatches:(r,f)=>!f||r.name.toLowerCase().includes(f),didYouMean:()=>null,showWelcomeIntro:()=>false,noClassDaysNoticeHTML:()=>'',nearYouHTML:()=>'<section>Nearby Trips</section>',dirBannerHTML:()=>'',cardHTML:r=>`<article>${r.name}</article>`,informationPanel:()=>'',routeWalkingLinksHTML:()=>'<div>Walking directions</div>',schedulePanel:()=>'<div>Full schedule</div>',
     SCHED_DAYS:[['mth','Mon-Thu'],['fri','Friday'],['wkd','Weekend']],todaySchedDay:()=>'mth',runDays:()=>'',housing:()=>[],timetableHTML:(r,k)=>`${r.name}:${k}` };
   vm.createContext(context);
   vm.runInContext(part('async function toggleFavorite(', 'function showCreateAccountForm()'),context);
