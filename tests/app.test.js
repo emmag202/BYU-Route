@@ -17,7 +17,7 @@ test('EJS preserves the original page shell, styling and browser program', async
   assert.deepEqual(ids(shell(rendered)), ids(shell(original)));
   assert.equal(fs.readFileSync('public/css/style.css','utf8').replace(/\r\n/g, '\n').split('\n').slice(1).join('\n'), original.match(/<style>([\s\S]*?)<\/style>/)[1]);
   const scripts = [...rendered.matchAll(/<script src="([^"]+)"/g)].map(m=>m[1]);
-  assert.deepEqual(scripts.slice(1), ['/js/aws-config.js','/js/route-data.js','/js/route-map.js','/js/app.js']);
+  assert.deepEqual(scripts.slice(1).map(src => src.split('?')[0]), ['/js/aws-config.js','/js/route-data.js','/js/route-map.js','/js/app.js']);
   for (const asset of scripts.slice(1).concat('/css/style.css')) { const r = await fetch(base+asset); assert.equal(r.status,200); }
   for (const name of ['route-map.js','route-data.js','aws-config.js']) assert.deepEqual(fs.readFileSync(`public/js/${name}`),fs.readFileSync(name));
   const alias = await fetch(base+'/index.html'); assert.equal(alias.status,200);

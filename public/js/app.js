@@ -482,9 +482,15 @@ function renderFromHash(){
   }finally{routing=false}
 }
 window.addEventListener("popstate",renderFromHash);
+function recordEvent(event_type){
+  // No retry: a failed response might still have committed the event.
+  fetch('/api/events',{method:'POST',headers:{'Content-Type':'application/json','X-Ryde-Request':'1'},body:JSON.stringify({event_type}),keepalive:true})
+    .then(res=>{if(!res.ok)throw Error('Event not saved')})
+    .catch(()=>console.warn('Ryde activity could not be saved.'));
+}
 function startTrip(id){
   const r=R.find(x=>x.id==id);if(!r)return;
-  setHash(`#/start/${r.id}`);sel=r;startState={id:r.id,board:null,dest:null};
+  setHash(`#/start/${r.id}`);sel=r;startState={id:r.id,board:null,dest:null,countIntent:!routing};
   if(!hasGps()&&nearState.status!=="locating")locateRider();else renderStart();
   sheet.scrollTop=0;window.scrollTo?.(0,0);
 }
@@ -547,11 +553,13 @@ function renderStart(){
    </div>
    <ol class="stop-strip">
      <li class="strip-stop you"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">${youAreHereHTML()}</div></li>
-     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b>${walkUrl?`<a class="walk-directions" href="${esc(walkUrl)}" target="_blank" rel="noopener noreferrer">Walking directions in Google Maps <span aria-hidden="true">↗</span></a>`:'<span class="sub">Walking directions are unavailable for this stop.</span>'}</div></li>
+     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b>${walkUrl?`<a data-directions class="walk-directions" href="${esc(walkUrl)}" target="_blank" rel="noopener noreferrer">Walking directions in Google Maps <span aria-hidden="true">↗</span></a>`:'<span class="sub">Walking directions are unavailable for this stop.</span>'}</div></li>
      ${p.path.map(stopItem).join("")}
    </ol>
    <p class="sub sched-foot">Times after boarding are estimated from the published schedule, not live.</p>
   </div>`;addSheetHandle();
+  // Count the first completed itinerary render, never GPS/timer/stop-choice rerenders.
+  if(!startState.recorded){startState.recorded=true;if(startState.countIntent)recordEvent('trip_planned')}
 }
 
 /* ---- events ---- */
@@ -563,6 +571,7 @@ sheet.addEventListener("click",e=>{
   }
 });
 document.addEventListener("click",e=>{
+  if(e.target.closest('[data-directions]')){recordEvent('directions_clicked');return}
   const ds=e.target.closest("[data-dir-set]");if(ds){
    const v=ds.dataset.dirSet;dirOverride=v==="auto"||v===autoDir()?null:v;
    if(startState){startState.board=null;startState.dest=null}

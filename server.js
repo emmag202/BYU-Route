@@ -121,6 +121,7 @@ app.use((_req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, "public"), { maxAge: process.env.NODE_ENV === "production" ? "1h" : 0 }));
 app.get(["/", "/index.html"], (_req, res) => res.render("index"));
+app.get("/okr", (_req, res) => res.render("okr"));
 app.use(express.json({ limit: "20kb" }));
 
 app.get("/api/health", (_req, res) => res.json({
@@ -131,7 +132,7 @@ app.get("/api/health", (_req, res) => res.json({
 }));
 
 // Web requests always go through the IAM-signed proxy. There is no direct RDS fallback.
-const accountPaths = ["/api/users", "/api/login", "/api/logout", "/api/me", "/api/academic-calendar"];
+const accountPaths = ["/api/okr", "/api/events", "/api/users", "/api/login", "/api/logout", "/api/me", "/api/academic-calendar"];
 app.use(accountPaths, (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
@@ -144,6 +145,25 @@ if (!isLambda) {
     next();
   });
 }
+
+// Dashboard totals and anonymous interaction counts use the existing demo schema.
+app.get("/api/okr", async (_req, res, next) => {
+  try {
+    const result = await pool.query("SELECT metric, total FROM ryde_demo.okr_dashboard");
+    res.json(result.rows);
+  } catch (error) { next(error); }
+});
+
+app.post("/api/events", async (req, res, next) => {
+  const type = req.body?.event_type;
+  if (!['trip_planned', 'directions_clicked'].includes(type)) {
+    return res.status(400).json({ error: "Unsupported event type." });
+  }
+  try {
+    await pool.query("INSERT INTO ryde_demo.analytics_events (event_type) VALUES ($1)", [type]);
+    res.status(204).end();
+  } catch (error) { next(error); }
+});
 
 app.post("/api/login", async (req, res, next) => {
   try {

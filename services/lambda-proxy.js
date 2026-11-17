@@ -60,6 +60,7 @@ function createLambdaApi({ env = process.env, client, timeoutMs } = {}) {
 const { COOKIE, TOKEN, sessionCookieOptions, readSession, csrfAllowed, createRateLimit } = require('./account-security');
 
 const routes = [
+  ['GET', /^\/api\/okr$/], ['POST', /^\/api\/events$/],
   ['POST', /^\/api\/(login|users)$/], ['POST', /^\/api\/logout$/], ['GET', /^\/api\/me$/],
   ['GET', /^\/api\/academic-calendar\/no-class-days$/],
   ['GET', /^\/api\/users\/[1-9]\d{0,9}\/(favorites|home)$/],
@@ -73,6 +74,10 @@ function validBody(method, path, body) {
   if (['GET', 'DELETE'].includes(method) || path === '/api/logout') return undefined;
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   let keys;
+  if (path === '/api/events') {
+    if (Object.keys(body).some(k => k !== 'event_type') || !['trip_planned', 'directions_clicked'].includes(body.event_type)) return null;
+    return { event_type: body.event_type };
+  }
   if (path === '/api/login') keys = ['net_id', 'password'];
   else if (path === '/api/users') keys = ['name', 'net_id', 'email', 'password'];
   else if (path.endsWith('/favorites')) keys = ['route_key'];
@@ -105,7 +110,7 @@ function createAccountProxy({ api, origin, rateLimit = createRateLimit(), produc
     if (!rateLimit(req.ip)) return res.status(429).json({ error: 'Too many requests. Please wait before trying again.' });
     const session = readSession(req.get('cookie'));
     const publicCalendarRead = req.method === 'GET' && path === '/api/academic-calendar/no-class-days';
-    if (!publicCalendarRead && !['/api/login', '/api/users'].includes(path) && !session) return res.status(401).json({ error: 'Please sign in again.' });
+    if (!publicCalendarRead && !['/api/login', '/api/users', '/api/okr', '/api/events'].includes(path) && !session) return res.status(401).json({ error: 'Please sign in again.' });
     const body = validBody(req.method, path, req.body);
     if (body === null) return res.status(400).json({ error: 'Invalid account request.' });
     try {

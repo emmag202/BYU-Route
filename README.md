@@ -134,3 +134,12 @@ Passwords use salted scrypt hashes; only session hashes are stored in PostgreSQL
 Before editing, branch/status/history and all source files were saved and byte-verified in **.backups/before-cleanup-20261110-114906/** (`source-before-cleanup.zip`, `uncommitted.patch`, status/history, inventory). Retired files and old generated artifacts were also moved there intact. Recover individual files from that ZIP or the retired folders; do not overwrite newer work with a bulk restore. Backup may contain private local configuration and must stay out of Git.
 
 History attributes Emma's account UI and Calvin's layout work; uncommitted changes were conservatively backed up regardless of attribution. No reset, force-push, commit, deployment, main-branch change or AWS modification was performed.
+
+
+### OKR dashboard deployment
+
+Open `/okr` (also linked in the site header). Totals reload on opening, browser refresh, or **Refresh counters**. No login is needed. A trip is counted once when a rider opens a route and its itinerary renders; GPS updates and stop changes do not add events. Restoring a trip from browser history does not add an event. Walking directions open Google Maps for the boarding stop and record one click. Event failures do not interrupt trip planning and are not retried automatically.
+
+Deploy the changed `server.js`, `services/lambda-proxy.js`, `views/`, and `public/` through GitHub/Render. **Separately** run `./package-lambda.ps1` and upload the resulting `artifacts/ryde-lambda.zip` to AWS Lambda **byu-ryde-api**, keeping handler `server.handler` and existing environment variables/credentials. Deploy Lambda first so the new endpoints are ready for Render. GitHub/Render deployment does not update Lambda. Do not run schema setup; the dashboard uses the existing `ryde_demo.okr_dashboard` view and `analytics_events` table.
+
+After deployment, note `/okr` totals, create an account, save a favorite, open a route itinerary, and click walking directions. Refresh `/okr` and verify each relevant total increased. Routes Saved measures current favorites, so removing a favorite decreases it. Local automated tests use a mocked database; real PostgreSQL counts require this deployed check.
