@@ -1344,8 +1344,17 @@
         if (id) selectRoute(id);
       });
 
-      if (pendingTripSelection) selectTrip(pendingTripSelection);
-      else showAllRoutes();
+      if (pendingTripSelection) {
+        selectTrip(pendingTripSelection);
+      } else if (map.isStyleLoaded()) {
+        showAllRoutes();
+      } else {
+        // Retry once MapLibre has finished its first render.
+        map.once('idle', () => {
+          if (!pendingTripSelection && !activeRouteId) showAllRoutes();
+        });
+      }
+      
       map.resize();
     });
 
