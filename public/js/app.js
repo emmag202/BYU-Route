@@ -470,7 +470,7 @@ function home(filter=""){
   h+='</section>';
   h+=allTimesSection();
   h+=`<div class="map-teaser"><div><h2>Want to see all the routes?</h2><p>Explore the official BYU Ryde route diagram, zoom in, and select a route.</p></div><button type="button" id="openMapFromHome">Explore route map →</button></div>
-    <details class="info-collapsible"><summary>Service information, eligibility & contact</summary>${informationPanel()}</details></div>`;
+    <details class="info-collapsible"><summary>Service information, eligibility & contact</summary>${informationPanel()}</details><footer class="routes-footer"><a href="/okr">OKR Monitor</a></footer></div>`;
   sheet.innerHTML=h;
   const search=$("routeSearch");
   if(search){search.addEventListener("input",e=>{
