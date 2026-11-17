@@ -559,3 +559,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
  .home-body .rc .next-time{font-size:25px}.home-body .rc .route-open{column-gap:8px}
  .sched-day-switch{width:100%}.sched-day-switch button{font-size:14px;padding-left:6px;padding-right:6px}
 }
+
+/* Each calendar update gets its own readable bullet on every screen size. */
+.academic-notice ul{display:block;list-style:disc outside;padding-left:22px}
+.academic-notice li{display:list-item;margin:8px 0;padding-left:2px}
