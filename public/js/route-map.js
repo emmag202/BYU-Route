@@ -1280,6 +1280,75 @@
     });
   }
 
+    function preserveRouteOverlays(previousStyle, nextStyle) {
+    if (!previousStyle) return nextStyle;
+
+    const sourceIds = [SOURCE_ROUTES, SOURCE_STOPS, SOURCE_CALCULATED, SOURCE_TRIP];
+    const layerIds = [LAYER_ROUTES, LAYER_STOPS, LAYER_CALCULATED, LAYER_TRIP];
+    const sources = { ...nextStyle.sources };
+
+    sourceIds.forEach(id => {
+      if (previousStyle.sources?.[id]) sources[id] = previousStyle.sources[id];
+    });
+
+    const nextLayerIds = new Set(nextStyle.layers.map(layer => layer.id));
+    const overlays = previousStyle.layers.filter(layer =>
+      layerIds.includes(layer.id) && !nextLayerIds.has(layer.id)
+    );
+
+    return { ...nextStyle, sources, layers: [...nextStyle.layers, ...overlays] };
+  }
+
+  function mapStyleUrl(satellite) {
+    const style = satellite ? 'Satellite' : 'Standard';
+    const scheme = satellite ? '' : '&color-scheme=Light';
+    return `https://maps.geo.${REGION}.amazonaws.com/v2/styles/${style}/descriptor?key=${encodeURIComponent(apiKey())}${scheme}`;
+  }
+
+  function createMapStyleControl() {
+    let controlMap = null;
+    let button = null;
+
+    const updateButton = () => {
+      const satellite = button.getAttribute('aria-pressed') === 'true';
+      const action = satellite ? 'Switch to standard map view' : 'Switch to satellite view';
+      button.setAttribute('aria-label', action);
+      button.title = action;
+      button.querySelector('span').textContent = satellite ? 'Map' : 'Sat';
+    };
+
+    return {
+      onAdd(mapInstance) {
+        controlMap = mapInstance;
+        const container = document.createElement('div');
+        container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+
+        button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'ryde-map-style-toggle';
+        button.setAttribute('aria-pressed', 'false');
+        button.style.cssText = 'box-sizing:border-box;width:42px;height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:3px;border:0;background:#fff;color:#173451;cursor:pointer;font:700 9px/1 Arial,sans-serif;';
+        button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></svg><span>Sat</span>';
+        updateButton();
+        button.addEventListener('click', () => {
+          const satellite = button.getAttribute('aria-pressed') !== 'true';
+          button.setAttribute('aria-pressed', String(satellite));
+          updateButton();
+          controlMap.setStyle(mapStyleUrl(satellite), {
+            transformStyle: preserveRouteOverlays
+          });
+        });
+
+        container.appendChild(button);
+        return container;
+      },
+      onRemove() {
+        button?.remove();
+        controlMap = null;
+      }
+    };
+  }
+
   function initialize() {
     if (map) {
       map.resize();
@@ -1333,7 +1402,9 @@
       'top-right'
     );
 
-    map.on('load', () => {
+    map.addControl(createMapStyleControl(), 'top-right');
+
+      map.on('load', () => {
       ensureBaseLayers();
       createRouteStopMarkers();
       showHome(pendingHome);
