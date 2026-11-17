@@ -16,7 +16,10 @@ test('EJS preserves the original page shell, styling and browser program', async
   const shell = text => text.slice(text.indexOf('<body>'), text.indexOf('<script src='));
   const expectedIds=ids(shell(original));expectedIds.splice(expectedIds.indexOf('navMap'),0,'navTimes');
   assert.deepEqual(ids(shell(rendered)), expectedIds);
-  assert.ok(fs.readFileSync('public/css/style.css','utf8').replace(/\r\n/g, '\n').split('\n').slice(1).join('\n').startsWith(original.match(/<style>([\s\S]*?)<\/style>/)[1]));
+  // The retired mini-itinerary styles are intentionally absent; retain the other original styles.
+  const withoutTimeline = css => css.replace(/[^{}]*\{[^{}]*\}/g, rule => /\.stop-strip|\.strip-(?:dot|body|line|tag)/.test(rule) ? '' : rule).replace(/\s/g, '');
+  const styles = fs.readFileSync('public/css/style.css','utf8').split('\n').slice(1).join('\n');
+  assert.ok(withoutTimeline(styles).startsWith(withoutTimeline(original.match(/<style>([\s\S]*?)<\/style>/)[1])));
   const scripts = [...rendered.matchAll(/<script src="([^"]+)"/g)].map(m=>m[1]);
   assert.deepEqual(scripts.slice(1).map(src => src.split('?')[0]), ['/js/aws-config.js','/js/route-data.js','/js/route-map.js','/js/app.js']);
   for (const asset of scripts.slice(1).concat('/css/style.css')) { const r = await fetch(base+asset); assert.equal(r.status,200); }

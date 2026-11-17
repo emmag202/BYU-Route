@@ -658,16 +658,8 @@ function detail(id,{refresh=false}={}){
   for(let i=1;i<p.path.length;i++)times.push(times[i-1]?arrivalAfter(r,p.path[i],times[i-1]):null);
   const boardT=times[0],rideStops=p.path.length-1;
   const scheduledRideMinutes=times.at(-1)&&times[0]?Math.max(1,Math.round(times.at(-1).min-times[0].min)):null;
-  const countdown=i=>{const left=p.path.length-1-i;return left===0?"Your stop":left===1?`1 stop to ${destName}`:`${left} stops to ${destName}`}
   const choiceKind=p.d==="to"?"board":"dest",chosen=p.d==="to"?p.board:p.dest;
   const choices=`<div class="trip-choice"><span class="sub">${p.d==="to"?"Where are you getting on?":"Where are you getting off?"}</span><div class="dir-switch" role="group">${r.toCampus.map(j=>`<button type="button" data-trip-${choiceKind}="${j}" aria-pressed="${j===chosen}">${name(j)}</button>`).join("")}</div></div>`;
-  const stopItem=(j,i)=>{
-    const t=times[i],role=i===0?"board":i===p.path.length-1?"dest":"mid";
-    const tag=role==="board"?"Get on here":role==="dest"?"Get off here":"Stay on";
-    return `<li class="strip-stop ${role}"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">
-      <div class="strip-line"><b>${name(j)}</b><span class="strip-tag">${tag}</span></div>
-      <span class="sub">${t?`${i?"≈ ":""}${t.ahead?dayTag(t.ahead)+" ":""}${fmtDeparture(t.time)}`:"No scheduled time"}${role==="dest"?"":` · ${countdown(i)}`}</span></div></li>`;
-  };
   sheet.innerHTML=`<div class="pad detail-shell start-shell" style="--c:${r.color}">
    <div class="detail-head"><span class="dir-eyebrow">${p.d==="from"?"Heading home from campus":"Heading to campus"}</span><h1>${esc(r.name)}</h1><div class="route-days">${runDays(r)}</div>${favoriteButton(r,true)}</div>
    ${dirBannerHTML()}
@@ -678,12 +670,6 @@ function detail(id,{refresh=false}={}){
      ${choices}
      <button type="button" class="cta" data-view-trip data-estimated-minutes="${scheduledRideMinutes??""}">View trip</button>
    </div>
-   <ol class="stop-strip">
-     <li class="strip-stop you"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">${youAreHereHTML()}</div></li>
-     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b><span class="sub">Google Maps walking directions are below the departure schedule.</span></div></li>
-     ${p.path.map(stopItem).join("")}
-   </ol>
-   <p class="sub sched-foot">Times after boarding are estimated from the published schedule, not live.</p>
    <div id="schedPanel">${schedulePanel(r)}</div>
    ${routeWalkingLinksHTML(r)}
   </div>`;addSheetHandle();
@@ -758,11 +744,6 @@ function routeWalkingLinksHTML(r){
   return url?`<div class="walk-box"><b>Walk to ${esc(stop[0])}</b><a class="walk-directions" data-directions href="${esc(url)}" target="_blank" rel="noopener noreferrer">Walking directions in Google Maps <span aria-hidden="true">&#8599;</span></a></div>`:'';
  }).join('');
  return links?`<section class="route-walking-links" aria-label="Walking directions to route stops"><h2>Walking directions to stops</h2>${links}</section>`:'';
-}
-function youAreHereHTML(){
-  if(nearState.status==="locating")return `<b>You are here</b><span class="sub">Finding your location…</span>`;
-  if(hasGps())return `<b>You are here</b><span class="sub">Using your phone's location${nearState.acc?` (±${Math.round(nearState.acc)} m)`:""} · ${onCampus(nearState.pos)?"on campus":"off campus"}</span>`;
-  return `<b>Where are you?</b><span class="sub">${esc(nearState.message||"Location is off.")}</span><button type="button" class="near-btn ghosty" data-near="gps">Try again</button>`;
 }
 // Refresh the same route-details page; this never opens another screen or URL.
 function renderStart(){if(startState)detail(startState.id,{refresh:true})}

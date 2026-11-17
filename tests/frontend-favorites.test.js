@@ -19,7 +19,7 @@ function setup() {
     location:{hash:'#/'},history:{state:null,pushState(a,_b,h){this.state=a;context.location.hash=h},replaceState(a,_b,h){this.state=a;context.location.hash=h}},
     URLSearchParams,window:{addEventListener(){},scrollTo(){},showRydeTrip:trip=>calls.push(['map',trip])},sheet:node(),screen:1,sel:null,startState:null,showRoutes(){},view(){},fit(){},gStops:node(),addSheetHandle(){},layout(n){context.screen=n},
     q:{value:''},routeMatches:(r,f)=>!f||r.name.toLowerCase().includes(f),didYouMean:()=>null,showWelcomeIntro:()=>false,noClassDaysNoticeHTML:()=>'',nearYouHTML:()=>'<section>Nearby Trips</section>',dirBannerHTML:()=>'',cardHTML:r=>`<article>${r.name}</article>`,informationPanel:()=>'',routeWalkingLinksHTML:()=>'<div>Walking directions</div>',schedulePanel:()=>'<div>Full schedule</div>',
-    dirOverride:null,autoDir:()=>'to',getDir:()=>context.dirOverride||'to',routeNext:()=>({next:{j:0}}),upcoming:()=>[{time:'08:00',min:480,ahead:0}],arrivalAfter:(_r,_j,t)=>({...t,min:t.min+5}),nextTimeText:()=> '8:00 AM',fmtDeparture:t=>t,dayTag:()=>'',youAreHereHTML:()=>'<b>You are here</b>',recordEvent:type=>calls.push(['event',type]),
+    dirOverride:null,autoDir:()=>'to',getDir:()=>context.dirOverride||'to',routeNext:()=>({next:{j:0}}),upcoming:()=>[{time:'08:00',min:480,ahead:0}],arrivalAfter:(_r,_j,t)=>({...t,min:t.min+5}),nextTimeText:()=> '8:00 AM',fmtDeparture:t=>t,dayTag:()=>'',recordEvent:type=>calls.push(['event',type]),
     SCHED_DAYS:[['mth','Mon-Thu'],['fri','Friday'],['wkd','Weekend']],todaySchedDay:()=>'mth',runDays:()=>'',housing:()=>[],timetableHTML:(r,k)=>`${r.name}:${k}` };
   vm.createContext(context);
   vm.runInContext(part('async function toggleFavorite(', 'function showCreateAccountForm()'),context);

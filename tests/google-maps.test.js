@@ -6,7 +6,7 @@ const source=fs.readFileSync('public/js/app.js','utf8');
 const context={window:{},URL,esc:s=>String(s).replace(/&/g,'&amp;')};
 vm.createContext(context);
 vm.runInContext(fs.readFileSync('public/js/route-data.js','utf8'),context);
-vm.runInContext(source.slice(source.indexOf('function googleMapsWalkLink('),source.indexOf('function youAreHereHTML(')),context);
+vm.runInContext(source.slice(source.indexOf('function googleMapsWalkLink('),source.indexOf('// Refresh the same route-details page')),context);
 test('Emma walking links preserve exact destinations and external-link behavior for all route stops',()=>{
  const routes=context.window.BYU_RYDE_ROUTES;
  assert.equal(routes.length,7);
@@ -28,7 +28,7 @@ test('Emma walking links preserve exact destinations and external-link behavior 
 });
 test('combined route details keep walking links below the schedule with the existing map destinations',()=>{
  const detail=source.slice(source.indexOf('function detail('),source.indexOf('// ---- Trip state'));
- assert.doesNotMatch(detail,/data-start=|>Plan trip</);
+ assert.doesNotMatch(detail,/data-start=|>Plan trip<|stop-strip|strip-stop|youAreHereHTML|Times after boarding/);
  const combined=detail;
  assert.match(combined,/routeWalkingLinksHTML\(r\)/);assert.match(combined,/schedulePanel\(r\)/);assert.match(combined,/data-view-trip/);
  assert.ok(combined.indexOf('schedulePanel(r)')<combined.indexOf('routeWalkingLinksHTML(r)'));
