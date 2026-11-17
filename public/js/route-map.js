@@ -1424,7 +1424,7 @@
       map.resize();
     });
 
-    map.on('error', event => {
+    map.once('load',()=>{const c=map.getContainer().querySelector('.maplibregl-ctrl-top-right');if(c&&!c.querySelector('.ryde-map-style-toggle')){const s=createMapStyleControl();c.appendChild(s.onAdd(map));}});map.on('error', event => {
       if (event.error) {
         console.error('BYU Ryde map error:', event.error);
       }
