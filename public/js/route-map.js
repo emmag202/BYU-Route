@@ -1344,8 +1344,12 @@
         if (id) selectRoute(id);
       });
 
-      if (pendingTripSelection) selectTrip(pendingTripSelection);
-      else showAllRoutes();
+      // Adding the route layers briefly invalidates isStyleLoaded(). Apply the
+      // selected trip after those layers settle, so the first map visit is not lost.
+      map.once('idle', () => {
+        if (pendingTripSelection) selectTrip(pendingTripSelection);
+        else showAllRoutes();
+      });
       map.resize();
     });
 

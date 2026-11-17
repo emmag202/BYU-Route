@@ -27,9 +27,11 @@ test('Emma walking links preserve exact destinations and external-link behavior 
  assert.equal(context.googleMapsWalkLink({id:routes[0].id},999),'');
 });
 test('combined route details keep walking links below the schedule with the existing map destinations',()=>{
- const detail=source.slice(source.indexOf('function detail('),source.indexOf('// ---- Start screen:'));
- assert.match(detail,/renderStart\(\)/);assert.doesNotMatch(detail,/data-start=/);
- const combined=source.slice(source.indexOf('function renderStart('),source.indexOf('/* ---- events ---- */'));
+ const detail=source.slice(source.indexOf('function detail('),source.indexOf('// ---- Trip state'));
+ assert.doesNotMatch(detail,/data-start=|>Plan trip</);
+ const combined=detail;
  assert.match(combined,/routeWalkingLinksHTML\(r\)/);assert.match(combined,/schedulePanel\(r\)/);assert.match(combined,/data-view-trip/);
  assert.ok(combined.indexOf('schedulePanel(r)')<combined.indexOf('routeWalkingLinksHTML(r)'));
+ const refresh=source.slice(source.indexOf('function renderStart()'),source.indexOf('/* ---- events ---- */'));
+ assert.match(refresh,/detail\(startState.id,\{refresh:true\}\)/);assert.doesNotMatch(refresh,/sheet.innerHTML|setHash/);
 });

@@ -44,3 +44,14 @@
 @keyframes chat-bus-bob{from{transform:translateY(0)}to{transform:translateY(-1.5px)}}
 @keyframes chat-bus-puff{0%{opacity:.8;transform:translate(0,0) scale(.6)}100%{opacity:0;transform:translate(-14px,-4px) scale(1.6)}}
 @media (prefers-reduced-motion:reduce){.chat-bus *,.chat-bus-flip{animation:none!important;transition:none!important}}
+
+/* Keep assistant actions touch-friendly without competing with route departures. */
+@media(max-width:650px){
+ .hero-chat button{min-height:44px;font-size:15px;padding:9px 12px}
+ .chat-chip{min-height:44px;font-size:14px;line-height:1.4;padding:9px 12px}
+ .chat-link{display:inline-flex;align-items:center;min-height:44px;font-size:15px}
+ .hero .chat-plan p{font-size:15px;line-height:1.5}
+ .chat-leg-head span:last-child,.chat-alts{font-size:14px;line-height:1.45}
+ .chat-loading-row{flex-wrap:wrap;gap:8px}
+ .chat-bus-btn{width:44px;height:44px;font-size:15px}
+}

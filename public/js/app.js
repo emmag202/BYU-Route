@@ -642,17 +642,58 @@ function mapPage(trip=null){
   if(window.resizeRydeMap)window.resizeRydeMap();
   if(window.showRydeTrip)window.showRydeTrip(trip);
 }
-function detail(id){
+function detail(id,{refresh=false}={}){
  const r=R.find(x=>x.id==id);if(!r)return home();
- const saved=routing&&history.state?.rydeTrip?.routeId===String(r.id)?history.state.rydeTrip:null;
- if(saved)dirOverride=saved.direction;
- setHash(`#/route/${r.id}`);sel=r;
- startState={id:r.id,board:saved?.board??null,dest:saved?.dest??null,countIntent:!routing};
- renderStart();
+ if(!refresh||!startState||String(startState.id)!==String(r.id)){
+  const saved=routing&&history.state?.rydeTrip?.routeId===String(r.id)?history.state.rydeTrip:null;
+  if(saved)dirOverride=saved.direction;
+  setHash(`#/route/${r.id}`);sel=r;
+  startState={id:r.id,board:saved?.board??null,dest:saved?.dest??null,countIntent:!routing};
+ }
+  layout(2);showRoutes([r.id]);fit(r);gStops.innerHTML="";
+  $("app").classList.remove("map-mode");activeNav('navRoutes');
+  const p=tripPlan(r),name=j=>esc(r.stops[j][0]),destName=name(p.dest);
+  // Scheduled time at each stop along the ride, starting from the next departure at the boarding stop.
+  const times=[upcoming(r,p.board,1)[0]||null];
+  for(let i=1;i<p.path.length;i++)times.push(times[i-1]?arrivalAfter(r,p.path[i],times[i-1]):null);
+  const boardT=times[0],rideStops=p.path.length-1;
+  const scheduledRideMinutes=times.at(-1)&&times[0]?Math.max(1,Math.round(times.at(-1).min-times[0].min)):null;
+  const countdown=i=>{const left=p.path.length-1-i;return left===0?"Your stop":left===1?`1 stop to ${destName}`:`${left} stops to ${destName}`}
+  const choiceKind=p.d==="to"?"board":"dest",chosen=p.d==="to"?p.board:p.dest;
+  const choices=`<div class="trip-choice"><span class="sub">${p.d==="to"?"Where are you getting on?":"Where are you getting off?"}</span><div class="dir-switch" role="group">${r.toCampus.map(j=>`<button type="button" data-trip-${choiceKind}="${j}" aria-pressed="${j===chosen}">${name(j)}</button>`).join("")}</div></div>`;
+  const stopItem=(j,i)=>{
+    const t=times[i],role=i===0?"board":i===p.path.length-1?"dest":"mid";
+    const tag=role==="board"?"Get on here":role==="dest"?"Get off here":"Stay on";
+    return `<li class="strip-stop ${role}"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">
+      <div class="strip-line"><b>${name(j)}</b><span class="strip-tag">${tag}</span></div>
+      <span class="sub">${t?`${i?"≈ ":""}${t.ahead?dayTag(t.ahead)+" ":""}${fmtDeparture(t.time)}`:"No scheduled time"}${role==="dest"?"":` · ${countdown(i)}`}</span></div></li>`;
+  };
+  sheet.innerHTML=`<div class="pad detail-shell start-shell" style="--c:${r.color}">
+   <div class="detail-head"><span class="dir-eyebrow">${p.d==="from"?"Heading home from campus":"Heading to campus"}</span><h1>${esc(r.name)}</h1><div class="route-days">${runDays(r)}</div>${favoriteButton(r,true)}</div>
+   ${dirBannerHTML()}
+   <div class="card start-summary">
+     <span class="next-label">Next bus at ${name(p.board)}</span>
+     <div class="start-time">${boardT?nextTimeText(boardT):"None scheduled"}</div>
+     <p>Get on at <b>${name(p.board)}</b>, ride <b>${rideStops} stop${rideStops===1?"":"s"}</b>, get off at <b>${destName}</b>.${rideStops>1?` You'll pass ${rideStops-1} stop${rideStops===2?"":"s"} before your destination.`:""}</p>
+     ${choices}
+     <button type="button" class="cta" data-view-trip data-estimated-minutes="${scheduledRideMinutes??""}">View trip</button>
+   </div>
+   <ol class="stop-strip">
+     <li class="strip-stop you"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">${youAreHereHTML()}</div></li>
+     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b><span class="sub">Google Maps walking directions are below the departure schedule.</span></div></li>
+     ${p.path.map(stopItem).join("")}
+   </ol>
+   <p class="sub sched-foot">Times after boarding are estimated from the published schedule, not live.</p>
+   <div id="schedPanel">${schedulePanel(r)}</div>
+   ${routeWalkingLinksHTML(r)}
+  </div>`;addSheetHandle();
+  // Keep the selected trip when returning from its map or refreshing the route URL.
+  history.replaceState({...history.state,rydeTrip:{routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d}},'',location.hash);
+  // Count the first completed itinerary render, never GPS/timer/stop-choice rerenders.
+  if(!startState.recorded){startState.recorded=true;if(startState.countIntent)recordEvent('trip_planned')}
 }
 
-// ---- Start screen: you are here → walk to the stop → ride → get off ----
-// "You are here" uses GPS. Walking directions to the stop plug in later (walking API pending).
+// ---- Trip state and legacy URL compatibility ----
 let startState=null;
 // ---- History: screens push a hash so the browser's back/forward buttons move between them ----
 let routing=false;
@@ -723,50 +764,8 @@ function youAreHereHTML(){
   if(hasGps())return `<b>You are here</b><span class="sub">Using your phone's location${nearState.acc?` (±${Math.round(nearState.acc)} m)`:""} · ${onCampus(nearState.pos)?"on campus":"off campus"}</span>`;
   return `<b>Where are you?</b><span class="sub">${esc(nearState.message||"Location is off.")}</span><button type="button" class="near-btn ghosty" data-near="gps">Try again</button>`;
 }
-function renderStart(){
-  const r=R.find(x=>x.id==startState.id);if(!r)return home();
-  layout(2);showRoutes([r.id]);fit(r);gStops.innerHTML="";
-  $("app").classList.remove("map-mode");activeNav('navRoutes');
-  const p=tripPlan(r),name=j=>esc(r.stops[j][0]),destName=name(p.dest);
-  // Scheduled time at each stop along the ride, starting from the next departure at the boarding stop.
-  const times=[upcoming(r,p.board,1)[0]||null];
-  for(let i=1;i<p.path.length;i++)times.push(times[i-1]?arrivalAfter(r,p.path[i],times[i-1]):null);
-  const boardT=times[0],rideStops=p.path.length-1;
-  const scheduledRideMinutes=times.at(-1)&&times[0]?Math.max(1,Math.round(times.at(-1).min-times[0].min)):null;
-  const countdown=i=>{const left=p.path.length-1-i;return left===0?"Your stop":left===1?`1 stop to ${destName}`:`${left} stops to ${destName}`} 
-  const choiceKind=p.d==="to"?"board":"dest",chosen=p.d==="to"?p.board:p.dest;
-  const choices=`<div class="trip-choice"><span class="sub">${p.d==="to"?"Where are you getting on?":"Where are you getting off?"}</span><div class="dir-switch" role="group">${r.toCampus.map(j=>`<button type="button" data-trip-${choiceKind}="${j}" aria-pressed="${j===chosen}">${name(j)}</button>`).join("")}</div></div>`;
-  const stopItem=(j,i)=>{
-    const t=times[i],role=i===0?"board":i===p.path.length-1?"dest":"mid";
-    const tag=role==="board"?"Get on here":role==="dest"?"Get off here":"Stay on";
-    return `<li class="strip-stop ${role}"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">
-      <div class="strip-line"><b>${name(j)}</b><span class="strip-tag">${tag}</span></div>
-      <span class="sub">${t?`${i?"≈ ":""}${t.ahead?dayTag(t.ahead)+" ":""}${fmtDeparture(t.time)}`:"No scheduled time"}${role==="dest"?"":` · ${countdown(i)}`}</span></div></li>`;
-  };
-  sheet.innerHTML=`<div class="pad detail-shell start-shell" style="--c:${r.color}">
-   <div class="detail-head"><span class="dir-eyebrow">${p.d==="from"?"Heading home from campus":"Heading to campus"}</span><h1>${esc(r.name)}</h1><div class="route-days">${runDays(r)}</div>${favoriteButton(r,true)}</div>
-   ${dirBannerHTML()}
-   <div class="card start-summary">
-     <span class="next-label">Next bus at ${name(p.board)}</span>
-     <div class="start-time">${boardT?nextTimeText(boardT):"None scheduled"}</div>
-     <p>Get on at <b>${name(p.board)}</b>, ride <b>${rideStops} stop${rideStops===1?"":"s"}</b>, get off at <b>${destName}</b>.${rideStops>1?` You'll pass ${rideStops-1} stop${rideStops===2?"":"s"} before your destination.`:""}</p>
-     ${choices}
-     <button type="button" class="cta" data-view-trip data-estimated-minutes="${scheduledRideMinutes??""}">View trip</button>
-   </div>
-   <ol class="stop-strip">
-     <li class="strip-stop you"><span class="strip-dot" aria-hidden="true"></span><div class="strip-body">${youAreHereHTML()}</div></li>
-     <li class="strip-walk"><div class="walk-box"><b>Walk to ${name(p.board)}</b><span class="sub">Google Maps walking directions are below the departure schedule.</span></div></li>
-     ${p.path.map(stopItem).join("")}
-   </ol>
-   <p class="sub sched-foot">Times after boarding are estimated from the published schedule, not live.</p>
-   <div id="schedPanel">${schedulePanel(r)}</div>
-   ${routeWalkingLinksHTML(r)}
-  </div>`;addSheetHandle();
-  // Keep the selected trip when returning from its map or refreshing the route URL.
-  history.replaceState({...history.state,rydeTrip:{routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d}},'',location.hash);
-  // Count the first completed itinerary render, never GPS/timer/stop-choice rerenders.
-  if(!startState.recorded){startState.recorded=true;if(startState.countIntent)recordEvent('trip_planned')}
-}
+// Refresh the same route-details page; this never opens another screen or URL.
+function renderStart(){if(startState)detail(startState.id,{refresh:true})}
 
 /* ---- events ---- */
 sheet.addEventListener("click",e=>{

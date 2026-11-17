@@ -25,7 +25,7 @@ function setup() {
   vm.runInContext(part('async function toggleFavorite(', 'function showCreateAccountForm()'),context);
   vm.runInContext(part('let allTimesOpen=', 'function noClassDaysNoticeHTML()'),context);
   vm.runInContext(part('function home(', 'function mapPage('),context);
-  vm.runInContext(part('function mapPage(', '// ---- Start screen:'),context);
+  vm.runInContext(part('function mapPage(', '// ---- Trip state'),context);
   vm.runInContext(part('function tripPlan(', 'function googleMapsWalkLink('),context);
   vm.runInContext(part('function renderStart()', '/* ---- events ---- */'),context);
   vm.runInContext(part('function refreshScreen()', '// Re-render only'),context);
