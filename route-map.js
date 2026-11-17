@@ -864,15 +864,31 @@
         place.Address?.Label ||
         `Place ${index + 1}`;
 
+      const popupContent = document.createElement('div');
+      const label = document.createElement('p');
+      label.textContent = title;
+      const save = document.createElement('button');
+      save.type = 'button';
+      save.textContent = 'Save as home';
+      save.addEventListener('click', async () => {
+        save.disabled = true;
+        try {
+          const saved = await window.onRydeSaveHome?.({ label: String(place.Address?.Label || title).slice(0, 200), lat, lng });
+          if (saved) { save.textContent = 'Home saved'; status('Home saved. You can update or remove it in My profile.'); }
+        } catch (error) { status(error.message || 'Could not save home.'); }
+        finally { save.disabled = false; }
+      });
+      popupContent.append(label, save);
       const marker = new maplibregl.Marker({
         color: '#d62828'
       })
         .setLngLat([lng, lat])
         .setPopup(
-          new maplibregl.Popup({ offset: 24 }).setText(title)
+          new maplibregl.Popup({ offset: 24 }).setDOMContent(popupContent)
         )
         .addTo(map);
 
+      if (results.length === 1) marker.togglePopup();
       placeMarkers.push(marker);
       bounds.extend([lng, lat]);
       markerCount++;
