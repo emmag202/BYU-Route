@@ -480,6 +480,8 @@ function chatResultHTML(){
   if(x.status==="clarify"){
     const picks=(x.candidates||[]).map((c,i)=>chatChip(c.label,`data-chat-pick="${i}"`)).join("");
     if(x.reason==="no-origin")return `<p class="chat-note">Where are you starting from?</p><div class="chat-chips">${chatChip("Use my location",'data-chat-here="1"')}${picks}</div>`;
+    if(x.reason==="no-home")return `<p class="chat-note">${currentUser?"You don't have a home address saved yet. Under “Near you”, tap “Use my location” and then “Save this location as my home”, or name the place instead."
+      :"Sign in and save your home address to plan trips from home, or name the place instead."}</p>`;
     if(x.reason==="no-destination")return `<p class="chat-note">Where do you want to go? Name the place, for example “to the Provo library”.</p>`;
     return picks?`<p class="chat-note">Which “${esc(x.phrase)}” do you mean?</p><div class="chat-chips">${picks}</div>`
       :`<p class="chat-note">The map search couldn't find “${esc(x.phrase)}” in Utah Valley. Try its full name or street address.</p>`;

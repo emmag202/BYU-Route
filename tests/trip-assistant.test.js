@@ -177,6 +177,36 @@ test('when the server search finds nothing the browser is asked to search, witho
   assert.equal(junk.status, 'clarify');
 });
 
+test('"home" means the saved home address, never a business, and is asked for when none is saved', async () => {
+  const home = { label: '1234 N Main St, Provo', lat: 40.26, lng: -111.66 };
+  const searched = [];
+  const searchPlaces = async (q) => { searched.push(q); return []; };
+  // The model wrongly calls "home" a named place, and "back home" a stop: both still become the saved home.
+  const parse = { intent: 'day', origin_kind: 'named', origin_name: 'home', origin_area: 'unknown', origin_search: 'Home Store, Provo, UT',
+    stops: [{ kind: 'named', name: 'MOA', area: 'byu_campus', search: 'MOA' }, { kind: 'named', name: 'back home', area: 'unknown', search: 'Home Furniture, Provo' }] };
+  const model = fakeModel(parse, { stop1: 'MOA (Ryde stop)' });
+  const result = await answerQuestion({ message: 'from home to the MOA and then back home', home }, { model, routes, searchPlaces, region: 'us-east-2' });
+  assert.equal(result.status, 'lookup'); // only the MOA needs a search
+  assert.deepEqual(result.lookups.map(l => l.slot), ['stop1']);
+  const done = await answerQuestion({ message: 'm', home, state: result.state, found: { stop1: [] } }, { model, routes, searchPlaces, region: 'us-east-2' });
+  assert.equal(done.status, 'ok');
+  assert.deepEqual(done.understood.places.map(p => p.label), ['Home (1234 N Main St, Provo)', 'MOA (Ryde stop)', 'Home (1234 N Main St, Provo)']);
+  assert.ok(!searched.flat().some(q => /home/i.test(q)));
+  // The model's own "home" stop kind is honoured too.
+  const own = await answerQuestion({ message: 'm', home, found: { stop1: [] } }, { model: fakeModel({ intent: 'route', origin_kind: 'home', stops: [{ kind: 'home', name: 'my place', area: 'unknown', search: '' }] }), routes, searchPlaces });
+  assert.equal(own.status, 'ok');
+  // No saved home: ask, instead of searching for a business or quietly using GPS.
+  const here = { label: 'GPS', lat: 40.25, lng: -111.65 };
+  const none = await answerQuestion({ message: 'from home to the MOA', here }, { model: fakeModel({ ...parse, stops: [parse.stops[0]] }), routes, searchPlaces });
+  assert.deepEqual([none.status, none.reason, none.slot], ['clarify', 'no-home', 'origin']);
+  const noneStop = await answerQuestion({ message: 'MOA then home', here }, { model: fakeModel({ intent: 'route', origin_kind: 'here', stops: [{ kind: 'home', name: 'home', area: 'unknown', search: '' }] }), routes, searchPlaces });
+  assert.deepEqual([noneStop.reason, noneStop.slot], ['no-home', 'stop1']);
+  // A business that merely contains the word is still searched normally.
+  assert.equal(cleanParse({ origin_kind: 'named', origin_name: 'Home Depot' }).originKind, 'named');
+  assert.equal(cleanParse({ stops: [{ name: 'Home Goods Provo' }] }).stops[0].kind, 'named');
+  for (const w of ['home', 'Home.', 'my house', 'back home', 'my apartment', 'to my place', 'heading home']) assert.equal(cleanParse({ origin_kind: 'named', origin_name: w }).originKind, 'home', w);
+});
+
 test('Gemini client asks for JSON, falls back if the format setting is rejected, and hides upstream errors', async () => {
   const reply = (text) => ({ ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }) });
   const sent = [];
