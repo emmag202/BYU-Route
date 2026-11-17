@@ -1424,7 +1424,7 @@
       map.resize();
     });
 
-    map.once('load',()=>{const c=map.getContainer().querySelector('.maplibregl-ctrl-top-right');if(c&&!c.querySelector('.ryde-map-style-toggle')){const s=createMapStyleControl();c.appendChild(s.onAdd(map));}});map.on('error', event => {
+    map.once('load',()=>{const root=map.getContainer();if(!root.querySelector('.ryde-satellite-map-toggle')){const s=createMapStyleControl();const e=s.onAdd(map);e.classList.add('ryde-satellite-map-toggle');e.style.position='absolute';e.style.top='112px';e.style.right='10px';e.style.zIndex='5';root.appendChild(e);}});map.on('error', event => {
       if (event.error) {
         console.error('BYU Ryde map error:', event.error);
       }
