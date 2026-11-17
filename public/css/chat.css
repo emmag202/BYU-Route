@@ -32,7 +32,7 @@
 .chat-bus-btn{appearance:none;width:36px;height:32px;border:1px solid #ffffff66;border-radius:8px;background:#ffffff1a;color:#fff;font-size:13px;cursor:pointer}
 .chat-bus-btn:hover,.chat-bus-btn:focus-visible{background:#ffffff33}
 .chat-bus-track{position:relative;height:64px;margin-top:6px;border-bottom:2px dashed #ffffff66}
-.chat-bus-car{position:absolute;left:0;bottom:-1px;width:132px;will-change:transform}
+.chat-bus-car{position:absolute;left:0;bottom:-1px;width:132px;will-change:transform;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none}
 .chat-bus-flip{transition:transform .3s ease}
 .chat-bus-flip.is-left{transform:scaleX(-1)}
 .chat-bus{display:block;overflow:visible}

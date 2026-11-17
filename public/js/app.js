@@ -421,8 +421,8 @@ function chatLegHTML(leg,i,n){
   if(leg.best!=="transit")others+=`<li><a href="${esc(leg.transit.url)}" target="_blank" rel="noopener noreferrer">Public transit alternative (UTA) ↗</a></li>`;
   return `<div class="chat-leg"><div class="chat-leg-head">${n>1?`<span class="chat-step">${i+1}</span>`:""}<b>${esc(leg.from)} → ${esc(leg.to)}</b><span>leave ${leg.departTime}</span></div>${main}${others?`<ul class="chat-alts">${others}</ul>`:""}</div>`;
 }
-// Waiting game: a Ryde bus drives across the answer area and turns around at each end. The ◀ ▶ buttons
-// or the keyboard arrow keys turn it early. Decorative only; the text says what is happening.
+// Waiting game: a Ryde bus drives across the answer area and turns around at each end. Tapping the bus,
+// the ◀ ▶ buttons, or the keyboard arrow keys turn it early. Decorative only; the text says what is happening.
 const CHAT_BUS_SPEED=110; // px per second
 const chatBus={x:0,dir:1,last:0,raf:0};
 function chatBusHTML(){
@@ -532,6 +532,8 @@ sheet.addEventListener("submit",e=>{if(e.target.id!=="chatForm")return;e.prevent
 sheet.addEventListener("input",e=>{if(e.target.id==="chatInput")chatState.q=e.target.value});
 sheet.addEventListener("click",e=>{
   const bus=e.target.closest("[data-bus-dir]");if(bus){chatBusTurn(Number(bus.dataset.busDir));return}
+  // Tapping or clicking the bus itself turns it around (no arrow keys on phones).
+  if(e.target.closest(".chat-bus-car")){chatBusTurn(-chatBus.dir);return}
   const ex=e.target.closest("[data-chat-example]");
   if(ex){const q=CHAT_EXAMPLES[Number(ex.dataset.chatExample)];const f=$("chatInput");if(f)f.value=q;askAssistant(q);return}
   if(e.target.closest("[data-chat-here]")){
