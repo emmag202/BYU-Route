@@ -56,6 +56,41 @@ async function saveUser(name,net_id,email,password){const result=await apiReques
 async function signIn(net_id,password){const result=await apiRequest("/api/login",{method:"POST",body:JSON.stringify({net_id:net_id.trim(),password})});currentUser=result.user;await Promise.all([loadFavorites(),loadHome()]);updateProfileButton();refreshScreen()}
 async function signOut(){try{await apiRequest("/api/logout",{method:"POST"})}catch(error){alert(error.message||"Could not sign out.");return}currentUser=null;favoriteRouteIds.clear();homePlace=null;window.showRydeHome?.(null);if(nearState.source==="home")nearState={status:"idle",pos:null,source:null,message:""};localStorage.removeItem("ryde_auth_token");localStorage.removeItem("ryde_net_id");updateProfileButton();refreshScreen()}
 async function toggleFavorite(route_id){if(!currentUser){openProfile();return}const id=String(route_id);if(favoriteRouteIds.has(id)){await apiRequest(`/api/users/${currentUser.user_id}/favorites/${encodeURIComponent(id)}`,{method:"DELETE"});favoriteRouteIds.delete(id)}else{await apiRequest(`/api/users/${currentUser.user_id}/favorites`,{method:"POST",body:JSON.stringify({route_key:id})});favoriteRouteIds.add(id)}}
+function favoriteButton(r,details=false){
+ const saved=favoriteRouteIds.has(String(r.id));
+ return `<button type="button" class="${details?'ghost detail-favorite':'favorite-star'}${saved?' is-saved':''}" data-favorite="${r.id}" data-favorite-details="${details}" aria-pressed="${saved}" aria-label="${saved?'Remove':'Save'} ${esc(r.name)} ${saved?'from favorites':'as favorite'}">${details?(saved?'&#9733; Favorited - Remove Favorite':'Save as Favorite'):(saved?'&#9733;':'&#9734;')}</button>`;
+}
+function syncFavoriteViews(){
+ const scroll=sheet.scrollTop;
+ refreshHome();
+ sheet.scrollTop=scroll;
+ document.querySelectorAll('[data-favorite]').forEach(button=>{
+  const r=R.find(r=>String(r.id)===button.dataset.favorite);
+  if(r)button.outerHTML=favoriteButton(r,button.dataset.favoriteDetails==='true');
+ });
+ if(!$("profileModal").classList.contains('hide'))openProfile();
+}
+function confirmFavorite(id,trigger){
+ const r=R.find(r=>String(r.id)===String(id));if(!r)return;
+ if(!currentUser){openProfile();return}
+ const removing=favoriteRouteIds.has(String(id));
+ let dialog=$('favoriteConfirm');
+ if(!dialog){dialog=document.createElement('dialog');dialog.id='favoriteConfirm';dialog.className='favorite-confirm';document.body.append(dialog)}
+ dialog.innerHTML=`<h2 id="favoriteConfirmTitle">${removing?'Remove favorite route?':'Save as favorite route?'}</h2><p>${removing?`Remove ${esc(r.name)} from your favorites?`:`Add ${esc(r.name)} to your favorites for quick access.`}</p><p class="formMessage" role="alert"></p><div class="favorite-confirm-actions"><button type="button" class="ghost" data-cancel>Cancel</button><button type="button" class="cta" data-confirm>${removing?'Yes, remove':'Yes, save'}</button></div>`;
+ dialog.setAttribute('aria-labelledby','favoriteConfirmTitle');
+ const cancel=dialog.querySelector('[data-cancel]'),yes=dialog.querySelector('[data-confirm]');
+ cancel.onclick=()=>dialog.close();
+ dialog.oncancel=e=>{if(yes.disabled)e.preventDefault()};
+ dialog.onclose=()=>{if(trigger?.isConnected)trigger.focus();else document.querySelector(`[data-favorite="${id}"]`)?.focus()};
+ yes.onclick=async()=>{
+  if(!currentUser){dialog.close();openProfile();return}
+  yes.disabled=true;cancel.disabled=true;
+  try{await toggleFavorite(id);syncFavoriteViews();dialog.close()}
+  catch(error){dialog.querySelector('.formMessage').textContent=error.message||'Could not update favorite. Please try again.'}
+  finally{yes.disabled=false;cancel.disabled=false}
+ };
+ dialog.showModal();cancel.focus();
+}
 function showCreateAccountForm(){
   const c=$("profileContent");
   c.innerHTML=`<h1>Create an account</h1><div class="sub">Enter your name, username, email, and a password.</div><form id="createAccountForm" novalidate><label class="field">Name<input name="name" required maxlength="100" autocomplete="name"></label><label class="field">Username<input name="net_id" required maxlength="50" autocomplete="username"></label><label class="field">Email<input name="email" type="email" required maxlength="100" autocomplete="email"></label><label class="field">Password (at least 8 characters)<input name="password" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label><label class="field">Confirm password<input name="confirm_password" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label><div class="emailError formMessage hide" role="alert"></div><button class="cta" type="submit">Create account</button><button class="ghost" type="button" id="backToAccountOptions">Back</button></form>`;
@@ -192,19 +227,19 @@ const laterHTML=(r,{groups,d})=>groups.map(x=>`<div class="stop-departures"><str
 const openCards=new Set();
 function cardHTML(r){
  const rn=routeNext(r),open=openCards.has(r.id);
- return `<article class="rc" style="--c:${r.color}">
+ return `<article class="rc favorite-card" style="--c:${r.color}">
   <button class="route-open" data-open="${r.id}" aria-label="View ${esc(r.name)} schedule">
    <span class="route-name">${esc(r.name)}</span>
    <span class="route-stop" data-card-stops="${r.id}">${cardNextStop(r,rn)}</span>
    <span class="next-time" data-next-time="${r.id}">${nextTimeText(rn.next)}</span>
   </button>
+  ${favoriteButton(r)}
  </article>`;
 }
 function updateCard(r){
- const t=sheet.querySelector(`[data-next-time="${r.id}"]`);if(!t)return;
- const rn=routeNext(r),q=k=>sheet.querySelector(`[data-${k}="${r.id}"]`);
- t.innerHTML=nextTimeText(rn.next);
- q("card-stops").innerHTML=cardNextStop(r,rn);
+ const rn=routeNext(r);
+ sheet.querySelectorAll(`[data-next-time="${r.id}"]`).forEach(el=>el.innerHTML=nextTimeText(rn.next));
+ sheet.querySelectorAll(`[data-card-stops="${r.id}"]`).forEach(el=>el.innerHTML=cardNextStop(r,rn));
  const l=document.getElementById("l"+r.id);if(l)l.innerHTML=laterHTML(r,rn);
 }
 // Re-evaluate "next" times as the clock advances, updating in place so open panels, search focus and scroll are kept.
@@ -330,7 +365,7 @@ function nearSuggestions(pos){
 function nearYouHTML(){
  if(!(window.BYU_RYDE_ROUTES||[]).some(g=>Array.isArray(g.points)&&g.points.length))return "";
  if(!nearState.pos&&homePlace&&nearState.status==="idle")nearState={status:"ready",pos:[Number(homePlace.lat),Number(homePlace.lng)],source:"home",message:""};
- const head=t=>`<section class="near-you" aria-label="Suggested routes near you" aria-live="polite"><div class="near-head"><h2>${t}</h2>`;
+ const head=t=>`<section class="near-you" aria-label="Suggested routes near you" aria-live="polite"><div class="near-head"><h2>Nearby Trips</h2><span class="sub">${t}</span>`;
  const locBtn=`<button type="button" class="near-btn${nearState.status==="error"?"":" ghosty"}" data-near="gps">${nearState.status==="error"?"Try again":"Refresh location"}</button>`;
  const homeBtn=homePlace&&nearState.source!=="home"?`<button type="button" class="near-btn ghosty" data-near="home">Near my home</button>`:"";
  if(nearState.status==="locating")return head("Finding routes near you…")+`</div><p class="sub">Waiting for your location.</p></section>`;
@@ -338,7 +373,7 @@ function nearYouHTML(){
  const list=nearSuggestions(nearState.pos),where=nearState.source==="home"?"your home":"you";
  let h=head(nearState.source==="home"?"Near your home":"Near you")+`<div class="near-actions">${locBtn}${homeBtn}</div></div>`;
  if(!list.length)h+=`<p class="sub">No Ryde stops within ${NEAR_RADIUS_MI} miles of ${where}.</p>`;
- else h+=`<div class="near-list">`+list.map(({r,d,label})=>{const t=nextPickupNear(r,label);return `<button type="button" class="near-item" data-open="${r.id}" style="--c:${r.color}" aria-label="Plan a trip on ${esc(r.name)}"><span class="near-route">${esc(r.name)}</span><span class="near-stop">${label?esc(label):"Closest point on route"} · ${d<0.1?"right here":`${d.toFixed(1)} mi`} · ~${walkMinutes(d)} min walk</span>${t?`<span class="near-label">Next pickup${label?"":` at ${esc(t.stop)}`}</span><span class="near-time">${fmtDeparture(t.time)}</span>`:`<span class="near-none">${r.service!=="daily"&&[0,6].includes(serviceNow().day)?"No weekend service":"No more pickups today"}</span>`}</button>`}).join("")+`</div>`;
+ else h+=`<div class="near-list">`+list.map(({r,d,label})=>{const t=nextPickupNear(r,label);return `<article class="near-card favorite-card"><button type="button" class="near-item" data-open="${r.id}" style="--c:${r.color}" aria-label="Plan a trip on ${esc(r.name)}"><span class="near-route">${esc(r.name)}</span><span class="near-stop">${label?esc(label):"Closest point on route"} · ${d<0.1?"right here":`${d.toFixed(1)} mi`} · ~${walkMinutes(d)} min walk</span>${t?`<span class="near-label">Next pickup${label?"":` at ${esc(t.stop)}`}</span><span class="near-time">${fmtDeparture(t.time)}</span>`:`<span class="near-none">${r.service!=="daily"&&[0,6].includes(serviceNow().day)?"No weekend service":"No more pickups today"}</span>`}</button>${favoriteButton(r)}</article>`}).join("")+`</div>`;
  if(nearState.source==="gps"&&currentUser&&!homePlace)h+=`<button type="button" class="near-btn ghosty" data-near="save-home">Save this location as my home</button>`;
  return h+`</section>`;
 }
@@ -351,9 +386,9 @@ function locateRider(){
   {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
 }
 // Location changes the home cards' direction and the Start screen's "you are here".
-function refreshScreen(){if(startState)renderStart();else refreshHome()}
+function refreshScreen(){if(startState)renderStart();else if(location.hash==="#/times")timesPage();else if(screen===2&&sel)detail(sel.id);else refreshHome()}
 // Re-render only while the Routes home screen is showing, keeping whatever is typed in search.
-function refreshHome(){if(screen===1&&!sel&&!$("app").classList.contains("map-mode")){const s=$("routeSearch");home(s?s.value:"")}}
+function refreshHome(){if(screen===1&&!sel&&location.hash!=="#/times"&&!$("app").classList.contains("map-mode")){const s=$("routeSearch");home(s?s.value:"")}}
 
 /* ---- screens ---- */
 let screen=1,sel=null,timer=null,lostSignal=false;
@@ -371,7 +406,7 @@ function showWelcomeIntro(){
   catch{return true}
 }
 // ---- "Show all times": a traditional printed-style timetable for every route, below the route cards ----
-let allTimesOpen=false,allTimesDay=null;
+let allTimesOpen=false,allTimesDay=null,allTimesRoute="";
 function allTimesBody(){
  const k=allTimesDay||todaySchedDay(),today=todaySchedDay();
  const sw=`<div class="dir-switch sched-day-switch" role="group" aria-label="Schedule day">${SCHED_DAYS.map(([v,l])=>`<button type="button" data-all-day="${v}" aria-pressed="${k===v}">${l}${v===today?" · today":""}</button>`).join("")}</div>`;
@@ -382,14 +417,18 @@ function allTimesBody(){
    :`<div class="tt-wrap">${timetableHTML(r,rk,"To campus",r.toCampus,r.toCampus.map(j=>esc(r.stops[j][0])))}${timetableHTML(r,rk,"Leaving campus",r.fromCampus,[`${esc(r.campusStop)} <span class="tt-sub">→ ${esc(housing(r).join(" / "))}</span>`])}</div>`;
   return `<section class="at-route" style="--c:${r.color}" aria-label="${esc(r.name)} timetable"><h3>${esc(r.name)}<span>${runDays(r)}</span></h3>${body}</section>`;
  };
- return `<div class="at-top">${sw}${k==="fri"?'<span class="sub">Friday: buses stop earlier than Mon–Thu.</span>':""}</div>${R.map(route).join("")}<p class="sub sched-foot">Fall and Winter semesters; school holiday exceptions apply. Times are scheduled, not live.</p>`;
+ return `<div class="at-top">${sw}${k==="fri"?'<span class="sub">Friday: buses stop earlier than Mon–Thu.</span>':""}</div>${R.filter(r=>!allTimesRoute||String(r.id)===allTimesRoute).map(route).join("")}<p class="sub sched-foot">Fall and Winter semesters; school holiday exceptions apply. Times are scheduled, not live.</p>`;
 }
-// Rendered only while open, so the home page stays light.
-const allTimesSection=()=>`<details class="info-collapsible all-times" id="allTimes"${allTimesOpen?" open":""}><summary>Show all times</summary><div id="allTimesBody">${allTimesOpen?allTimesBody():""}</div></details>`;
-document.addEventListener("toggle",e=>{
- if(e.target.id!=="allTimes")return;
- allTimesOpen=e.target.open;const b=$("allTimesBody");if(b)b.innerHTML=allTimesOpen?allTimesBody():"";
-},true);
+function activeNav(id){
+ ['navRoutes','navTimes','navMap'].forEach(key=>{const button=$(key);button.classList.toggle('active',key===id);if(key===id)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current')});
+}
+function timesPage(){
+ setHash('#/times');layout(1);sel=null;startState=null;allTimesOpen=true;
+ $('app').classList.remove('map-mode');activeNav('navTimes');
+ sheet.innerHTML=`<div class="pad times-page"><h1>All Times</h1><p class="sub">Published shuttle departures for every route.</p><label class="field">Route<select id="allTimesRoute"><option value="">All routes</option>${R.map(r=>`<option value="${r.id}"${allTimesRoute===String(r.id)?' selected':''}>${esc(r.name)}</option>`).join('')}</select></label><div id="allTimesBody">${allTimesBody()}</div></div>`;
+ addSheetHandle();
+}
+const allTimesSection=()=>`<button type="button" class="ghost" data-show-times>Show all times</button>`;
 function noClassDaysNoticeHTML(){
   if(!noClassDays.length)return "";
   const dateLabel=iso=>{
@@ -411,9 +450,11 @@ function noClassDaysNoticeHTML(){
 function home(filter=""){
   setHash("#/");layout(1);sel=null;startState=null;showRoutes(R.map(r=>r.id));view(0,0,840);
   $("app").classList.remove("map-mode");
-  $("navRoutes").classList.add("active");$("navMap").classList.remove("active");
+  activeNav('navRoutes');
   const f=filter.trim().toLowerCase();
   const list=R.filter(r=>routeMatches(r,f));
+  const favorites=list.filter(r=>favoriteRouteIds.has(String(r.id)));
+  const directory=f?list:list.filter(r=>!favoriteRouteIds.has(String(r.id)));
   const suggestion=!list.length&&f?didYouMean(f):null;
   let h=`<section class="hero"><h1>Where do you want to go?</h1><p>Find your BYU shuttle route and its next scheduled departure.</p>
     <label class="hero-search"><span aria-hidden="true">⌕</span><input id="routeSearch" type="search" placeholder="Search a location, stop, or route…" value="${esc(filter)}" aria-label="Find shuttle routes"></label></section>
@@ -422,9 +463,11 @@ function home(filter=""){
       <p>Find shuttle routes, check published departure times, explore the route map, and save your favorite routes.</p>
       <p class="welcome-note">This is a prototype for planning trips, not live GPS tracking.</p></div>
       <button class="welcome-dismiss" type="button" id="welcomeDismiss">Got it</button>
-    </section>`:""}${noClassDaysNoticeHTML()}${f?"":nearYouHTML()}<div class="section-heading"><div><h2>Explore shuttle routes</h2></div><span class="sub">${list.length} routes</span></div>${dirBannerHTML()}`;
-  if(!list.length){h+=`<div class="card">No routes match “${esc(filter.trim())}”.${suggestion?` Did you mean <button type="button" class="did-you-mean" data-suggest="${esc(suggestion)}">${esc(suggestion)}</button>?`:" Try another stop or neighborhood."}</div>`}
-  else h+=`<div class="rail">`+list.map(cardHTML).join("")+`</div>`;
+    </section>`:""}${noClassDaysNoticeHTML()}<section aria-labelledby="favoriteRoutesHeading"><div class="section-heading"><h2 id="favoriteRoutesHeading">Favorite Routes</h2></div>${favorites.length?`<div class="rail">${favorites.map(cardHTML).join('')}</div>`:`<p class="sub">${currentUser?'Star a route to see it here.':'Sign in and star a route for quick access.'}</p>`}</section>${nearYouHTML()}<section aria-labelledby="allRoutesHeading"><div class="section-heading"><h2 id="allRoutesHeading">All Routes</h2><span class="sub">${directory.length} routes</span></div>${dirBannerHTML()}`;
+  if(!list.length){h+=`<div class="card">No routes match &ldquo;${esc(filter.trim())}&rdquo;.${suggestion?` Did you mean <button type="button" class="did-you-mean" data-suggest="${esc(suggestion)}">${esc(suggestion)}</button>?`:" Try another stop or neighborhood."}</div>`}
+  else if(directory.length)h+=`<div class="rail">`+directory.map(cardHTML).join("")+`</div>`;
+  else h+=`<p class="sub">All your routes are in Favorite Routes above.</p>`;
+  h+='</section>';
   h+=allTimesSection();
   h+=`<div class="map-teaser"><div><h2>Want to see all the routes?</h2><p>Explore the official BYU Ryde route diagram, zoom in, and select a route.</p></div><button type="button" id="openMapFromHome">Explore route map →</button></div>
     <details class="info-collapsible"><summary>Service information, eligibility & contact</summary>${informationPanel()}</details></div>`;
@@ -440,20 +483,20 @@ function mapPage(trip=null){
   const hash=trip?`#/map?route=${encodeURIComponent(trip.routeId)}&board=${encodeURIComponent(trip.board)}&dest=${encodeURIComponent(trip.dest)}&direction=${encodeURIComponent(trip.direction)}&origin=${encodeURIComponent(trip.originLabel)}&destination=${encodeURIComponent(trip.destinationLabel)}&minutes=${encodeURIComponent(trip.estimatedMinutes??"")}`:"#/map";
   setHash(hash);layout(1);sel=null;startState=null;showRoutes(R.map(r=>r.id));view(0,0,840);
   $("app").classList.add("map-mode");
-  $("navMap").classList.add("active");$("navRoutes").classList.remove("active");
+  activeNav('navMap');
   if(window.initRydeRouteMap)window.initRydeRouteMap();
   if(window.resizeRydeMap)window.resizeRydeMap();
   if(window.showRydeTrip)window.showRydeTrip(trip);
 }
-function detail(id){startTrip(id);return;
-  $("app").classList.remove("map-mode");$("navRoutes").classList.add("active");$("navMap").classList.remove("active");
+function detail(id){
+  $("app").classList.remove("map-mode");activeNav('navRoutes');
   sel=R.find(r=>r.id==id);const r=sel;if(!r)return home();setHash(`#/route/${r.id}`);layout(2);startState=null;
   showRoutes([r.id]);fit(r);
   gStops.innerHTML="";
   sheet.innerHTML=`<div class="pad detail-shell" style="--c:${r.color}">
-   <div class="detail-head"><h1>${esc(r.name)}</h1><div class="route-days">${runDays(r)}</div></div>
+   <div class="detail-head"><h1>${esc(r.name)}</h1><div class="route-days">${runDays(r)}</div>${favoriteButton(r,true)}</div>
+   <button type="button" class="cta" data-start="${r.id}">Plan trip</button>
    <div id="schedPanel">${schedulePanel(r)}</div>
-   <button class="ghost" id="favoriteBtn">${favoriteRouteIds.has(String(r.id))?"Unsave Favorite":"Save Favorite"}</button>
   </div>`;addSheetHandle();
 }
 
@@ -468,7 +511,8 @@ function renderFromHash(){
   routing=true;
   try{
     const h=location.hash,m=h.match(/^#\/(route|start)\/([^/]+)$/),ok=m&&R.some(r=>r.id==m[2]);
-    if(h==="#/map"||h.startsWith("#/map?")){
+    if(h==="#/times")timesPage();
+    else if(h==="#/map"||h.startsWith("#/map?")){
       const params=new URLSearchParams(h.split("?")[1]||"");
       const routeId=params.get("route"),board=Number(params.get("board")),dest=Number(params.get("dest")),direction=params.get("direction");
       const estimatedMinutes=Number(params.get("minutes"));
@@ -524,7 +568,7 @@ function youAreHereHTML(){
 function renderStart(){
   const r=R.find(x=>x.id==startState.id);if(!r)return home();
   layout(2);showRoutes([r.id]);fit(r);gStops.innerHTML="";
-  $("app").classList.remove("map-mode");$("navRoutes").classList.add("active");$("navMap").classList.remove("active");
+  $("app").classList.remove("map-mode");activeNav('navRoutes');
   const p=tripPlan(r),name=j=>esc(r.stops[j][0]),destName=name(p.dest);
   const walkUrl=googleMapsWalkLink(r,p.board);
   // Scheduled time at each stop along the ride, starting from the next departure at the boarding stop.
@@ -549,7 +593,6 @@ function renderStart(){
      <div class="start-time">${boardT?nextTimeText(boardT):"None scheduled"}</div>
      <p>Get on at <b>${name(p.board)}</b>, ride <b>${rideStops} stop${rideStops===1?"":"s"}</b>, get off at <b>${destName}</b>.${rideStops>1?` You'll pass ${rideStops-1} stop${rideStops===2?"":"s"} before your destination.`:""}</p>
      ${choices}
-     <button type="button" class="ghost" id="favoriteBtn" aria-pressed="${favoriteRouteIds.has(String(r.id))}">${favoriteRouteIds.has(String(r.id))?"Unsave Favorite":"Save Favorite"}</button>
      <button type="button" class="cta" data-view-trip data-estimated-minutes="${scheduledRideMinutes??""}">View trip</button>
    </div>
    <ol class="stop-strip">
@@ -571,7 +614,10 @@ sheet.addEventListener("click",e=>{
     document.getElementById("welcomeIntro")?.remove();
   }
 });
+document.addEventListener("change",e=>{if(e.target.id==='allTimesRoute'){allTimesRoute=e.target.value;$('allTimesBody').innerHTML=allTimesBody()}});
 document.addEventListener("click",e=>{
+  const favorite=e.target.closest('[data-favorite]');if(favorite){e.preventDefault();e.stopPropagation();confirmFavorite(favorite.dataset.favorite,favorite);return}
+  if(e.target.closest('[data-show-times]')){timesPage();return}
   if(e.target.closest('[data-directions]')){recordEvent('directions_clicked');return}
   const ds=e.target.closest("[data-dir-set]");if(ds){
    const v=ds.dataset.dirSet;dirOverride=v==="auto"||v===autoDir()?null:v;
@@ -598,7 +644,7 @@ document.addEventListener("click",e=>{
 $("back").onclick=()=>screen==3?detail(sel.id):home(q.value);
 sheet.addEventListener("click",e=>{if(e.target.id=="openMapFromHome")mapPage();if(e.target.id=="backToRoutes")home()});
 $("rydeHome").onclick=()=>{home();sheet.scrollTop=0};
-$("navRoutes").onclick=()=>home();$("navMap").onclick=()=>mapPage();
+$("navTimes").onclick=()=>timesPage();$("navRoutes").onclick=()=>home();$("navMap").onclick=()=>mapPage();
 q.addEventListener("input",()=>{home(q.value)});
 $("locate").onclick=()=>{view(0,0,840)};
 
@@ -649,7 +695,7 @@ sheet.addEventListener("keydown",e=>{
 
 $("profileBtn").onclick=openProfile;$("closeProfile").onclick=()=>$("profileModal").classList.add("hide");
 $("profileModal").addEventListener("click",e=>{if(e.target.id==="profileModal")$("profileModal").classList.add("hide");if(e.target.id==="clearHome"){e.target.disabled=true;clearHome().then(openProfile).catch(err=>{e.target.disabled=false;alert(err.message||"Could not remove home address.")})}if(e.target.id==="switchUser"){signOut().then(openProfile)}});
-$("profileContent").addEventListener("click",e=>{const button=e.target.closest("button");if(!button)return;if(button.dataset.profileRoute){$("profileModal").classList.add("hide");startTrip(button.dataset.profileRoute);return}if(button.id==="chooseHome"){$("profileModal").classList.add("hide");mapPage();$("awsPlaceQuery").focus();$("awsPlaceStatus").textContent="Search for your home, select a result, then choose Save as home.";return}if(button.id==="showCreateAccount")showCreateAccountForm();if(button.id==="showSignIn")showSignInForm();if(button.id==="backToAccountOptions")openProfile()});
+$("profileContent").addEventListener("click",e=>{const button=e.target.closest("button");if(!button)return;if(button.dataset.profileRoute){$("profileModal").classList.add("hide");detail(button.dataset.profileRoute);return}if(button.id==="chooseHome"){$("profileModal").classList.add("hide");mapPage();$("awsPlaceQuery").focus();$("awsPlaceStatus").textContent="Search for your home, select a result, then choose Save as home.";return}if(button.id==="showCreateAccount")showCreateAccountForm();if(button.id==="showSignIn")showSignInForm();if(button.id==="backToAccountOptions")openProfile()});
 $("profileContent").addEventListener("input",e=>{const form=e.target.closest("form");if(!form)return;const msg=form.querySelector(".formMessage");if(msg){msg.textContent="";msg.classList.add("hide")}});
 $("profileContent").addEventListener("submit",async e=>{
   const form=e.target;
@@ -669,13 +715,12 @@ $("profileContent").addEventListener("submit",async e=>{
     openProfile();
   }catch(error){msg.textContent=error.message||"Could not complete that request.";msg.classList.remove("hide")}
 });
-sheet.addEventListener("click",async e=>{if(e.target.id!=="favoriteBtn")return;if(!currentUser){openProfile();return}e.target.disabled=true;try{await toggleFavorite(sel.id);e.target.classList.toggle("on",favoriteRouteIds.has(String(sel.id)));e.target.setAttribute("aria-pressed",String(favoriteRouteIds.has(String(sel.id))));e.target.textContent=favoriteRouteIds.has(String(sel.id))?"Unsave Favorite":"Save Favorite"}catch(err){alert(err.message||"Could not save favorite.")}finally{e.target.disabled=false}});
 
 // Draw the routes first; profile data loads in the background so an API issue can't blank the page.
 async function start(){
  buildMap();renderFromHash();updateProfileButton();locateRider();
  try{await Promise.all([loadSavedUser(),loadNoClassDays()])}catch(err){console.error("Could not load saved data:",err)}
  refreshHome();
- const fb=$("favoriteBtn");if(fb&&sel){fb.textContent=favoriteRouteIds.has(String(sel.id))?"Unsave Favorite":"Save Favorite";fb.setAttribute("aria-pressed",String(favoriteRouteIds.has(String(sel.id))))}
+ syncFavoriteViews();
 }
 start();

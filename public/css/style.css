@@ -461,3 +461,25 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .at-route h3{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0;font-size:19px;font-weight:800;color:#122f4e;padding-left:10px;border-left:5px solid var(--c)}
 .at-route h3 span{font-size:13px;font-weight:600;color:#6a7a8c}
 .at-route .tt-table thead th{border-bottom-color:var(--c)}
+
+/* Shared card favorites: reveal on desktop hover/focus; always available on touch. */
+.favorite-card{position:relative;min-width:0}
+.favorite-card .route-open,.near-card .near-item{padding-right:34px}
+.near-card .near-item{width:100%;height:100%;box-sizing:border-box}
+.favorite-star{position:absolute;top:8px;right:8px;width:36px;height:36px;display:grid;place-items:center;border:1px solid #dce4ed;border-radius:50%;background:#fff;color:#54677b;font-size:24px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s ease}
+.favorite-card:hover>.favorite-star,.favorite-card:focus-within>.favorite-star,.favorite-star.is-saved{opacity:1}
+.favorite-star.is-saved{color:#9a6500;background:#fffbeb;border-color:#e5d5a5}
+.favorite-star:focus-visible{outline:3px solid #0047ba;outline-offset:2px}
+.detail-favorite{margin:10px 0 0;text-align:left}
+.favorite-confirm{width:min(420px,calc(100% - 32px));border:1px solid #dce4ed;border-radius:14px;padding:24px;color:#132d49;box-shadow:0 16px 60px #001b3833}
+.favorite-confirm::backdrop{background:#001b3866}
+.favorite-confirm h2{margin-top:0;font-size:22px}
+.favorite-confirm-actions{display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap}
+.favorite-confirm-actions button{width:auto;margin:0;padding:10px 16px}
+.favorite-confirm .formMessage:empty{display:none}
+.favorite-confirm button:disabled{opacity:.6}
+.times-page{max-width:1000px;margin:0 auto}
+.times-page select{padding:10px;border:1px solid #c9d6e5;border-radius:8px;background:#fff;font:inherit;max-width:100%}
+.home-body>section{margin-bottom:22px}
+@media(hover:none),(pointer:coarse){.favorite-star{opacity:1}}
+@media(max-width:480px){.byuhead{flex-wrap:wrap;height:auto;min-height:62px;padding:10px 12px;gap:8px}.header-nav{order:4;width:100%;justify-content:center}.header-nav button{flex:1}.profileBtn{margin-left:auto}.modalBack{inset:105px 0 0}}

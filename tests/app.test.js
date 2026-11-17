@@ -14,8 +14,9 @@ test('EJS preserves the original page shell, styling and browser program', async
   const rendered = await response.text();
   const ids = text => [...text.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
   const shell = text => text.slice(text.indexOf('<body>'), text.indexOf('<script src='));
-  assert.deepEqual(ids(shell(rendered)), ids(shell(original)));
-  assert.equal(fs.readFileSync('public/css/style.css','utf8').replace(/\r\n/g, '\n').split('\n').slice(1).join('\n'), original.match(/<style>([\s\S]*?)<\/style>/)[1]);
+  const expectedIds=ids(shell(original));expectedIds.splice(expectedIds.indexOf('navMap'),0,'navTimes');
+  assert.deepEqual(ids(shell(rendered)), expectedIds);
+  assert.ok(fs.readFileSync('public/css/style.css','utf8').replace(/\r\n/g, '\n').split('\n').slice(1).join('\n').startsWith(original.match(/<style>([\s\S]*?)<\/style>/)[1]));
   const scripts = [...rendered.matchAll(/<script src="([^"]+)"/g)].map(m=>m[1]);
   assert.deepEqual(scripts.slice(1).map(src => src.split('?')[0]), ['/js/aws-config.js','/js/route-data.js','/js/route-map.js','/js/app.js']);
   for (const asset of scripts.slice(1).concat('/css/style.css')) { const r = await fetch(base+asset); assert.equal(r.status,200); }
