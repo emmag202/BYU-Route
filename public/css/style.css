@@ -551,3 +551,9 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 /* Each calendar update gets its own readable bullet on every screen size. */
 .academic-notice ul{display:block;list-style:disc outside;padding-left:22px}
 .academic-notice li{display:list-item;margin:8px 0;padding-left:2px}
+
+@media(min-width:800px){
+ .home-body .rc{display:flex;flex-direction:column}
+ .home-body .rc .route-open{flex:1}
+ .home-body .rc .next-time{margin-top:auto}
+}
