@@ -1,4 +1,4 @@
- BYU Ryde — clean MapLibre route-map implementation.
+ /* BYU Ryde — clean MapLibre route-map implementation.
  * Owns one map instance, one base-route source, one stop source,
  * one calculated-route source, and all route-map event handlers.
  */
