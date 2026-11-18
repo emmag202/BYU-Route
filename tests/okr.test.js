@@ -58,5 +58,11 @@ test('password-protected dashboard and supported events travel through proxy and
     assert.equal(result.statusCode, 400); assert.equal(events.length, 2);
     const html = await new Promise((resolve, reject) => lambda.app.render('okr', {}, (err, html) => err ? reject(err) : resolve(html)));
     assert.match(html, /data-metric="account_registrations"/);
+    assert.equal((html.match(/OBJECTIVE [12]/g)||[]).length,2);
+    assert.equal((html.match(/data-metric=/g)||[]).length,4);
+    for (const label of ['Build Rider Adoption','Help Riders Navigate Campus','Accounts Created','Routes Saved','Trip Routes Viewed','Walking Directions Opened','Google Maps walking directions opened.']) assert.ok(html.includes(label));
+    assert.doesNotMatch(html.replace(/<[^>]+>/g,''),/\?|Trips Planned|Directions Clicked/);
+    assert.match(html,/BYU RYDE &middot; PROJECT IMPACT/);
+    assert.match(html,/Loading counters&hellip;/);
   } finally { await new Promise(r => server.close(r)); }
 });

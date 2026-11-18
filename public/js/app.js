@@ -230,6 +230,7 @@ function cardHTML(r){
  return `<article class="rc favorite-card" style="--c:${r.color}">
   <button class="route-open" data-open="${r.id}" aria-label="View ${esc(r.name)} schedule">
    <span class="route-name">${esc(r.name)}</span>
+   <span class="card-boarding" data-card-boarding="${r.id}"${rn.next?'':' hidden'}>Boarding at</span>
    <span class="route-stop" data-card-stops="${r.id}">${cardNextStop(r,rn)}</span>
    <span class="next-time" data-next-time="${r.id}">${nextTimeText(rn.next)}</span>
   </button>
@@ -240,6 +241,7 @@ function updateCard(r){
  const rn=routeNext(r);
  sheet.querySelectorAll(`[data-next-time="${r.id}"]`).forEach(el=>el.innerHTML=nextTimeText(rn.next));
  sheet.querySelectorAll(`[data-card-stops="${r.id}"]`).forEach(el=>el.innerHTML=cardNextStop(r,rn));
+ sheet.querySelectorAll(`[data-card-boarding="${r.id}"]`).forEach(el=>el.hidden=!rn.next);
  const l=document.getElementById("l"+r.id);if(l)l.innerHTML=laterHTML(r,rn);
 }
 // Re-evaluate "next" times as the clock advances, updating in place so open panels, search focus and scroll are kept.
@@ -648,7 +650,7 @@ function detail(id,{refresh=false}={}){
   const saved=routing&&history.state?.rydeTrip?.routeId===String(r.id)?history.state.rydeTrip:null;
   if(saved)dirOverride=saved.direction;
   setHash(`#/route/${r.id}`);sel=r;
-  startState={id:r.id,board:saved?.board??null,dest:saved?.dest??null,countIntent:!routing};
+  startState={id:r.id,board:saved?.board??null,dest:saved?.dest??null};
  }
   layout(2);showRoutes([r.id]);fit(r);gStops.innerHTML="";
   $("app").classList.remove("map-mode");activeNav('navRoutes');
@@ -671,8 +673,6 @@ function detail(id,{refresh=false}={}){
   </div>`;addSheetHandle();
   // Keep the selected trip when returning from its map or refreshing the route URL.
   history.replaceState({...history.state,rydeTrip:{routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d}},'',location.hash);
-  // Count the first completed itinerary render, never GPS/timer/stop-choice rerenders.
-  if(!startState.recorded){startState.recorded=true;if(startState.countIntent)recordEvent('trip_planned')}
 }
 
 // ---- Trip state and legacy URL compatibility ----
@@ -766,7 +766,7 @@ document.addEventListener("click",e=>{
    schedDayOf[r.id]=sd.dataset.schedDay;panel.innerHTML=schedulePanel(r);panel.querySelector(`[data-sched-day="${sd.dataset.schedDay}"]`)?.focus();return}
   const tb=e.target.closest("[data-trip-board]");if(tb&&startState){startState.board=Number(tb.dataset.tripBoard);renderStart();return}
   const td=e.target.closest("[data-trip-dest]");if(td&&startState){startState.dest=Number(td.dataset.tripDest);renderStart();return}
-  const viewTrip=e.target.closest("[data-view-trip]");if(viewTrip&&startState){const r=R.find(x=>x.id===startState.id),p=tripPlan(r);if(r){const stopIndexes=tripMapStopIndexes(r,p);mapPage({routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d,originLabel:r.stops[p.board][0],destinationLabel:r.stops[p.dest][0],stopLabels:stopIndexes.map(j=>r.stops[j][0]),stopIndexes})}return}
+  const viewTrip=e.target.closest("[data-view-trip]");if(viewTrip&&startState){const r=R.find(x=>x.id===startState.id),p=tripPlan(r);if(r){const stopIndexes=tripMapStopIndexes(r,p);mapPage({routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d,originLabel:r.stops[p.board][0],destinationLabel:r.stops[p.dest][0],stopLabels:stopIndexes.map(j=>r.stops[j][0]),stopIndexes});recordEvent('trip_planned')}return}
   const sg=e.target.closest("[data-suggest]");if(sg){home(sg.dataset.suggest);const s=$("routeSearch");if(s){s.focus();s.setSelectionRange(s.value.length,s.value.length)}return}
   const nb=e.target.closest("[data-near]");if(nb){
    const a=nb.dataset.near;

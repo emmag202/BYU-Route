@@ -562,3 +562,13 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
  .home-body .rc .route-open{flex:1}
  .home-body .rc .next-time{margin-top:auto}
 }
+
+/* Small mobile-only route-card hierarchy polish. */
+.card-boarding{display:none}
+@media(max-width:650px){
+ .home-body .rc .route-name{color:var(--navy);font-size:19px;font-weight:800;border-left:3px solid var(--c);padding-left:8px}
+ .home-body .rc .card-boarding:not([hidden]){display:block;grid-column:1;grid-row:2;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#53657a;line-height:1.1}
+ .home-body .rc .route-stop{grid-column:1;grid-row:3;font-size:16px;font-weight:800}
+ .home-body .rc .next-time{grid-column:2;grid-row:2/4;align-self:center}
+ .home-body .rc .route-open{row-gap:3px}
+}

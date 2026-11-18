@@ -103,3 +103,74 @@ test('duplicate/malformed session cookies fail closed and rate limits expire',as
   let calls=0;
   await withProxy({rateLimit:()=>false,api:{configured:true,invoke:async()=>{calls++;}}},async base=>assert.equal((await fetch(base+'/api/login',{method:'POST',headers,body:JSON.stringify(login)})).status,429));assert.equal(calls,0);
 });
+
+test('50 classmates sharing one IP retain independent verified-user budgets (bounded mocked concurrency)',async()=>{
+ const users=Array.from({length:50},(_,i)=>({id:i+1,token:Buffer.from(`classroom-${i}`.padEnd(32,'x')).toString('base64url')}));
+ const identities=new Map(users.map(u=>[`ryde_session=${u.token}`,u.id]));
+ const api={configured:true,invoke:async e=>{
+  const id=identities.get(e.cookies[0]);
+  if(!id)return {statusCode:401,body:'{}'};
+  if(e.rawPath==='/api/me')return {statusCode:200,body:JSON.stringify({user_id:id})};
+  return {statusCode:200,body:'[]'};
+ }};
+ await withProxy({api},async base=>{
+  // Lambda verifies all 50 existing sessions before any per-user identity is trusted.
+  const verified=await Promise.all(users.map(u=>fetch(base+'/api/me',{headers:{Cookie:`ryde_session=${u.token}`}})));
+  assert.ok(verified.every(r=>r.status===200));
+  for(let round=0;round<5;round++){
+   const replies=await Promise.all(users.map(u=>fetch(base+`/api/users/${u.id}/favorites`,{headers:{Cookie:`ryde_session=${u.token}`}})));
+   assert.ok(replies.every(r=>r.status===200));
+  }
+  for(let i=0;i<55;i++)assert.equal((await fetch(base+'/api/users/1/favorites',{headers:{Cookie:`ryde_session=${users[0].token}`}})).status,200);
+  assert.equal((await fetch(base+'/api/users/1/favorites',{headers:{Cookie:`ryde_session=${users[0].token}`,'X-User-ID':'999','X-Forwarded-For':'203.0.113.1'}})).status,429);
+  assert.equal((await fetch(base+'/api/users/2/favorites',{headers:{Cookie:`ryde_session=${users[1].token}`}})).status,200);
+ });
+});
+
+test('anonymous login and registration keep per-name and shared-IP abuse limits',async()=>{
+ const api={configured:true,invoke:async()=>({statusCode:401,body:'{}'})};
+ await withProxy({api},async base=>{
+  for(const path of ['/api/login','/api/users']){
+   const body=path==='/api/login'?login:{...login,name:'Offline Test',email:'offline@example.test'};
+   for(let i=0;i<8;i++)assert.equal((await fetch(base+path,{method:'POST',headers,body:JSON.stringify(body)})).status,401);
+   assert.equal((await fetch(base+path,{method:'POST',headers:{...headers,'X-Forwarded-For':'203.0.113.2','X-User-ID':'7',Cookie:`ryde_session=${token}`},body:JSON.stringify(body)})).status,429);
+  }
+ });
+ await withProxy({api},async base=>{
+  // A class of 50 can register and log in from the same socket/IP without colliding.
+  for(const path of ['/api/users','/api/login']){
+   const responses=await Promise.all(Array.from({length:50},(_,i)=>fetch(base+path,{method:'POST',headers,body:JSON.stringify({...login,net_id:'student'+i,...(path==='/api/users'?{name:'Offline',email:'offline@example.test'}:{})})})));
+   assert.ok(responses.every(r=>r.status===401)); // mocked credential denial, never a shared-IP 429
+  }
+  for(let i=100;i<240;i++)assert.equal((await fetch(base+'/api/login',{method:'POST',headers,body:JSON.stringify({...login,net_id:'unique'+i})})).status,401);
+  assert.equal((await fetch(base+'/api/login',{method:'POST',headers:{...headers,'X-Forwarded-For':'203.0.113.10'},body:JSON.stringify({...login,net_id:'another'})})).status,429);
+ });
+});
+
+test('unverified cookies cannot create per-user budgets; rejected sessions lose cached identity',async()=>{
+ const keys=[];let valid=true;
+ await withProxy({rateLimit:key=>{keys.push(key);return true},api:{configured:true,invoke:async e=>({statusCode:valid?200:401,body:valid?JSON.stringify({user_id:7}):'{}'})}},async base=>{
+  await fetch(base+'/api/me',{headers:{Cookie:`ryde_session=${token}`,'X-User-ID':'999'}});
+  assert.deepEqual(keys,[]);
+  await fetch(base+'/api/me',{headers:{Cookie:`ryde_session=${token}`}});assert.deepEqual(keys,['user:7']);
+  valid=false;assert.equal((await fetch(base+'/api/me',{headers:{Cookie:`ryde_session=${token}`}})).status,401);
+  const count=keys.length;
+  await fetch(base+'/api/me',{headers:{Cookie:`ryde_session=${token}`}});assert.equal(keys.length,count);
+ });
+});
+
+test('public shell and published schedules remain available while account calls fail',async()=>{
+ const app=express();app.set('view engine','ejs');app.set('views',require('node:path').join(__dirname,'../views'));
+ app.get('/',(_q,r)=>r.render('index'));app.use(express.static(require('node:path').join(__dirname,'../public')));
+ app.use('/api',createAccountProxy({origin,api:{configured:true,invoke:async()=>{await new Promise(r=>setTimeout(r,30));throw Object.assign(Error('offline'),{status:503})}}}));
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+ try{
+  const base=`http://127.0.0.1:${server.address().port}`;
+  const slow=fetch(base+'/api/me',{headers:{Cookie:`ryde_session=${token}`}});
+  const [page,program,data]=await Promise.all(['/', '/js/app.js', '/js/route-data.js'].map(p=>fetch(base+p)));
+  assert.equal(page.status,200);assert.match(await page.text(),/navRoutes/);
+  assert.equal(program.status,200);assert.match(await program.text(),/function cardHTML/);
+  assert.equal(data.status,200);assert.match(await data.text(),/BYU_RYDE_ROUTES/);
+  assert.equal((await slow).status,503);
+ }finally{await new Promise(r=>server.close(r))}
+});

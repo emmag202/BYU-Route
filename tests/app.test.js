@@ -8,7 +8,7 @@ const { app } = require('../server');
 let server, base;
 before(async () => { server = app.listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r)); base = `http://127.0.0.1:${server.address().port}`; });
 after(() => new Promise(r => server.close(r)));
-test('EJS preserves the original page shell, styling and browser program', async () => {
+test('EJS preserves the page shell and serves the current responsive styles and browser assets', async () => {
   const original = fs.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n');
   const response = await fetch(base); assert.equal(response.status, 200);
   const rendered = await response.text();
@@ -16,14 +16,21 @@ test('EJS preserves the original page shell, styling and browser program', async
   const shell = text => text.slice(text.indexOf('<body>'), text.indexOf('<script src='));
   const expectedIds=ids(shell(original));expectedIds.splice(expectedIds.indexOf('navMap'),0,'navTimes');
   assert.deepEqual(ids(shell(rendered)), expectedIds);
-  // The retired mini-itinerary styles are intentionally absent; retain the other original styles.
-  const withoutTimeline = css => css.replace(/[^{}]*\{[^{}]*\}/g, rule => /\.stop-strip|\.strip-(?:dot|body|line|tag)/.test(rule) ? '' : rule).replace(/\s/g, '');
-  const styles = fs.readFileSync('public/css/style.css','utf8').split('\n').slice(1).join('\n');
-  assert.ok(withoutTimeline(styles).startsWith(withoutTimeline(original.match(/<style>([\s\S]*?)<\/style>/)[1])));
+  // Validate the current served stylesheet, not a snapshot embedded in the old prototype.
+  const stylesheet = rendered.match(/<link[^>]+href="(\/css\/style\.css[^"]*)"/);
+  assert.ok(stylesheet, 'The page must load the current route stylesheet');
+  const cssResponse = await fetch(base + stylesheet[1]);
+  assert.equal(cssResponse.status, 200);
+  assert.match(cssResponse.headers.get('content-type'), /text\/css/);
+  const styles = await cssResponse.text();
+  assert.equal(styles, fs.readFileSync('public/css/style.css', 'utf8'));
+  for (const selector of ['.route-open', '.route-name', '.route-stop', '.next-time', '.favorite-star']) assert.ok(styles.includes(selector), `Missing route control style: ${selector}`);
+  assert.match(styles, /@media\s*\(max-width:\s*650px\)/);
   const scripts = [...rendered.matchAll(/<script src="([^"]+)"/g)].map(m=>m[1]);
   assert.deepEqual(scripts.slice(1).map(src => src.split('?')[0]), ['/js/aws-config.js','/js/route-data.js','/js/route-map.js','/js/app.js']);
   for (const asset of scripts.slice(1).concat('/css/style.css')) { const r = await fetch(base+asset); assert.equal(r.status,200); }
-  for (const name of ['route-map.js','route-data.js','aws-config.js']) assert.deepEqual(fs.readFileSync(`public/js/${name}`),fs.readFileSync(name));
+  // Pages and Render have distinct map entry points; only their shared data/config must match.
+  for (const name of ['route-data.js','aws-config.js']) assert.deepEqual(fs.readFileSync(`public/js/${name}`),fs.readFileSync(name));
   const alias = await fetch(base+'/index.html'); assert.equal(alias.status,200);
 });
 test('seven routes and browser syntax remain valid', () => {

@@ -1,5 +1,6 @@
 // Lex backend workstream: IAM-signed Lambda Invoke, never the public Function URL.
 const okrAccess = require('./okr-access');
+const { createHash } = require('node:crypto');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 
 function backendError(status, message) {
@@ -98,19 +99,40 @@ function containsSecret(body) {
   return Object.entries(body).some(([key, value]) => /^(password|password_hash|token|sessionToken|token_hash|secret)$/i.test(key) || containsSecret(value));
 }
 
-function createAccountProxy({ api, origin, rateLimit = createRateLimit(), production = process.env.NODE_ENV === 'production' }) {
+function createAccountProxy({ api, origin, rateLimit, production = process.env.NODE_ENV === 'production' }) {
   const validOrigin = (() => { try { const u = new URL(origin); return u.origin === origin && (u.protocol === 'https:' || (!production && ['localhost', '127.0.0.1'].includes(u.hostname))); } catch { return false; } })();
+  // Only Lambda-confirmed sessions earn a per-user budget. This cache is never authorization:
+  // Lambda still validates the session and ownership on every request.
+  const userLimit = rateLimit || createRateLimit({ limit: 60 });
+  const verified = new Map();
+  const sessionKey = token => createHash('sha256').update(token).digest('hex');
+  const anonymousLimit = createRateLimit({ limit: 600 });
+  const authIpLimit = createRateLimit({ limit: 240 });
+  const authNameLimit = createRateLimit({ limit: 8 });
+  function remember(token, user) {
+    if (!token || !/^[1-9]\d*$/.test(String(user?.user_id))) return;
+    if (verified.size >= 10000) verified.delete(verified.keys().next().value);
+    verified.set(sessionKey(token), { userId: String(user.user_id), expires: Date.now() + 5 * 60000 });
+  }
   return async function accountProxy(req, res) {
     res.set('Cache-Control', 'no-store');
     if (!api.configured || !validOrigin) return res.status(503).json({ error: 'Account backend configuration is unavailable.' });
     const path = req.originalUrl;
     if (!routes.some(([method, pattern]) => method === req.method && pattern.test(path))) return res.status(404).json({ error: 'Account endpoint not found.' });
     if (!csrfAllowed(req, origin)) return res.status(403).json({ error: 'Request origin could not be verified.' });
-    // Use the socket/Express IP, never a custom identity or forwarded-IP header.
-    // This is a conservative per-process scaffold, not distributed account-abuse protection.
-    if (!rateLimit(req.ip)) return res.status(429).json({ error: 'Too many requests. Please wait before trying again.' });
-    if (path === '/api/okr' && !okrAccess.authorized(req.get('cookie'))) return res.status(401).json({ error: 'Enter the team password at /okr.' });
     const session = readSession(req.get('cookie'));
+    const key = session ? sessionKey(session) : null;
+    const known = key && verified.get(key);
+    if (known && known.expires <= Date.now()) verified.delete(key);
+    const isAuth = ['/api/login', '/api/users'].includes(path);
+    // req.ip uses the existing socket policy, never arbitrary forwarding/identity headers.
+    const allowed = isAuth
+      ? authIpLimit(req.ip) && (!rateLimit || rateLimit(`auth-ip:${req.ip}`)) && authNameLimit(`${path}:${(typeof req.body?.net_id === 'string' ? req.body.net_id.trim().toLowerCase() : '')}`)
+      : known && known.expires > Date.now()
+        ? userLimit(`user:${known.userId}`)
+        : anonymousLimit(req.ip);
+    if (!allowed) return res.status(429).json({ error: 'Too many requests. Please wait before trying again.' });
+    if (path === '/api/okr' && !okrAccess.authorized(req.get('cookie'))) return res.status(401).json({ error: 'Enter the team password at /okr.' });
     const publicCalendarRead = req.method === 'GET' && path === '/api/academic-calendar/no-class-days';
     if (!publicCalendarRead && !['/api/login', '/api/users', '/api/okr', '/api/events'].includes(path) && !session) return res.status(401).json({ error: 'Please sign in again.' });
     const body = validBody(req.method, path, req.body);
@@ -126,6 +148,7 @@ function createAccountProxy({ api, origin, rateLimit = createRateLimit(), produc
         ...(body === undefined ? {} : { body: JSON.stringify(body) }), isBase64Encoded: false,
       });
       if (!Number.isInteger(result.statusCode) || result.statusCode < 200 || result.statusCode > 599) throw new Error('Invalid status');
+      if (result.statusCode === 401 && key) verified.delete(key);
       if (result.statusCode >= 400) {
         const status = [400, 401, 403, 409, 429, 503].includes(result.statusCode) ? result.statusCode : 502;
         return res.status(status).json({ error: status === 503 ? 'Account backend is unavailable.' : 'Unable to complete the account request.' });
@@ -141,10 +164,13 @@ function createAccountProxy({ api, origin, rateLimit = createRateLimit(), produc
           // Rebuild deletion attributes locally, never relay backend cookie headers.
         } else {
           if (!['/api/login', '/api/users'].includes(path) || !TOKEN.test(token || '')) throw new Error('Invalid session');
+          remember(token, data?.user);
           res.cookie(COOKIE, token, { ...sessionCookieOptions(production), maxAge: 7 * 86400000 });
         }
       }
       if (['/api/login', '/api/users'].includes(path) && !cookies.length) throw new Error('Missing session');
+      if (path === '/api/me') remember(session, data);
+      if (path === '/api/logout' && key) verified.delete(key);
       if (path === '/api/logout') res.clearCookie(COOKIE, sessionCookieOptions(production));
       if (result.statusCode === 204) return res.status(204).end();
       res.status(result.statusCode).json(data);

@@ -2,7 +2,7 @@ const refresh = document.getElementById('refresh');
 const status = document.getElementById('status');
 async function loadCounters() {
   refresh.disabled = true;
-  status.textContent = 'Loading counters?';
+  status.textContent = 'Loading counters\u2026';
   try {
     const response = await fetch('/api/okr', { cache: 'no-store' });
     if (!response.ok) throw Error('Dashboard unavailable');
@@ -13,7 +13,7 @@ async function loadCounters() {
     counters.forEach(el => { el.textContent = BigInt(totals.get(el.dataset.metric)).toLocaleString(); });
     status.textContent = 'Updated ' + new Date().toLocaleTimeString();
   } catch {
-    document.querySelectorAll('[data-metric]').forEach(el => { el.textContent = '?'; });
+    document.querySelectorAll('[data-metric]').forEach(el => { el.textContent = '\u2014'; });
     status.textContent = 'Unable to load totals. Try refreshing again.';
   } finally { refresh.disabled = false; }
 }

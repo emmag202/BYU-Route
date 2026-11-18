@@ -84,12 +84,14 @@ test('favorite synchronization updates details, duplicate stars, homepage and op
 test('selected direction and stops reach the trip map without schedule-derived duration, and browser back restores them',()=>{
  const {context:c,calls,events}=setup();
  c.R[0].stops=[['Home A'],['Home B'],['Campus']];c.R[0].toCampus=[0,1];c.R[0].fromCampus=[2];
- c.detail('101');
+ c.detail('101');assert.equal(calls.filter(call=>call[0]==='event').length,0);
+ c.renderStart();assert.equal(calls.filter(call=>call[0]==='event').length,0);
  vm.runInContext(part('document.addEventListener("change"', '$("back").onclick'),c);
  const click=(selector,dataset)=>events.click({target:{closest:s=>s===selector?{dataset}:null}});
  click('[data-trip-board]',{tripBoard:'1'});assert.equal(c.tripPlan(c.R[0]).board,1);
  click('[data-dir-set]',{dirSet:'from'});click('[data-trip-dest]',{tripDest:'1'});
  assert.match(c.sheet.innerHTML,/data-trip-dest="1" aria-pressed="true"/);
+ assert.equal(calls.filter(call=>call[0]==='event').length,0);
  const routeState=c.history.state;
  click('[data-view-trip]',{});
  const trip=calls.findLast(call=>call[0]==='map')[1];
