@@ -31,6 +31,30 @@ vm.runInContext(
   markerContext
 );
 
+const distanceFunctionStart = routeMapSource.indexOf('  function routePointDistanceMiles(');
+const distanceFunctionEnd = routeMapSource.indexOf('  function formatRouteSummary(', distanceFunctionStart);
+const distanceContext = {};
+vm.createContext(distanceContext);
+vm.runInContext(
+  `${routeMapSource.slice(distanceFunctionStart, distanceFunctionEnd)}\nthis.routePointDistanceMiles = routePointDistanceMiles; this.approximateMinutesFromDistance = approximateMinutesFromDistance;`,
+  distanceContext
+);
+const summaryFunctionStart = routeMapSource.indexOf('  function formatRouteSummary(');
+const summaryFunctionEnd = routeMapSource.indexOf('  function buildRouteSummary(', summaryFunctionStart);
+const approximateFunctionStart = routeMapSource.indexOf('  function approximateMinutesFromDistance(');
+const approximateFunctionEnd = routeMapSource.indexOf('  function formatRouteSummary(', approximateFunctionStart);
+const summaryNodes = new Map([
+  ['rydeNavDistance', { textContent: '' }],
+  ['rydeNavTime', { textContent: '' }],
+  ['rydeNavTitle', { textContent: '' }]
+]);
+const summaryContext = { el: id => summaryNodes.get(id), console };
+vm.createContext(summaryContext);
+vm.runInContext(
+  `${routeMapSource.slice(approximateFunctionStart, approximateFunctionEnd)}\n${routeMapSource.slice(summaryFunctionStart, summaryFunctionEnd)}\nthis.formatRouteSummary = formatRouteSummary;`,
+  summaryContext
+);
+
 const routeCases = [
   { id: '101', name: 'West', stopPointIndexes: [2, 3, 0] },
   { id: '102', name: 'Wyview', stopPointIndexes: [2, 3, 0] },
@@ -160,4 +184,58 @@ test('normal full-route map still uses every route point and the complete AWS ro
   const calculateStart = routeMapSource.indexOf('async function calculateRoadRoute(');
   const calculateEnd = routeMapSource.indexOf('function clearPlaceMarkers(', calculateStart);
   assert.match(routeMapSource.slice(calculateStart, calculateEnd), /\.\.\.route\.awsRequest/);
+});
+
+test('trip time no longer receives schedule-derived minutes and distance fallback stays monotonic', async t => {
+  assert.doesNotMatch(appSource, /scheduledRideMinutes|data-estimated-minutes|estimatedMinutes/);
+  assert.match(routeMapSource, /formatRouteSummary\(route, summary, tripDistanceMiles\)/);
+  assert.match(routeMapSource, /LegAdditionalFeatures: \['Summary'\]/);
+
+  summaryNodes.get('rydeNavDistance').textContent = '';
+  summaryNodes.get('rydeNavTime').textContent = '';
+  const apiLabel = summaryContext.formatRouteSummary(
+    { name: 'Test route' },
+    { Distance: 1609.344, DurationSeconds: 480, DistanceUnit: 'Meters' },
+    2
+  );
+  assert.equal(summaryNodes.get('rydeNavDistance').textContent, '1.0 mi');
+  assert.equal(summaryNodes.get('rydeNavTime').textContent, '~8 min');
+  assert.match(apiLabel, /Approximate travel time/);
+
+  summaryNodes.get('rydeNavDistance').textContent = '';
+  summaryNodes.get('rydeNavTime').textContent = '';
+  const fallbackLabel = summaryContext.formatRouteSummary({ name: 'Test route' }, null, 2);
+  assert.equal(summaryNodes.get('rydeNavDistance').textContent, '2.0 mi');
+  assert.equal(summaryNodes.get('rydeNavTime').textContent, '~7 min');
+  assert.match(fallbackLabel, /route distance/);
+
+  for (const routeCase of routeCases) {
+    await t.test(`${routeCase.id} ${routeCase.name}`, () => {
+      const route = routes.find(item => String(item.id) === routeCase.id);
+      const inboundFull = geometryContext.tripPointRange(route, {
+        direction: 'to', board: 0, dest: 2
+      });
+      const inboundIntermediate = geometryContext.tripPointRange(route, {
+        direction: 'to', board: 1, dest: 2
+      });
+      const returnFull = geometryContext.tripPointRange(route, {
+        direction: 'from', board: 2, dest: 0
+      });
+      const returnIntermediate = geometryContext.tripPointRange(route, {
+        direction: 'from', board: 2, dest: 1
+      });
+
+      for (const [full, segment, label] of [
+        [inboundFull, inboundIntermediate, 'inbound'],
+        [returnFull, returnIntermediate, 'return']
+      ]) {
+        const fullDistance = distanceContext.routePointDistanceMiles(route, full);
+        const segmentDistance = distanceContext.routePointDistanceMiles(route, segment);
+        assert.ok(segmentDistance > 0 && segmentDistance < fullDistance, `${label} intermediate segment is shorter than full route`);
+        const fullMinutes = distanceContext.approximateMinutesFromDistance(fullDistance);
+        const segmentMinutes = distanceContext.approximateMinutesFromDistance(segmentDistance);
+        assert.ok(segmentMinutes <= fullMinutes, `${label} intermediate segment estimate does not exceed full-route estimate`);
+      }
+    });
+  }
 });

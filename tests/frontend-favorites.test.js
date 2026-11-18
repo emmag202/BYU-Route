@@ -81,7 +81,7 @@ test('favorite synchronization updates details, duplicate stars, homepage and op
  c.favoriteRouteIds.delete('101');c.syncFavoriteViews();assert.match(details.outerHTML,/Save as Favorite/);assert.doesNotMatch(star.outerHTML,/is-saved/);
 });
 
-test('selected direction, stops and duration reach the trip map, and browser back restores them',()=>{
+test('selected direction and stops reach the trip map without schedule-derived duration, and browser back restores them',()=>{
  const {context:c,calls,events}=setup();
  c.R[0].stops=[['Home A'],['Home B'],['Campus']];c.R[0].toCampus=[0,1];c.R[0].fromCampus=[2];
  c.detail('101');
@@ -91,9 +91,9 @@ test('selected direction, stops and duration reach the trip map, and browser bac
  click('[data-dir-set]',{dirSet:'from'});click('[data-trip-dest]',{tripDest:'1'});
  assert.match(c.sheet.innerHTML,/data-trip-dest="1" aria-pressed="true"/);
  const routeState=c.history.state;
- click('[data-view-trip]',{estimatedMinutes:'5'});
+ click('[data-view-trip]',{});
  const trip=calls.findLast(call=>call[0]==='map')[1];
- assert.equal(trip.routeId,'101');assert.equal(trip.direction,'from');assert.equal(trip.board,2);assert.equal(trip.dest,1);assert.equal(trip.originLabel,'Campus');assert.equal(trip.destinationLabel,'Home B');assert.equal(trip.estimatedMinutes,5);
+ assert.equal(trip.routeId,'101');assert.equal(trip.direction,'from');assert.equal(trip.board,2);assert.equal(trip.dest,1);assert.equal(trip.originLabel,'Campus');assert.equal(trip.destinationLabel,'Home B');assert.equal('estimatedMinutes' in trip,false);
  c.history.state=routeState;c.location.hash='#/route/101';c.renderFromHash();
  assert.equal(c.tripPlan(c.R[0]).dest,1);assert.equal(c.tripPlan(c.R[0]).d,'from');
  assert.equal(calls.filter(call=>call[0]==='event').length,1);

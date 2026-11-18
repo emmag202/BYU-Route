@@ -391,12 +391,10 @@
     const timeNode = el('rydeNavTime');
     if (title) title.textContent = route.name;
     if (distanceNode) distanceNode.textContent = '…';
-    if (timeNode) timeNode.textContent = Number.isFinite(Number(trip.estimatedMinutes)) && Number(trip.estimatedMinutes) > 0
-      ? `~${Math.round(Number(trip.estimatedMinutes))} min`
-      : '…';
+    if (timeNode) timeNode.textContent = '…';
     const fromLabel = trip.originLabel || (trip.direction === 'to' ? 'Selected stop' : 'MOA');
     const toLabel = trip.destinationLabel || (trip.direction === 'to' ? 'MOA' : 'Selected stop');
-    showSummary(true, `${fromLabel} → ${toLabel} · ${trip.estimatedMinutes ? 'Estimated from the published schedule' : 'Calculating trip estimate…'}`);
+    showSummary(true, `${fromLabel} → ${toLabel} · Calculating approximate travel time…`);
 
     ensureBaseLayers();
     removeTripRoute();
@@ -439,20 +437,14 @@
       );
       map.fitBounds(bounds, { padding: { top: 90, bottom: 140, left: 40, right: 40 }, maxZoom: 16, duration: 600 });
       const summary = buildRouteSummary(routeResult);
-      formatRouteSummary(route, summary);
-      if (Number.isFinite(Number(trip.estimatedMinutes)) && Number(trip.estimatedMinutes) > 0) {
-        if (timeNode) timeNode.textContent = `~${Math.round(Number(trip.estimatedMinutes))} min`;
-        showSummary(true, `${fromLabel} → ${toLabel} · Estimated from the published schedule`);
-      } else {
-        showSummary(true, `${fromLabel} → ${toLabel} · Estimated bus trip`);
-      }
+      const tripDistanceMiles = routePointDistanceMiles(route, tripRange);
+      const estimateLabel = formatRouteSummary(route, summary, tripDistanceMiles);
+      showSummary(true, `${fromLabel} → ${toLabel} · ${estimateLabel.includes('distance') ? 'Approximate travel time from route distance' : 'Approximate travel time'}`);
     } catch (error) {
       console.error(`Could not calculate ${route.name} trip:`, error);
       if (currentRequest === requestId) {
-        showSummary(true, `${fromLabel} → ${toLabel} · Time estimate unavailable`);
-        if (distanceNode) distanceNode.textContent = '—';
-        if (!(Number.isFinite(Number(trip.estimatedMinutes)) && Number(trip.estimatedMinutes) > 0) && timeNode) timeNode.textContent = '—';
-        if (trip.estimatedMinutes) showSummary(true, `${fromLabel} → ${toLabel} · Estimated from the published schedule`);
+        formatRouteSummary(route, null, routePointDistanceMiles(route, tripRange));
+        showSummary(true, `${fromLabel} → ${toLabel} · Approximate travel time from route distance`);
       }
     }
   }
@@ -647,7 +639,31 @@
     return coordinates;
   }
 
-  function formatRouteSummary(route, summary) {
+  function routePointDistanceMiles(route, range) {
+    if (!range) return null;
+    const start = Math.min(range.originIndex, range.destinationIndex);
+    const end = Math.max(range.originIndex, range.destinationIndex);
+    const points = route.points.slice(start, end + 1);
+    if (points.length < 2) return null;
+    const radians = degrees => degrees * Math.PI / 180;
+    let meters = 0;
+    for (let index = 1; index < points.length; index++) {
+      const [lat1, lon1] = points[index - 1];
+      const [lat2, lon2] = points[index];
+      const dLat = radians(lat2 - lat1);
+      const dLon = radians(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(radians(lat1)) * Math.cos(radians(lat2)) * Math.sin(dLon / 2) ** 2;
+      meters += 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    return meters / 1609.344;
+  }
+
+  function approximateMinutesFromDistance(distanceMiles) {
+    return Math.max(1, Math.round(distanceMiles / 18 * 60));
+  }
+
+  function formatRouteSummary(route, summary, fallbackDistanceMiles = null) {
     const distanceNode = el('rydeNavDistance');
     const timeNode = el('rydeNavTime');
     const title = el('rydeNavTitle');
@@ -659,42 +675,26 @@
       return `${route.name} · Trip information unavailable`;
     };
 
-    if (!summary) {
-      return unavailable();
-    }
-
-    const distance = Number(summary.Distance ?? summary.distance);
+    const distance = Number(summary?.Distance ?? summary?.distance);
     const duration = Number(
-      summary.DurationSeconds ??
-      summary.Duration ??
-      summary.durationSeconds ??
-      summary.duration
+      summary?.DurationSeconds ??
+      summary?.Duration ??
+      summary?.durationSeconds ??
+      summary?.duration
     );
     // Routes V2 reports distances in meters. Older/alternate responses may
     // include DistanceUnit explicitly, so honor it when present.
     const unit = String(
-      summary.DistanceUnit ?? summary.distanceUnit ?? 'Meters'
+      summary?.DistanceUnit ?? summary?.distanceUnit ?? 'Meters'
     ).toLowerCase();
-
-    if (
-      !Number.isFinite(distance) || distance <= 0 ||
-      !Number.isFinite(duration) || duration <= 0
-    ) {
-      console.error(`Invalid route summary for ${route.name}:`, summary);
-      return unavailable();
+    let distanceMiles = null;
+    if (Number.isFinite(distance) && distance > 0) {
+      if (unit === 'miles' || unit === 'mile') distanceMiles = distance;
+      else if (unit === 'meters' || unit === 'meter') distanceMiles = distance / 1609.344;
+      else if (unit === 'kilometers' || unit === 'kilometer' || unit === 'km') distanceMiles = distance / 1.609344;
     }
-
-    let distanceMiles;
-
-    if (unit === 'miles' || unit === 'mile') {
-      distanceMiles = distance;
-    } else if (unit === 'meters' || unit === 'meter') {
-      distanceMiles = distance / 1609.344;
-    } else if (unit === 'kilometers' || unit === 'kilometer' || unit === 'km') {
-      distanceMiles = distance / 1.609344;
-    } else {
-      console.error(`Unknown distance unit for ${route.name}:`, summary);
-      return unavailable();
+    if (!Number.isFinite(distanceMiles) || distanceMiles <= 0 || distanceMiles > 100) {
+      distanceMiles = fallbackDistanceMiles;
     }
 
     // Reject implausible values instead of displaying misleading mileage.
@@ -703,10 +703,15 @@
       return unavailable();
     }
 
-    const minutes = Math.max(1, Math.round(duration / 60));
+    const usedApiDuration = Number.isFinite(duration) && duration > 0;
+    // Routes V2's selected trip duration is preferred. If unavailable, use a
+    // steady 18 mph bus speed against the selected segment's route geometry.
+    const minutes = usedApiDuration
+      ? Math.max(1, Math.round(duration / 60))
+      : approximateMinutesFromDistance(distanceMiles);
     if (distanceNode) distanceNode.textContent = `${distanceMiles.toFixed(1)} mi`;
-    if (timeNode) timeNode.textContent = `${minutes} min`;
-    return `${route.name} · Trip distance and time`;
+    if (timeNode) timeNode.textContent = `~${minutes} min`;
+    return `${route.name} · ${usedApiDuration ? 'Approximate travel time' : 'Approximate travel time from route distance'}`;
   }
 
   function buildRouteSummary(routeResult) {
@@ -776,7 +781,8 @@
 
     if (!route.awsRequest || !apiKey()) {
       if (showInfo && currentRequest === requestId) {
-        showSummary(true, `${route.name} · Trip information unavailable`);
+        const fullRange = { originIndex: 0, destinationIndex: route.points.length - 1 };
+        showSummary(true, formatRouteSummary(route, null, routePointDistanceMiles(route, fullRange)));
       }
       return;
     }
@@ -789,7 +795,8 @@
       );
 
       if (showInfo && currentRequest === requestId) {
-        showSummary(true, formatRouteSummary(route, cached.summary));
+        const fullRange = { originIndex: 0, destinationIndex: route.points.length - 1 };
+        showSummary(true, formatRouteSummary(route, cached.summary, routePointDistanceMiles(route, fullRange)));
       }
 
       return;
@@ -857,13 +864,15 @@
       renderCalculatedRoutes(visibleIds);
 
       if (showInfo) {
-        showSummary(true, formatRouteSummary(route, summary));
+        const fullRange = { originIndex: 0, destinationIndex: route.points.length - 1 };
+        showSummary(true, formatRouteSummary(route, summary, routePointDistanceMiles(route, fullRange)));
       }
     } catch (error) {
       console.error(`Could not calculate ${route.name} route:`, error);
 
       if (currentRequest === requestId && showInfo) {
-        showSummary(true, `Unable to calculate ${route.name} right now.`);
+        const fullRange = { originIndex: 0, destinationIndex: route.points.length - 1 };
+        showSummary(true, formatRouteSummary(route, null, routePointDistanceMiles(route, fullRange)));
       }
     }
   }
