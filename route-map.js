@@ -95,7 +95,7 @@
         button.className = 'king-henry-stop-marker';
         button.setAttribute(
           'aria-label',
-          `${stop.label}: student pickup and drop-off`
+          `${stop.label}`
         );
 
         const icon = document.createElementNS(
@@ -124,9 +124,9 @@
         heading.textContent = stop.label;
 
         const description = document.createElement('span');
-        description.textContent = 'Student pickup & drop-off';
+        description.textContent = '';
 
-        popupContent.append(heading, description);
+        popupContent.append(heading);
 
         const popup = new maplibregl.Popup({
           offset: 24,

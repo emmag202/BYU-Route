@@ -20,9 +20,9 @@ window.BYU_RYDE_ROUTES = [
       [40.25176385171031, -111.64797127346249]
     ],
     stops: [
-      { waypoint: 1, label: 'Stop 1' },
-      { waypoint: 3, label: 'Stop 2' },
-      { waypoint: 4, label: 'Stop 3' }
+      { waypoint: 1, label: 'MOA' },
+      { waypoint: 3, label: 'Provo Rec Center' },
+      { waypoint: 4, label: '500 N 100 W' }
     ],
     awsRequest: {
       Origin: [-111.64797127346249, 40.25176385171031],
@@ -52,9 +52,9 @@ window.BYU_RYDE_ROUTES = [
       [40.25176385171031, -111.64797127346249]
     ],
     stops: [
-      { waypoint: 1, label: 'Stop 1' },
-      { waypoint: 3, label: 'Stop 2' },
-      { waypoint: 4, label: 'Stop 3' }
+      { waypoint: 1, label: 'MOA' },
+      { waypoint: 3, label: 'Wyview' },
+      { waypoint: 4, label: 'Raintree' }
     ],
     awsRequest: {
       Origin: [-111.64797127346249, 40.25176385171031],
@@ -90,9 +90,9 @@ window.BYU_RYDE_ROUTES = [
       [40.25176385171031, -111.64797127346249]
     ],
     stops: [
-      { waypoint: 1, label: 'Stop 1' },
-      { waypoint: 4, label: 'Stop 2' },
-      { waypoint: 5, label: 'Stop 3' }
+      { waypoint: 1, label: 'MOA' },
+      { waypoint: 4, label: 'Carriage Cove' },
+      { waypoint: 5, label: 'Branbury' }
     ],
     awsRequest: {
       Origin: [-111.64797127346249, 40.25176385171031],
@@ -124,9 +124,9 @@ window.BYU_RYDE_ROUTES = [
       [40.24776213721756, -111.64585807083019]
     ],
     stops: [
-      { waypoint: 1, label: 'Stop 1' },
-      { waypoint: 5, label: 'Stop 2' },
-      { waypoint: 6, label: 'Stop 3' }
+      { waypoint: 1, label: 'WILK' },
+      { waypoint: 5, label: '450 N (King Henry)' },
+      { waypoint: 6, label: '450 N (Arcadia)' }
     ],
     awsRequest: {
       Origin: [-111.64585807083019, 40.24776213721756],
@@ -162,9 +162,9 @@ window.BYU_RYDE_ROUTES = [
       [40.25176385171031, -111.64797127346249]
     ],
     stops: [
-      { waypoint: 1, label: 'Stop 1' },
-      { waypoint: 2, label: 'Stop 2' },
-      { waypoint: 3, label: 'Stop 3' }
+      { waypoint: 1, label: 'Heritage (MOA)' },
+      { waypoint: 2, label: 'West Stadium' },
+      { waypoint: 3, label: 'Helaman' }
     ],
     awsRequest: {
       Origin: [-111.64797127346249, 40.25176385171031],
@@ -199,9 +199,9 @@ window.BYU_RYDE_ROUTES = [
       [40.24776213721756, -111.64585807083019]
     ],
     stops: [
-      { waypoint: 1, label: 'Stop 1' },
-      { waypoint: 3, label: 'Stop 2' },
-      { waypoint: 4, label: 'Stop 3' }
+      { waypoint: 1, label: 'WILK' },
+      { waypoint: 3, label: '200 N 400 E' },
+      { waypoint: 4, label: '400 N 400 E' }
     ],
     awsRequest: {
       Origin: [-111.64585807083019, 40.24776213721756],
@@ -231,9 +231,9 @@ window.BYU_RYDE_ROUTES = [
       [40.25176385171031, -111.64797127346249]
     ],
     stops: [
-      { waypoint: 1, label: 'Stop 1' },
-      { waypoint: 2, label: 'Stop 2' },
-      { waypoint: 4, label: 'Stop 3' }
+      { waypoint: 1, label: 'MOA' },
+      { waypoint: 2, label: 'Health Center' },
+      { waypoint: 4, label: 'MTC' }
     ],
     awsRequest: {
       Origin: [-111.64797127346249, 40.25176385171031],
