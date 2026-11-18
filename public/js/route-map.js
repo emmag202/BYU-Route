@@ -350,7 +350,7 @@
     pendingTripSelection = trip;
     activeRouteId = route.id;
     setSelectedTab(route.id);
-    setRouteStopVisibility(null);
+    setRouteStopVisibility(route.id);
     requestId++;
     const currentRequest = requestId;
     const title = el('rydeNavTitle');
