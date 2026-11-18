@@ -537,6 +537,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
  .aws-place-suggestions{top:100px;max-height:40dvh;font-size:15px}.aws-place-suggestions button{min-height:44px}
  .aws-place-status{top:112px;right:64px;font-size:14px;max-height:28dvh}
  #routeMap .maplibregl-ctrl-group button{width:44px;height:44px}
+ #routeMap .maplibregl-ctrl-group button.ryde-map-style-toggle{width:44px!important;height:44px!important}
  .route-tabs{justify-content:flex-start;scrollbar-width:thin}.route-tabs>button{min-height:44px;font-size:14px;flex-shrink:0}
  .ryde-nav-panel{bottom:82px;max-height:35dvh;overflow-y:auto;padding:12px 14px;font-size:15px}
  .ryde-nav-summary{font-size:14px;line-height:1.4}.ryde-nav-head button{min-width:44px;min-height:44px}.ryde-nav-stats small{font-size:13px}
