@@ -1,4 +1,4 @@
-/* BYU Ryde — clean MapLibre route-map implementation.
+ /* BYU Ryde — clean MapLibre route-map implementation.
  * Owns one map instance, one base-route source, one stop source,
  * one calculated-route source, and all route-map event handlers.
  */
@@ -360,11 +360,8 @@
       : Number(geoStop?.waypoint) - 1;
     const low = Math.min(originIndex, destinationIndex);
     const high = Math.max(originIndex, destinationIndex);
-    const visibleWaypoints = new Set(
-      route.stops
-        .filter(stop => stop.waypoint - 1 >= low && stop.waypoint - 1 <= high)
-        .map(stop => stop.waypoint)
-    );
+    const tripStopLabels = new Set((trip.stopLabels || [trip.originLabel, trip.destinationLabel]).filter(Boolean).map(label => String(label).trim().toLocaleLowerCase()));
+    const visibleWaypoints = new Set(route.stops.filter(stop => tripStopLabels.has(String(stop.label).trim().toLocaleLowerCase())).map(stop => stop.waypoint));
     createRouteStopMarkers(); setRouteStopVisibility(route.id, visibleWaypoints);
     requestId++;
     const currentRequest = requestId;
