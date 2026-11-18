@@ -1,4 +1,4 @@
-/* BYU Ryde — clean MapLibre route-map implementation.
+ /* BYU Ryde — clean MapLibre route-map implementation.
  * Owns one map instance, one base-route source, one stop source,
  * one calculated-route source, and all route-map event handlers.
  */
@@ -92,7 +92,7 @@
 
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'king-henry-stop-marker';
+        button.className = 'king-henry-stop-marker'; button.dataset.stopWaypoint = String(stop.waypoint); button.dataset.scheduleIndex = String(stop.scheduleIndex);
         button.setAttribute(
           'aria-label',
           `${stop.label}`
@@ -151,10 +151,10 @@
     });
   }
 
-  function setRouteStopVisibility(routeId) {
+  function setRouteStopVisibility(routeId, visibleWaypoints = null) {
     routeStopMarkers.forEach((markers, id) => {
       markers.forEach(marker => {
-        const visible = id === routeId;
+        const waypoint = Number(marker.getElement().dataset.stopWaypoint); const visible = id === routeId && (!visibleWaypoints || visibleWaypoints.has(waypoint));
 
         marker.getElement().style.display = visible ? '' : 'none';
 
@@ -300,29 +300,49 @@
     }
   }
 
-  function tripCoordinates(route, trip) {
+  function tripPointRange(route, trip) {
     const stops = route.stops || [];
-    const stopIndex = trip.direction === 'to' ? trip.board : trip.dest;
-    const geoStop = stops[stops.length - 1 - stopIndex];
-    const campusStop = stops[0];
-    const originIndex = trip.direction === 'to'
-      ? Number(geoStop?.waypoint) - 1
-      : Number(campusStop?.waypoint) - 1;
-    const destinationIndex = trip.direction === 'to'
-      ? route.points.length - 1
-      : Number(geoStop?.waypoint) - 1;
+    const campusScheduleIndex = Math.max(...stops.map(stop => Number(stop.scheduleIndex)));
+    if (!Number.isFinite(campusScheduleIndex)) return null;
 
+    const pointIndexForStop = scheduleIndex => {
+      const stop = stops.find(item => Number(item.scheduleIndex) === Number(scheduleIndex));
+      if (!stop) return null;
+      // Route point arrays begin and end at campus. Use the closing duplicate
+      // for either campus endpoint so the trip follows the loop in its travel
+      // direction without including the unrelated segment across the array seam.
+      if (Number(scheduleIndex) === campusScheduleIndex) return route.points.length - 1;
+      const pointIndex = Number(stop.waypoint) - 1;
+      return Number.isInteger(pointIndex) ? pointIndex : null;
+    };
+
+    const originIndex = pointIndexForStop(trip.board);
+    const destinationIndex = pointIndexForStop(trip.dest);
     if (!Number.isInteger(originIndex) || !Number.isInteger(destinationIndex) ||
         originIndex < 0 || destinationIndex < 0 ||
-        originIndex >= route.points.length || destinationIndex >= route.points.length) {
-      return null;
-    }
+        originIndex >= route.points.length || destinationIndex >= route.points.length ||
+        originIndex === destinationIndex) return null;
+
+    const followsPointOrder = trip.direction === 'to'
+      ? originIndex < destinationIndex
+      : trip.direction === 'from' && originIndex > destinationIndex;
+    if (!followsPointOrder) return null;
+
+    return { originIndex, destinationIndex };
+  }
+
+  function tripCoordinates(route, trip, range = tripPointRange(route, trip)) {
+    if (!range) return null;
+    const { originIndex, destinationIndex } = range;
 
     const [originLat, originLon] = route.points[originIndex];
     const [destinationLat, destinationLon] = route.points[destinationIndex];
-    const low = Math.min(originIndex, destinationIndex);
-    const high = Math.max(originIndex, destinationIndex);
-    const waypoints = route.points.slice(low + 1, high).map(([lat, lon]) => ({
+    const step = originIndex < destinationIndex ? 1 : -1;
+    const pointIndexes = [];
+    for (let index = originIndex + step; index !== destinationIndex; index += step) {
+      pointIndexes.push(index);
+    }
+    const waypoints = pointIndexes.map(index => route.points[index]).map(([lat, lon]) => ({
       Position: [lon, lat]
     }));
 
@@ -333,6 +353,17 @@
     };
   }
 
+  function tripStopWaypoints(route, trip) {
+    const scheduledStopIndexes = new Set(Array.isArray(trip.stopIndexes) ? trip.stopIndexes : []);
+    const tripStopLabels = new Set((trip.stopLabels || [trip.originLabel, trip.destinationLabel])
+      .filter(Boolean).map(label => String(label).trim().toLocaleLowerCase()));
+    return new Set(route.stops
+      .filter(stop => scheduledStopIndexes.size
+        ? scheduledStopIndexes.has(Number(stop.scheduleIndex))
+        : tripStopLabels.has(String(stop.label).trim().toLocaleLowerCase()))
+      .map(stop => Number(stop.waypoint)));
+  }
+
   async function selectTrip(trip) {
     if (!map || !map.isStyleLoaded() || !trip) {
       pendingTripSelection = trip || null;
@@ -341,7 +372,8 @@
     const route = ROUTES.find(item => item.id === String(trip.routeId));
     if (!route) return;
 
-    const routeRequest = tripCoordinates(route, trip);
+    const tripRange = tripPointRange(route, trip);
+    const routeRequest = tripCoordinates(route, trip, tripRange);
     if (!routeRequest) {
       showSummary(true, `${route.name} · Stop coordinates unavailable`);
       return;
@@ -350,7 +382,8 @@
     pendingTripSelection = trip;
     activeRouteId = route.id;
     setSelectedTab(route.id);
-    setRouteStopVisibility(null);
+    const visibleWaypoints = tripStopWaypoints(route, trip);
+    createRouteStopMarkers(); setRouteStopVisibility(route.id, visibleWaypoints);
     requestId++;
     const currentRequest = requestId;
     const title = el('rydeNavTitle');
@@ -1280,6 +1313,75 @@
     });
   }
 
+    function preserveRouteOverlays(previousStyle, nextStyle) {
+    if (!previousStyle) return nextStyle;
+
+    const sourceIds = [SOURCE_ROUTES, SOURCE_STOPS, SOURCE_CALCULATED, SOURCE_TRIP];
+    const layerIds = [LAYER_ROUTES, LAYER_STOPS, LAYER_CALCULATED, LAYER_TRIP];
+    const sources = { ...nextStyle.sources };
+
+    sourceIds.forEach(id => {
+      if (previousStyle.sources?.[id]) sources[id] = previousStyle.sources[id];
+    });
+
+    const nextLayerIds = new Set(nextStyle.layers.map(layer => layer.id));
+    const overlays = previousStyle.layers.filter(layer =>
+      layerIds.includes(layer.id) && !nextLayerIds.has(layer.id)
+    );
+
+    return { ...nextStyle, sources, layers: [...nextStyle.layers, ...overlays] };
+  }
+
+  function mapStyleUrl(hybrid) {
+    const style = hybrid ? 'Hybrid' : 'Standard';
+    const scheme = hybrid ? '' : '&color-scheme=Light';
+    return `https://maps.geo.${REGION}.amazonaws.com/v2/styles/${style}/descriptor?key=${encodeURIComponent(apiKey())}${scheme}`;
+  }
+
+  function createMapStyleControl() {
+    let controlMap = null;
+    let button = null;
+
+    const updateButton = () => {
+      const hybrid = button.getAttribute('aria-pressed') === 'true';
+      const action = hybrid ? 'Switch to standard map view' : 'Switch to hybrid view';
+      button.setAttribute('aria-label', action);
+      button.title = action;
+      button.querySelector('span').textContent = hybrid ? 'Map' : 'Hybrid';
+    };
+
+    return {
+      onAdd(mapInstance) {
+        controlMap = mapInstance;
+        const container = document.createElement('div');
+        container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+
+        button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'ryde-map-style-toggle';
+        button.setAttribute('aria-pressed', 'false');
+        button.style.cssText = 'box-sizing:border-box;width:29px;height:29px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:3px;border:0;background:#fff;color:#173451;cursor:pointer;font:700 6px/1 Arial,sans-serif;';
+        button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></svg><span>Hybrid</span>';
+        updateButton();
+        button.addEventListener('click', () => {
+          const hybrid = button.getAttribute('aria-pressed') !== 'true';
+          button.setAttribute('aria-pressed', String(hybrid));
+          updateButton();
+          controlMap.setStyle(mapStyleUrl(hybrid), {
+            transformStyle: preserveRouteOverlays
+          });
+        });
+
+        container.appendChild(button);
+        return container;
+      },
+      onRemove() {
+        button?.remove();
+        controlMap = null;
+      }
+    };
+  }
+
   function initialize() {
     if (map) {
       map.resize();
@@ -1333,7 +1435,9 @@
       'top-right'
     );
 
-    map.on('load', () => {
+    map.addControl(createMapStyleControl(), 'top-right');
+
+      map.on('load', () => {
       ensureBaseLayers();
       createRouteStopMarkers();
       showHome(pendingHome);
@@ -1353,7 +1457,7 @@
       map.resize();
     });
 
-    map.on('error', event => {
+    map.once('load',()=>{const root=map.getContainer();if(!root.querySelector('.ryde-satellite-map-toggle')){const s=createMapStyleControl();const e=s.onAdd(map);e.classList.add('ryde-satellite-map-toggle');e.style.position='absolute';e.style.top='112px';e.style.right='10px';e.style.zIndex='5';root.appendChild(e);}});map.on('error', event => {
       if (event.error) {
         console.error('BYU Ryde map error:', event.error);
       }
@@ -1364,7 +1468,7 @@
   window.initRydeRouteMap = initialize;
   window.showRydeTrip = trip => {
     pendingTripSelection = trip || null;
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map) return;    if (!map.isStyleLoaded()) { if (trip) map.once('idle', () => { if (pendingTripSelection === trip) selectTrip(trip); }); return; }
     if (trip) selectTrip(trip);
     else showAllRoutes();
   };

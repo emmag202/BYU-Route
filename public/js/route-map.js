@@ -301,61 +301,47 @@
   }
 
   function tripPointRange(route, trip) {
-    // West's schedule indexes do not match the order of its geographic stop
-    // definitions: find each stop by scheduleIndex instead of array position.
-    // Its MOA waypoint is also the route's closing point, so use that final
-    // point when MOA is the trip endpoint to preserve the loop's road geometry.
-    if (String(route.id) === '101') {
-      const stopPointIndex = scheduleIndex => {
-        const stop = (route.stops || []).find(item => Number(item.scheduleIndex) === Number(scheduleIndex));
-        if (!stop) return null;
-        if (Number(scheduleIndex) === 2) return route.points.length - 1;
-        const index = Number(stop.waypoint) - 1;
-        return Number.isInteger(index) ? index : null;
-      };
-      const originIndex = stopPointIndex(trip.board);
-      const destinationIndex = stopPointIndex(trip.dest);
-      if (!Number.isInteger(originIndex) || !Number.isInteger(destinationIndex) ||
-          originIndex < 0 || destinationIndex < 0 ||
-          originIndex >= route.points.length || destinationIndex >= route.points.length) return null;
-      return { originIndex, destinationIndex, low: Math.min(originIndex, destinationIndex), high: Math.max(originIndex, destinationIndex) };
-    }
-
     const stops = route.stops || [];
-    const stopIndex = trip.direction === 'to' ? trip.board : trip.dest;
-    const geoStop = stops[stops.length - 1 - stopIndex];
-    const campusStop = stops[0];
-    const originIndex = trip.direction === 'to'
-      ? Number(geoStop?.waypoint) - 1
-      : Number(campusStop?.waypoint) - 1;
-    const destinationIndex = trip.direction === 'to'
-      ? route.points.length - 1
-      : Number(geoStop?.waypoint) - 1;
+    const campusScheduleIndex = Math.max(...stops.map(stop => Number(stop.scheduleIndex)));
+    if (!Number.isFinite(campusScheduleIndex)) return null;
 
+    const pointIndexForStop = scheduleIndex => {
+      const stop = stops.find(item => Number(item.scheduleIndex) === Number(scheduleIndex));
+      if (!stop) return null;
+      // Route point arrays begin and end at campus. Use the closing duplicate
+      // for either campus endpoint so the trip follows the loop in its travel
+      // direction without including the unrelated segment across the array seam.
+      if (Number(scheduleIndex) === campusScheduleIndex) return route.points.length - 1;
+      const pointIndex = Number(stop.waypoint) - 1;
+      return Number.isInteger(pointIndex) ? pointIndex : null;
+    };
+
+    const originIndex = pointIndexForStop(trip.board);
+    const destinationIndex = pointIndexForStop(trip.dest);
     if (!Number.isInteger(originIndex) || !Number.isInteger(destinationIndex) ||
         originIndex < 0 || destinationIndex < 0 ||
-        originIndex >= route.points.length || destinationIndex >= route.points.length) {
-      return null;
-    }
+        originIndex >= route.points.length || destinationIndex >= route.points.length ||
+        originIndex === destinationIndex) return null;
 
-    return {
-      originIndex,
-      destinationIndex,
-      low: Math.min(originIndex, destinationIndex),
-      high: Math.max(originIndex, destinationIndex)
-    };
+    const followsPointOrder = trip.direction === 'to'
+      ? originIndex < destinationIndex
+      : trip.direction === 'from' && originIndex > destinationIndex;
+    if (!followsPointOrder) return null;
+
+    return { originIndex, destinationIndex };
   }
 
   function tripCoordinates(route, trip, range = tripPointRange(route, trip)) {
     if (!range) return null;
-    const { originIndex, destinationIndex, low, high } = range;
+    const { originIndex, destinationIndex } = range;
 
     const [originLat, originLon] = route.points[originIndex];
     const [destinationLat, destinationLon] = route.points[destinationIndex];
-    const pointIndexes = String(route.id) === '101'
-      ? Array.from({ length: high - low - 1 }, (_, index) => low + index + 1)
-        .sort((a, b) => originIndex < destinationIndex ? a - b : b - a)
-      : Array.from({ length: high - low - 1 }, (_, index) => low + index + 1);
+    const step = originIndex < destinationIndex ? 1 : -1;
+    const pointIndexes = [];
+    for (let index = originIndex + step; index !== destinationIndex; index += step) {
+      pointIndexes.push(index);
+    }
     const waypoints = pointIndexes.map(index => route.points[index]).map(([lat, lon]) => ({
       Position: [lon, lat]
     }));
@@ -365,6 +351,17 @@
       Destination: [destinationLon, destinationLat],
       Waypoints: waypoints
     };
+  }
+
+  function tripStopWaypoints(route, trip) {
+    const scheduledStopIndexes = new Set(Array.isArray(trip.stopIndexes) ? trip.stopIndexes : []);
+    const tripStopLabels = new Set((trip.stopLabels || [trip.originLabel, trip.destinationLabel])
+      .filter(Boolean).map(label => String(label).trim().toLocaleLowerCase()));
+    return new Set(route.stops
+      .filter(stop => scheduledStopIndexes.size
+        ? scheduledStopIndexes.has(Number(stop.scheduleIndex))
+        : tripStopLabels.has(String(stop.label).trim().toLocaleLowerCase()))
+      .map(stop => Number(stop.waypoint)));
   }
 
   async function selectTrip(trip) {
@@ -385,8 +382,7 @@
     pendingTripSelection = trip;
     activeRouteId = route.id;
     setSelectedTab(route.id);
-    const scheduledStopIndexes = new Set(Array.isArray(trip.stopIndexes) ? trip.stopIndexes : []); const tripStopLabels = new Set((trip.stopLabels || [trip.originLabel, trip.destinationLabel]).filter(Boolean).map(label => String(label).trim().toLocaleLowerCase()));
-    const visibleWaypoints = new Set(route.stops.filter(stop => scheduledStopIndexes.size ? scheduledStopIndexes.has(Number(stop.scheduleIndex)) : tripStopLabels.has(String(stop.label).trim().toLocaleLowerCase())).map(stop => stop.waypoint));
+    const visibleWaypoints = tripStopWaypoints(route, trip);
     createRouteStopMarkers(); setRouteStopVisibility(route.id, visibleWaypoints);
     requestId++;
     const currentRequest = requestId;
