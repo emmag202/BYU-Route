@@ -188,15 +188,21 @@ test('normal full-route map still uses every route point and the complete AWS ro
 
 test('trip time no longer receives schedule-derived minutes and distance fallback stays monotonic', async t => {
   assert.doesNotMatch(appSource, /scheduledRideMinutes|data-estimated-minutes|estimatedMinutes/);
-  assert.match(routeMapSource, /formatRouteSummary\(route, summary, tripDistanceMiles\)/);
+  assert.match(routeMapSource, /formatRouteSummary\(route, summary, tripDistanceMiles, 12\)/);
+  assert.match(routeMapSource, /formatRouteSummary\(route, null, routePointDistanceMiles\(route, tripRange\), 12\)/);
   assert.match(routeMapSource, /LegAdditionalFeatures: \['Summary'\]/);
+
+  const regularSummaryStart = routeMapSource.indexOf('  async function calculateRoadRoute(');
+  const regularSummaryEnd = routeMapSource.indexOf('  function clearPlaceMarkers(', regularSummaryStart);
+  assert.doesNotMatch(routeMapSource.slice(regularSummaryStart, regularSummaryEnd), /formatRouteSummary\([^\n]*, 12\)/);
 
   summaryNodes.get('rydeNavDistance').textContent = '';
   summaryNodes.get('rydeNavTime').textContent = '';
   const apiLabel = summaryContext.formatRouteSummary(
     { name: 'Test route' },
     { Distance: 1609.344, DurationSeconds: 480, DistanceUnit: 'Meters' },
-    2
+    1,
+    12
   );
   assert.equal(summaryNodes.get('rydeNavDistance').textContent, '1.0 mi');
   assert.equal(summaryNodes.get('rydeNavTime').textContent, '~8 min');
@@ -204,10 +210,34 @@ test('trip time no longer receives schedule-derived minutes and distance fallbac
 
   summaryNodes.get('rydeNavDistance').textContent = '';
   summaryNodes.get('rydeNavTime').textContent = '';
-  const fallbackLabel = summaryContext.formatRouteSummary({ name: 'Test route' }, null, 2);
+  summaryContext.formatRouteSummary(
+    { name: 'Test route' },
+    { Distance: 3218.688, DurationSeconds: 600, DistanceUnit: 'Meters' },
+    2,
+    12
+  );
   assert.equal(summaryNodes.get('rydeNavDistance').textContent, '2.0 mi');
-  assert.equal(summaryNodes.get('rydeNavTime').textContent, '~7 min');
+  assert.equal(summaryNodes.get('rydeNavTime').textContent, '~10 min');
+
+  summaryNodes.get('rydeNavDistance').textContent = '';
+  summaryNodes.get('rydeNavTime').textContent = '';
+  const oneMileFallbackLabel = summaryContext.formatRouteSummary({ name: 'Test route' }, null, 1, 12);
+  assert.equal(summaryNodes.get('rydeNavDistance').textContent, '1.0 mi');
+  assert.equal(summaryNodes.get('rydeNavTime').textContent, '~5 min');
+  assert.match(oneMileFallbackLabel, /route distance/);
+
+  summaryNodes.get('rydeNavDistance').textContent = '';
+  summaryNodes.get('rydeNavTime').textContent = '';
+  const fallbackLabel = summaryContext.formatRouteSummary({ name: 'Test route' }, null, 2, 12);
+  assert.equal(summaryNodes.get('rydeNavDistance').textContent, '2.0 mi');
+  assert.equal(summaryNodes.get('rydeNavTime').textContent, '~10 min');
   assert.match(fallbackLabel, /route distance/);
+
+  summaryNodes.get('rydeNavDistance').textContent = '';
+  summaryNodes.get('rydeNavTime').textContent = '';
+  summaryContext.formatRouteSummary({ name: 'Regular route summary' }, null, 2);
+  assert.equal(summaryNodes.get('rydeNavDistance').textContent, '2.0 mi');
+  assert.equal(summaryNodes.get('rydeNavTime').textContent, '~7 min', 'regular route summaries retain the 18 mph fallback');
 
   for (const routeCase of routeCases) {
     await t.test(`${routeCase.id} ${routeCase.name}`, () => {

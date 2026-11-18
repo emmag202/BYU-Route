@@ -438,12 +438,12 @@
       map.fitBounds(bounds, { padding: { top: 90, bottom: 140, left: 40, right: 40 }, maxZoom: 16, duration: 600 });
       const summary = buildRouteSummary(routeResult);
       const tripDistanceMiles = routePointDistanceMiles(route, tripRange);
-      const estimateLabel = formatRouteSummary(route, summary, tripDistanceMiles);
+      const estimateLabel = formatRouteSummary(route, summary, tripDistanceMiles, 12);
       showSummary(true, `${fromLabel} → ${toLabel} · ${estimateLabel.includes('distance') ? 'Approximate travel time from route distance' : 'Approximate travel time'}`);
     } catch (error) {
       console.error(`Could not calculate ${route.name} trip:`, error);
       if (currentRequest === requestId) {
-        formatRouteSummary(route, null, routePointDistanceMiles(route, tripRange));
+        formatRouteSummary(route, null, routePointDistanceMiles(route, tripRange), 12);
         showSummary(true, `${fromLabel} → ${toLabel} · Approximate travel time from route distance`);
       }
     }
@@ -659,11 +659,11 @@
     return meters / 1609.344;
   }
 
-  function approximateMinutesFromDistance(distanceMiles) {
-    return Math.max(1, Math.round(distanceMiles / 18 * 60));
+  function approximateMinutesFromDistance(distanceMiles, averageSpeedMph = 18) {
+    return Math.max(1, Math.round(distanceMiles / averageSpeedMph * 60));
   }
 
-  function formatRouteSummary(route, summary, fallbackDistanceMiles = null) {
+  function formatRouteSummary(route, summary, fallbackDistanceMiles = null, fallbackSpeedMph = 18) {
     const distanceNode = el('rydeNavDistance');
     const timeNode = el('rydeNavTime');
     const title = el('rydeNavTitle');
@@ -704,11 +704,11 @@
     }
 
     const usedApiDuration = Number.isFinite(duration) && duration > 0;
-    // Routes V2's selected trip duration is preferred. If unavailable, use a
-    // steady 18 mph bus speed against the selected segment's route geometry.
+    // Routes V2's duration is preferred. View Trip supplies its own
+    // conservative fallback speed; regular route summaries keep 18 mph.
     const minutes = usedApiDuration
       ? Math.max(1, Math.round(duration / 60))
-      : approximateMinutesFromDistance(distanceMiles);
+      : approximateMinutesFromDistance(distanceMiles, fallbackSpeedMph);
     if (distanceNode) distanceNode.textContent = `${distanceMiles.toFixed(1)} mi`;
     if (timeNode) timeNode.textContent = `~${minutes} min`;
     return `${route.name} · ${usedApiDuration ? 'Approximate travel time' : 'Approximate travel time from route distance'}`;
