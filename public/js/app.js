@@ -726,7 +726,7 @@ function tripPlan(r){
   const dest=startState.dest??r.toCampus[0];
   return {d,board:last,dest,path:[last,...r.toCampus.slice(0,r.toCampus.indexOf(dest)+1)]};
 }
-function googleMapsWalkLink(r,stopIndex){
+function tripMapStopIndexes(r,p){if(p.d!=="from")return p.path;const outboundStops=r.toCampus.slice().reverse(),destinationPos=outboundStops.indexOf(p.dest);return destinationPos<0?[p.board,p.dest]:[p.board,...outboundStops.slice(0,destinationPos+1)]}function googleMapsWalkLink(r,stopIndex){
   const geo=(window.BYU_RYDE_ROUTES||[]).find(x=>String(x.id)===String(r.id));
   const stop=geo?.stops?.[stopIndex];
   const point=stop&&geo.points?.[stop.waypoint-1];
@@ -771,7 +771,7 @@ document.addEventListener("click",e=>{
    schedDayOf[r.id]=sd.dataset.schedDay;panel.innerHTML=schedulePanel(r);panel.querySelector(`[data-sched-day="${sd.dataset.schedDay}"]`)?.focus();return}
   const tb=e.target.closest("[data-trip-board]");if(tb&&startState){startState.board=Number(tb.dataset.tripBoard);renderStart();return}
   const td=e.target.closest("[data-trip-dest]");if(td&&startState){startState.dest=Number(td.dataset.tripDest);renderStart();return}
-  const viewTrip=e.target.closest("[data-view-trip]");if(viewTrip&&startState){const r=R.find(x=>x.id===startState.id),p=tripPlan(r),estimatedMinutes=Number(viewTrip.dataset.estimatedMinutes);if(r)mapPage({routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d,originLabel:r.stops[p.board][0],destinationLabel:r.stops[p.dest][0],stopLabels:p.path.map(j=>r.stops[j][0]),estimatedMinutes:Number.isFinite(estimatedMinutes)&&estimatedMinutes>0?estimatedMinutes:null});return}
+  const viewTrip=e.target.closest("[data-view-trip]");if(viewTrip&&startState){const r=R.find(x=>x.id===startState.id),p=tripPlan(r),estimatedMinutes=Number(viewTrip.dataset.estimatedMinutes);if(r)mapPage({routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d,originLabel:r.stops[p.board][0],destinationLabel:r.stops[p.dest][0],stopLabels:tripMapStopIndexes(r,p).map(j=>r.stops[j][0]),estimatedMinutes:Number.isFinite(estimatedMinutes)&&estimatedMinutes>0?estimatedMinutes:null});return}
   const sg=e.target.closest("[data-suggest]");if(sg){home(sg.dataset.suggest);const s=$("routeSearch");if(s){s.focus();s.setSelectionRange(s.value.length,s.value.length)}return}
   const nb=e.target.closest("[data-near]");if(nb){
    const a=nb.dataset.near;
