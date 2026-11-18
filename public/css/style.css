@@ -551,16 +551,3 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 /* Each calendar update gets its own readable bullet on every screen size. */
 .academic-notice ul{display:block;list-style:disc outside;padding-left:22px}
 .academic-notice li{display:list-item;margin:8px 0;padding-left:2px}
-
-/* Desktop route-card polish. Keep these overrides out of the mobile layout. */
-@media(min-width:800px){
- .home-body.pad{padding-left:10px;padding-right:10px}
- .home-body .rc{display:flex;flex-direction:column;height:154px;padding:17px 20px}
- .home-body .rc .route-open{display:flex;flex:1;flex-direction:column;align-items:stretch;gap:5px;min-width:0;padding:0 44px 0 0}
- .home-body .rc .route-name{min-height:2.3em;padding-right:0;line-height:1.15}
- .home-body .rc .route-stop{align-self:auto;margin:0;white-space:nowrap;overflow:visible}
- .home-body .rc .next-time{display:flex;align-items:baseline;gap:7px;width:100%;margin-top:auto;text-align:left}
- .home-body .rc .next-day{display:inline;margin:0}
- .home-body .favorite-star,.home-body .favorite-star.is-saved{opacity:1}
- .home-body .favorite-star:hover,.home-body .favorite-star.is-saved:hover{opacity:.72}
-}
