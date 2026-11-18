@@ -726,7 +726,7 @@ function tripPlan(r){
   const dest=startState.dest??r.toCampus[0];
   return {d,board:last,dest,path:[last,...r.toCampus.slice(0,r.toCampus.indexOf(dest)+1)]};
 }
-function tripMapStopIndexes(r,p){if(p.d!=="from")return p.path;const outboundStops=r.toCampus.slice().reverse(),destinationPos=outboundStops.indexOf(p.dest);return destinationPos<0?[p.board,p.dest]:[p.board,...outboundStops.slice(0,destinationPos+1)]}function googleMapsWalkLink(r,stopIndex){
+function tripMapStopIndexes(r,p){if(p.d==="from"){const returningStops=r.toCampus.slice().reverse(),destinationPos=returningStops.indexOf(p.dest);return destinationPos<0?[p.board,p.dest]:[p.board,...returningStops.slice(0,destinationPos+1)]}const campusIndex=r.stops.length-1,boardingPos=r.toCampus.indexOf(p.board),passedStops=boardingPos<0?[]:r.toCampus.slice(boardingPos);return [...new Set([...passedStops,campusIndex])]}function googleMapsWalkLink(r,stopIndex){
   const geo=(window.BYU_RYDE_ROUTES||[]).find(x=>String(x.id)===String(r.id));
   const stop=geo?.stops?.[stopIndex];
   const point=stop&&geo.points?.[stop.waypoint-1];
