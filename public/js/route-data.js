@@ -162,7 +162,7 @@ window.BYU_RYDE_ROUTES = [
       [40.25176385171031, -111.64797127346249]
     ],
     stops: [
-      { waypoint: 1, label: 'Heritage (MOA)' },
+      { waypoint: 1, label: 'Heritage (MOA)', scheduleIndex: 2 },
       { waypoint: 2, label: 'West Stadium', scheduleIndex: 0 },
       { waypoint: 3, label: 'Helaman', scheduleIndex: 1 }
     ],
