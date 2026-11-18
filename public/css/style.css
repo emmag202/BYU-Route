@@ -552,6 +552,10 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f7fb}
 .academic-notice ul{display:block;list-style:disc outside;padding-left:22px}
 .academic-notice li{display:list-item;margin:8px 0;padding-left:2px}
 
+@media(max-width:799px){
+ #routeMap .maplibregl-ctrl-top-right .maplibregl-ctrl-group:has(.maplibregl-ctrl-zoom-in){display:none!important}
+}
+
 @media(min-width:800px){
  .home-body .rc{display:flex;flex-direction:column}
  .home-body .rc .route-open{flex:1}

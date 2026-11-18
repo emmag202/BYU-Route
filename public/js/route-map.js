@@ -1466,7 +1466,7 @@
       map.resize();
     });
 
-    map.once('load',()=>{const root=map.getContainer();if(!root.querySelector('.ryde-satellite-map-toggle')){const s=createMapStyleControl();const e=s.onAdd(map);e.classList.add('ryde-satellite-map-toggle');e.style.position='absolute';e.style.top='112px';e.style.right='10px';e.style.zIndex='5';root.appendChild(e);}});map.on('error', event => {
+    map.on('error', event => {
       if (event.error) {
         console.error('BYU Ryde map error:', event.error);
       }
