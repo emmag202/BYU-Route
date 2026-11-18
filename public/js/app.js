@@ -634,7 +634,7 @@ function home(filter=""){
   sheet.innerHTML=h;
 }
 function mapPage(trip=null){
-  const hash=trip?`#/map?route=${encodeURIComponent(trip.routeId)}&board=${encodeURIComponent(trip.board)}&dest=${encodeURIComponent(trip.dest)}&direction=${encodeURIComponent(trip.direction)}&origin=${encodeURIComponent(trip.originLabel)}&destination=${encodeURIComponent(trip.destinationLabel)}&stops=${encodeURIComponent(JSON.stringify(trip.stopLabels||[]))}&minutes=${encodeURIComponent(trip.estimatedMinutes??"")}`:"#/map";
+  const hash=trip?`#/map?route=${encodeURIComponent(trip.routeId)}&board=${encodeURIComponent(trip.board)}&dest=${encodeURIComponent(trip.dest)}&direction=${encodeURIComponent(trip.direction)}&origin=${encodeURIComponent(trip.originLabel)}&destination=${encodeURIComponent(trip.destinationLabel)}&stops=${encodeURIComponent(JSON.stringify(trip.stopLabels||[]))}&stopIndexes=${encodeURIComponent(JSON.stringify(trip.stopIndexes||[]))}&minutes=${encodeURIComponent(trip.estimatedMinutes??"")}`:"#/map";
   setHash(hash);layout(1);sel=null;startState=null;showRoutes(R.map(r=>r.id));view(0,0,840);
   $("app").classList.add("map-mode");
   activeNav('navMap');
@@ -694,7 +694,7 @@ function renderFromHash(){
       const params=new URLSearchParams(h.split("?")[1]||"");
       const routeId=params.get("route"),board=Number(params.get("board")),dest=Number(params.get("dest")),direction=params.get("direction");
       const estimatedMinutes=Number(params.get("minutes"));
-      let stopLabels=[];try{stopLabels=JSON.parse(params.get("stops")||"[]")}catch{}const trip=routeId&&Number.isInteger(board)&&Number.isInteger(dest)&&["to","from"].includes(direction)?{routeId,board,dest,direction,originLabel:params.get("origin")||"Selected stop",destinationLabel:params.get("destination")||"MOA",stopLabels:Array.isArray(stopLabels)?stopLabels:[],estimatedMinutes:Number.isFinite(estimatedMinutes)&&estimatedMinutes>0?estimatedMinutes:null}:null;
+      let stopLabels=[],stopIndexes=[];try{stopLabels=JSON.parse(params.get("stops")||"[]")}catch{}try{stopIndexes=JSON.parse(params.get("stopIndexes")||"[]")}catch{}const trip=routeId&&Number.isInteger(board)&&Number.isInteger(dest)&&["to","from"].includes(direction)?{routeId,board,dest,direction,originLabel:params.get("origin")||"Selected stop",destinationLabel:params.get("destination")||"MOA",stopLabels:Array.isArray(stopLabels)?stopLabels:[],stopIndexes:Array.isArray(stopIndexes)?stopIndexes.filter(Number.isInteger):[],estimatedMinutes:Number.isFinite(estimatedMinutes)&&estimatedMinutes>0?estimatedMinutes:null}:null;
       mapPage(trip);
     }
     else if(ok){
@@ -771,7 +771,7 @@ document.addEventListener("click",e=>{
    schedDayOf[r.id]=sd.dataset.schedDay;panel.innerHTML=schedulePanel(r);panel.querySelector(`[data-sched-day="${sd.dataset.schedDay}"]`)?.focus();return}
   const tb=e.target.closest("[data-trip-board]");if(tb&&startState){startState.board=Number(tb.dataset.tripBoard);renderStart();return}
   const td=e.target.closest("[data-trip-dest]");if(td&&startState){startState.dest=Number(td.dataset.tripDest);renderStart();return}
-  const viewTrip=e.target.closest("[data-view-trip]");if(viewTrip&&startState){const r=R.find(x=>x.id===startState.id),p=tripPlan(r),estimatedMinutes=Number(viewTrip.dataset.estimatedMinutes);if(r)mapPage({routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d,originLabel:r.stops[p.board][0],destinationLabel:r.stops[p.dest][0],stopLabels:tripMapStopIndexes(r,p).map(j=>r.stops[j][0]),estimatedMinutes:Number.isFinite(estimatedMinutes)&&estimatedMinutes>0?estimatedMinutes:null});return}
+  const viewTrip=e.target.closest("[data-view-trip]");if(viewTrip&&startState){const r=R.find(x=>x.id===startState.id),p=tripPlan(r),estimatedMinutes=Number(viewTrip.dataset.estimatedMinutes);if(r){const stopIndexes=tripMapStopIndexes(r,p);mapPage({routeId:String(r.id),board:p.board,dest:p.dest,direction:p.d,originLabel:r.stops[p.board][0],destinationLabel:r.stops[p.dest][0],stopLabels:stopIndexes.map(j=>r.stops[j][0]),stopIndexes,estimatedMinutes:Number.isFinite(estimatedMinutes)&&estimatedMinutes>0?estimatedMinutes:null})}return}
   const sg=e.target.closest("[data-suggest]");if(sg){home(sg.dataset.suggest);const s=$("routeSearch");if(s){s.focus();s.setSelectionRange(s.value.length,s.value.length)}return}
   const nb=e.target.closest("[data-near]");if(nb){
    const a=nb.dataset.near;

@@ -92,7 +92,7 @@
 
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'king-henry-stop-marker'; button.dataset.stopWaypoint = String(stop.waypoint);
+        button.className = 'king-henry-stop-marker'; button.dataset.stopWaypoint = String(stop.waypoint); button.dataset.scheduleIndex = String(stop.scheduleIndex);
         button.setAttribute(
           'aria-label',
           `${stop.label}`
@@ -360,8 +360,8 @@
       : Number(geoStop?.waypoint) - 1;
     const low = Math.min(originIndex, destinationIndex);
     const high = Math.max(originIndex, destinationIndex);
-    const tripStopLabels = new Set((trip.stopLabels || [trip.originLabel, trip.destinationLabel]).filter(Boolean).map(label => String(label).trim().toLocaleLowerCase()));
-    const visibleWaypoints = new Set(route.stops.filter(stop => tripStopLabels.has(String(stop.label).trim().toLocaleLowerCase())).map(stop => stop.waypoint));
+    const scheduledStopIndexes = new Set(Array.isArray(trip.stopIndexes) ? trip.stopIndexes : []); const tripStopLabels = new Set((trip.stopLabels || [trip.originLabel, trip.destinationLabel]).filter(Boolean).map(label => String(label).trim().toLocaleLowerCase()));
+    const visibleWaypoints = new Set(route.stops.filter(stop => scheduledStopIndexes.size ? scheduledStopIndexes.has(Number(stop.scheduleIndex)) : tripStopLabels.has(String(stop.label).trim().toLocaleLowerCase())).map(stop => stop.waypoint));
     createRouteStopMarkers(); setRouteStopVisibility(route.id, visibleWaypoints);
     requestId++;
     const currentRequest = requestId;
