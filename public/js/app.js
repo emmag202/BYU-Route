@@ -210,7 +210,7 @@ function dirBannerHTML(){
 }
 function dirToggleHTML(){
  const other=getDir()==="from"?"to":"from";
- return `<div class="dir-toggle"><span>Planning from somewhere else?</span><div class="dir-toggle-actions"><button type="button" class="dir-btn" data-dir-set="${other}">${other==="from"?"Switch to trips home":"Switch to trips to campus"}</button>${dirOverride?`<button type="button" class="dir-btn subtle" data-dir-set="auto">Use my location</button>`:""}</div></div>`;
+ return `<div class="dir-toggle"><span>Planning from somewhere else?</span><div class="dir-toggle-actions"><button type="button" class="dir-btn" data-dir-set="${other}">${other==="from"?"Switch to trips home":"Switch to trips to campus"}</button></div></div>`;
 }
 
 function routeNext(r){
