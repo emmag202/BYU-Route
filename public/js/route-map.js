@@ -1435,7 +1435,7 @@
   window.initRydeRouteMap = initialize;
   window.showRydeTrip = trip => {
     pendingTripSelection = trip || null;
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map) return;    if (!map.isStyleLoaded()) { if (trip) map.once('idle', () => { if (pendingTripSelection === trip) selectTrip(trip); }); return; }
     if (trip) selectTrip(trip);
     else showAllRoutes();
   };
