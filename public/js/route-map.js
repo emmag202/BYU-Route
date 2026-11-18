@@ -300,7 +300,27 @@
     }
   }
 
-  function tripCoordinates(route, trip) {
+  function tripPointRange(route, trip) {
+    // West's schedule indexes do not match the order of its geographic stop
+    // definitions: find each stop by scheduleIndex instead of array position.
+    // Its MOA waypoint is also the route's closing point, so use that final
+    // point when MOA is the trip endpoint to preserve the loop's road geometry.
+    if (String(route.id) === '101') {
+      const stopPointIndex = scheduleIndex => {
+        const stop = (route.stops || []).find(item => Number(item.scheduleIndex) === Number(scheduleIndex));
+        if (!stop) return null;
+        if (Number(scheduleIndex) === 2) return route.points.length - 1;
+        const index = Number(stop.waypoint) - 1;
+        return Number.isInteger(index) ? index : null;
+      };
+      const originIndex = stopPointIndex(trip.board);
+      const destinationIndex = stopPointIndex(trip.dest);
+      if (!Number.isInteger(originIndex) || !Number.isInteger(destinationIndex) ||
+          originIndex < 0 || destinationIndex < 0 ||
+          originIndex >= route.points.length || destinationIndex >= route.points.length) return null;
+      return { originIndex, destinationIndex, low: Math.min(originIndex, destinationIndex), high: Math.max(originIndex, destinationIndex) };
+    }
+
     const stops = route.stops || [];
     const stopIndex = trip.direction === 'to' ? trip.board : trip.dest;
     const geoStop = stops[stops.length - 1 - stopIndex];
@@ -318,11 +338,25 @@
       return null;
     }
 
+    return {
+      originIndex,
+      destinationIndex,
+      low: Math.min(originIndex, destinationIndex),
+      high: Math.max(originIndex, destinationIndex)
+    };
+  }
+
+  function tripCoordinates(route, trip, range = tripPointRange(route, trip)) {
+    if (!range) return null;
+    const { originIndex, destinationIndex, low, high } = range;
+
     const [originLat, originLon] = route.points[originIndex];
     const [destinationLat, destinationLon] = route.points[destinationIndex];
-    const low = Math.min(originIndex, destinationIndex);
-    const high = Math.max(originIndex, destinationIndex);
-    const waypoints = route.points.slice(low + 1, high).map(([lat, lon]) => ({
+    const pointIndexes = String(route.id) === '101'
+      ? Array.from({ length: high - low - 1 }, (_, index) => low + index + 1)
+        .sort((a, b) => originIndex < destinationIndex ? a - b : b - a)
+      : Array.from({ length: high - low - 1 }, (_, index) => low + index + 1);
+    const waypoints = pointIndexes.map(index => route.points[index]).map(([lat, lon]) => ({
       Position: [lon, lat]
     }));
 
@@ -341,7 +375,8 @@
     const route = ROUTES.find(item => item.id === String(trip.routeId));
     if (!route) return;
 
-    const routeRequest = tripCoordinates(route, trip);
+    const tripRange = tripPointRange(route, trip);
+    const routeRequest = tripCoordinates(route, trip, tripRange);
     if (!routeRequest) {
       showSummary(true, `${route.name} · Stop coordinates unavailable`);
       return;
@@ -350,16 +385,6 @@
     pendingTripSelection = trip;
     activeRouteId = route.id;
     setSelectedTab(route.id);
-    const stopIndex = trip.direction === 'to' ? trip.board : trip.dest;
-    const geoStop = route.stops[route.stops.length - 1 - stopIndex];
-    const originIndex = trip.direction === 'to'
-      ? Number(geoStop?.waypoint) - 1
-      : Number(route.stops[0]?.waypoint) - 1;
-    const destinationIndex = trip.direction === 'to'
-      ? route.points.length - 1
-      : Number(geoStop?.waypoint) - 1;
-    const low = Math.min(originIndex, destinationIndex);
-    const high = Math.max(originIndex, destinationIndex);
     const scheduledStopIndexes = new Set(Array.isArray(trip.stopIndexes) ? trip.stopIndexes : []); const tripStopLabels = new Set((trip.stopLabels || [trip.originLabel, trip.destinationLabel]).filter(Boolean).map(label => String(label).trim().toLocaleLowerCase()));
     const visibleWaypoints = new Set(route.stops.filter(stop => scheduledStopIndexes.size ? scheduledStopIndexes.has(Number(stop.scheduleIndex)) : tripStopLabels.has(String(stop.label).trim().toLocaleLowerCase())).map(stop => stop.waypoint));
     createRouteStopMarkers(); setRouteStopVisibility(route.id, visibleWaypoints);
