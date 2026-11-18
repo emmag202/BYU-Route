@@ -92,7 +92,7 @@
 
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'king-henry-stop-marker';
+        button.className = 'king-henry-stop-marker'; button.dataset.stopWaypoint = String(stop.waypoint);
         button.setAttribute(
           'aria-label',
           `${stop.label}`
@@ -151,10 +151,10 @@
     });
   }
 
-  function setRouteStopVisibility(routeId) {
+  function setRouteStopVisibility(routeId, visibleWaypoints = null) {
     routeStopMarkers.forEach((markers, id) => {
       markers.forEach(marker => {
-        const visible = id === routeId;
+        const waypoint = Number(marker.getElement().dataset.stopWaypoint); const visible = id === routeId && (!visibleWaypoints || visibleWaypoints.has(waypoint));
 
         marker.getElement().style.display = visible ? '' : 'none';
 
@@ -350,7 +350,22 @@
     pendingTripSelection = trip;
     activeRouteId = route.id;
     setSelectedTab(route.id);
-    setRouteStopVisibility(route.id);
+    const stopIndex = trip.direction === 'to' ? trip.board : trip.dest;
+    const geoStop = route.stops[route.stops.length - 1 - stopIndex];
+    const originIndex = trip.direction === 'to'
+      ? Number(geoStop?.waypoint) - 1
+      : Number(route.stops[0]?.waypoint) - 1;
+    const destinationIndex = trip.direction === 'to'
+      ? route.points.length - 1
+      : Number(geoStop?.waypoint) - 1;
+    const low = Math.min(originIndex, destinationIndex);
+    const high = Math.max(originIndex, destinationIndex);
+    const visibleWaypoints = new Set(
+      route.stops
+        .filter(stop => stop.waypoint - 1 >= low && stop.waypoint - 1 <= high)
+        .map(stop => stop.waypoint)
+    );
+    createRouteStopMarkers(); setRouteStopVisibility(route.id, visibleWaypoints);
     requestId++;
     const currentRequest = requestId;
     const title = el('rydeNavTitle');
