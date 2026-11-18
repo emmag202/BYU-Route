@@ -723,7 +723,7 @@ function tripPlan(r){
 }
 function tripMapStopIndexes(r,p){if(p.d==="from"){const returningStops=r.toCampus.slice().reverse(),destinationPos=returningStops.indexOf(p.dest);return destinationPos<0?[p.board,p.dest]:[p.board,...returningStops.slice(0,destinationPos+1)]}const campusIndex=r.stops.length-1,boardingPos=r.toCampus.indexOf(p.board),passedStops=boardingPos<0?[]:r.toCampus.slice(boardingPos);return [...new Set([...passedStops,campusIndex])]}function googleMapsWalkLink(r,stopIndex){
   const geo=(window.BYU_RYDE_ROUTES||[]).find(x=>String(x.id)===String(r.id));
-  const stop=geo?.stops?.[stopIndex];
+  const stop=geo?.stops?.find(s=>s.scheduleIndex===stopIndex);
   const point=stop&&geo.points?.[stop.waypoint-1];
   if(!point||!Number.isFinite(point[0])||!Number.isFinite(point[1]))return "";
   const url=new URL("https://www.google.com/maps/dir/");

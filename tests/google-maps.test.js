@@ -6,24 +6,36 @@ const source=fs.readFileSync('public/js/app.js','utf8');
 const context={window:{},URL,esc:s=>String(s).replace(/&/g,'&amp;')};
 vm.createContext(context);
 vm.runInContext(fs.readFileSync('public/js/route-data.js','utf8'),context);
+const routeDataStart=source.indexOf('const R=[');
+const routeDataEnd=source.indexOf('\n];',routeDataStart)+3;
+const displayedRoutes=vm.runInContext(`${source.slice(routeDataStart,routeDataEnd)}\nR.map(r=>({id:r.id,name:r.name,stops:r.stops.map(s=>s[0])}))`,context);
 vm.runInContext(source.slice(source.indexOf('function googleMapsWalkLink('),source.indexOf('// Refresh the same route-details page')),context);
-test('Emma walking links preserve exact destinations and external-link behavior for all route stops',()=>{
+test('walking links map every displayed stop to its geographic scheduleIndex across all seven routes',()=>{
  const routes=context.window.BYU_RYDE_ROUTES;
  assert.equal(routes.length,7);
- for(const geo of routes){
-  const r={id:geo.id,stops:geo.stops.map(s=>[s.label])};
+ assert.deepEqual(Array.from(displayedRoutes,r=>r.name),['West','Wyview','Branbury','King Henry','South/Joaquin','Heritage Overflow Parking','Wymount']);
+ for(const r of displayedRoutes){
+  const geo=routes.find(g=>g.id===r.id);
+  assert.ok(geo,`geographic data exists for ${r.name}`);
   const html=context.routeWalkingLinksHTML(r);
-  assert.equal((html.match(/data-directions/g)||[]).length,geo.stops.length);
-  assert.equal((html.match(/target="_blank" rel="noopener noreferrer"/g)||[]).length,geo.stops.length);
-  geo.stops.forEach((stop,i)=>{
+  assert.equal((html.match(/data-directions/g)||[]).length,r.stops.length);
+  assert.equal((html.match(/target="_blank" rel="noopener noreferrer"/g)||[]).length,r.stops.length);
+  r.stops.forEach(([label],i)=>{
+   const mappedStop=geo.stops.find(stop=>stop.scheduleIndex===i);
+   assert.ok(mappedStop,`${r.name} displayed stop ${i} has a scheduleIndex match`);
    const link=new URL(context.googleMapsWalkLink(r,i));
    assert.equal(link.origin,'https://www.google.com');assert.equal(link.pathname,'/maps/dir/');
-   assert.equal(link.searchParams.get('destination'),geo.points[stop.waypoint-1].join(','));
+   assert.equal(link.searchParams.get('destination'),geo.points[mappedStop.waypoint-1].join(','));
    assert.equal(link.searchParams.get('travelmode'),'walking');assert.equal(link.searchParams.get('api'),'1');
-   assert.ok(html.includes('Walk to '+stop.label));assert.ok(html.includes('Walking directions in Google Maps'));
+   assert.ok(html.includes('Walk to '+label));assert.ok(html.includes('Walking directions in Google Maps'));
   });
  }
  assert.equal(context.googleMapsWalkLink({id:'missing'},0),'');
+ const first=routes[0],originalStops=first.stops;
+ try{
+  first.stops=originalStops.filter(stop=>stop.scheduleIndex!==0);
+  assert.equal(context.googleMapsWalkLink({id:first.id},0),'');
+ }finally{first.stops=originalStops}
  assert.equal(context.googleMapsWalkLink({id:routes[0].id},999),'');
 });
 test('combined route details keep walking links below the schedule with the existing map destinations',()=>{
