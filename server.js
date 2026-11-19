@@ -9,7 +9,8 @@ const express = require("express");
 const { Pool } = require("pg");
 const serverless = require("serverless-http");
 const { createLambdaApi, createAccountProxy } = require("./services/lambda-proxy");
-const { readSession, sessionCookieOptions } = require("./services/account-security");
+const { readSession, sessionCookieOptions, csrfAllowed, createRateLimit } = require("./services/account-security");
+const { createAdminRouter } = require("./services/admin-crud");
 const okrAccess = require("./services/okr-access");
 const { createTripAssistant } = require("./services/trip-assistant");
 const { createGemini } = require("./services/gemini");
@@ -126,19 +127,69 @@ app.use((_req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, "public"), { maxAge: process.env.NODE_ENV === "production" ? "1h" : 0 }));
 app.get(["/", "/index.html"], (_req, res) => res.render("index"));
-app.get("/okr", (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.render(okrAccess.authorized(req.get('cookie')) ? 'okr' : 'okr-login', { error: '', configured: Boolean(process.env.OKR_ADMIN_PASSWORD) });
+// Render sends only a signed cookie to the IAM-invoked Lambda; the database owns revocation.
+async function adminInvoke(method, endpoint, token, body) {
+  const path = '/api/admin/' + endpoint;
+  const event = { version:'2.0', routeKey:'$default', rawPath:path, rawQueryString:'',
+    headers:{host:'ryde-internal','content-type':'application/json'}, cookies:[`${okrAccess.COOKIE}=${token}`],
+    requestContext:{http:{method,path,protocol:'HTTP/1.1',sourceIp:'127.0.0.1'}},
+    ...(body === undefined ? {} : {body:JSON.stringify(body)}), isBase64Encoded:false };
+  return lambdaApi.invoke(event);
+}
+const adminLimit = createRateLimit({limit:8,windowMs:60000});
+const adminIpLimit = createRateLimit({limit:30,windowMs:60000});
+const adminApiLimit = createRateLimit({limit:120,windowMs:60000});
+const cookieOptions = {httpOnly:true,secure:process.env.NODE_ENV === 'production',sameSite:'strict',path:'/'};
+app.get('/okr', async (req,res) => {
+  res.set('Cache-Control','no-store');
+  const configured = Boolean(process.env.OKR_ADMIN_PASSWORD && process.env.OKR_ADMIN_EMAIL);
+  let valid = false;
+  if (!isLambda && okrAccess.authorized(req.get('cookie'))) {
+    try { valid = (await adminInvoke('GET','session',okrAccess.readToken(req.get('cookie')))).statusCode === 204; } catch (_) {}
+  }
+  res.render(valid ? 'okr' : 'okr-login', {error:'',configured});
 });
 app.use(express.json({ limit: "20kb" }));
-app.post('/okr/login', express.urlencoded({ extended: false, limit: '2kb' }), (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  if (!process.env.OKR_ADMIN_PASSWORD) return res.status(503).render('okr-login', { error: 'Team dashboard password is not configured.', configured: false });
-  if (typeof req.body.password !== 'string' || !okrAccess.equal(req.body.password, process.env.OKR_ADMIN_PASSWORD)) {
-    return res.status(401).render('okr-login', { error: 'Incorrect password.', configured: true });
-  }
-  res.cookie(okrAccess.COOKIE, okrAccess.createToken(), { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: okrAccess.HOURS * 3600000 });
-  res.redirect(303, '/okr');
+app.post('/okr/login', express.urlencoded({extended:false,limit:'2kb'}), async (req,res) => {
+  res.set('Cache-Control','no-store');
+  const configured = Boolean(process.env.OKR_ADMIN_PASSWORD && process.env.OKR_ADMIN_EMAIL);
+  if (!configured) return res.status(503).render('okr-login',{error:'Administrator login is not configured.',configured:false});
+  if (req.get('origin') !== process.env.APP_ORIGIN || req.get('sec-fetch-site') === 'cross-site') return res.sendStatus(403);
+  if (!adminIpLimit(req.ip) || !adminLimit(`login:${req.ip}`)) return res.status(429).render('okr-login',{error:'Too many attempts. Please wait.',configured:true});
+  const email = typeof req.body.user_email === 'string' ? req.body.user_email.trim().toLowerCase() : '';
+  const password = typeof req.body.user_password === 'string' ? req.body.user_password : '';
+  if (email.length > 254 || password.length > 256 || !okrAccess.equal(email,process.env.OKR_ADMIN_EMAIL.trim().toLowerCase()) || !okrAccess.equal(password,process.env.OKR_ADMIN_PASSWORD))
+    return res.status(401).render('okr-login',{error:'Invalid email or password.',configured:true});
+  try {
+    const token=okrAccess.createToken();
+    const result=await adminInvoke('POST','session',token,{proof:okrAccess.proof(token)});
+    if (result.statusCode !== 204) throw new Error('session unavailable');
+    res.cookie(okrAccess.COOKIE,token,{...cookieOptions,maxAge:okrAccess.HOURS*3600000});
+    return res.redirect(303,'/okr');
+  } catch (_) { return res.status(503).render('okr-login',{error:'Administrator service is unavailable.',configured:true}); }
+});
+// Administrator browser requests are checked here and independently in Lambda.
+if (!isLambda) app.use('/api/admin', async (req,res) => {
+  res.set('Cache-Control','no-store');
+  if (!okrAccess.authorized(req.get('cookie'))) return res.status(401).json({error:'Administrator sign-in required.'});
+  if (!adminApiLimit(req.ip)) return res.status(429).json({error:'Too many requests. Please wait.'});
+  if (!csrfAllowed(req,process.env.APP_ORIGIN)) return res.status(403).json({error:'Request origin could not be verified.'});
+  const endpoint=req.path.slice(1);
+  if (!/^(session|users|routes|favorites|homes|calendar)$/.test(endpoint) || (endpoint==='session' && req.method!=='DELETE')) return res.sendStatus(404);
+  if (!['GET','POST','PUT','DELETE'].includes(req.method)) return res.sendStatus(405);
+  try {
+    const result=await adminInvoke(req.method,endpoint,okrAccess.readToken(req.get('cookie')),req.method==='GET'?undefined:req.body);
+    if (endpoint==='session' && req.method==='DELETE' && result.statusCode===204) res.clearCookie(okrAccess.COOKIE,cookieOptions);
+    if (result.statusCode===204) return res.status(204).end();
+    const statuses=[200,201,400,401,403,404,405,409,429];
+    if(!statuses.includes(result.statusCode)) return res.status(503).json({error:'Administrator service is unavailable.'});
+    return res.status(result.statusCode).type('json').send(result.body);
+  } catch (_) { return res.status(503).json({error:'Administrator service is unavailable.'}); }
+});
+else app.use('/api/admin', (req,res,next)=>pool ? next() : res.status(503).json({error:'Database unavailable.'}), createAdminRouter({pool,makePasswordHash}));
+// Revocation is also enforced inside Lambda for the original OKR reporting endpoint.
+if (isLambda) app.use('/api/okr', okrAccess.requireOkr, async (req,res,next)=>{
+  try { if(!pool) return res.sendStatus(503); const result=await pool.query('SELECT 1 FROM ryde_demo.admin_session WHERE token_hash = $1 AND expires_at > CURRENT_TIMESTAMP',[okrAccess.hash(okrAccess.readToken(req.get('cookie')))]); if(!result.rows.length) return res.sendStatus(401); next(); } catch(e) { next(e); }
 });
 // Protect totals on both Render and Lambda; interaction recording remains available to riders.
 app.use('/api/okr', okrAccess.requireOkr);

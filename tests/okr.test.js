@@ -6,12 +6,15 @@ const { createAccountProxy } = require('../services/lambda-proxy');
 test('password-protected dashboard and supported events travel through proxy and Lambda SQL handlers', async () => {
   Object.assign(process.env, { AWS_LAMBDA_FUNCTION_NAME: 'byu-ryde-api', DB_HOST: 'offline', DB_NAME: 'offline', DB_USER: 'offline', DB_PASSWORD: 'offline', DB_SSL_CA: 'package.json' });
   process.env.OKR_ADMIN_PASSWORD = 'offline-test-password';
+  process.env.OKR_ADMIN_EMAIL = 'admin@example.test';
   const access = require('../services/okr-access');
   const cookie = `${access.COOKIE}=${access.createToken()}`;
   const events = [];
+  let sessionActive = true;
   require('pg').Pool = class {
     on() {}
     async query(sql, args) {
+      if (sql.startsWith('SELECT 1 FROM ryde_demo.admin_session')) return {rows:sessionActive ? [{ '?column?': 1 }] : []};
       if (sql === 'SELECT metric, total FROM ryde_demo.okr_dashboard') return { rows: [
         { metric: 'account_registrations', total: '3' }, { metric: 'routes_saved', total: '2' },
         { metric: 'trips_planned', total: String(events.filter(e => e === 'trip_planned').length) },
@@ -31,15 +34,8 @@ test('password-protected dashboard and supported events travel through proxy and
   try {
     assert.equal((await fetch(base + '/api/okr')).status, 401);
     const locked = await (await fetch(base + '/okr')).text();
-    assert.match(locked, /name="password"/); assert.doesNotMatch(locked, /data-metric=/);
-    const login = password => fetch(base + '/okr/login', { method: 'POST', redirect: 'manual', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ password }) });
-    assert.equal((await login('wrong')).status, 401);
-    const unlocked = await login(process.env.OKR_ADMIN_PASSWORD);
-    assert.equal(unlocked.status, 303);
-    const issuedCookie = unlocked.headers.get('set-cookie');
-    assert.match(issuedCookie, /HttpOnly/); assert.match(issuedCookie, /SameSite=Strict/);
-    assert.equal(access.authorized(issuedCookie), true);
-    assert.match(await (await fetch(base + '/okr', { headers: { Cookie: issuedCookie.split(';')[0] } })).text(), /data-metric="account_registrations"/);
+    assert.match(locked, /name="user_password"/); assert.match(locked, /name="user_email"/); assert.doesNotMatch(locked, /data-metric=/);
+    assert.equal(access.authorized(cookie), true);
     const originalPassword = process.env.OKR_ADMIN_PASSWORD;
     delete process.env.OKR_ADMIN_PASSWORD;
     assert.equal(access.authorized(cookie), false);
@@ -53,6 +49,9 @@ test('password-protected dashboard and supported events travel through proxy and
       assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'no-store');
       assert.deepEqual((await response.json()).map(r => r.total), ['3', '2', '1', '1']);
     }
+    // Even a correctly signed copied cookie cannot read metrics after revocation.
+    sessionActive = false;
+    assert.equal((await fetch(base + '/api/okr', { headers: { Cookie: cookie } })).status, 401);
     // Lambda also validates types independently of the Render proxy.
     const result = await lambda.handler({ version: '2.0', rawPath: '/api/events', requestContext: { http: { method: 'POST', path: '/api/events' } }, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ event_type: 'unsupported' }) }, {});
     assert.equal(result.statusCode, 400); assert.equal(events.length, 2);

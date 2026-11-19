@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BYU Ryde | OKR dashboard</title><link rel="stylesheet" href="/css/okr.css?v=demo-polish-20261118"></head>
 <body><main>
 <a href="/">&larr; Back to The Ryde</a>
-<header><p class="eyebrow">BYU RYDE &middot; PROJECT IMPACT</p><h1>Small steps. More rides.</h1><p>Our objectives and key results, measured through real rider activity.</p><button id="refresh" type="button">Refresh counters</button><p id="status" role="status">Loading counters&hellip;</p></header>
+<nav class="admin-nav" aria-label="Admin portal"><button type="button" data-panel="monitor">OKR Monitor</button> <button type="button" data-panel="users">Maintain Users</button> <button type="button" data-panel="records">Maintain Records</button> <button type="button" id="admin-logout">Logout</button></nav><div id="panel-monitor"><header><p class="eyebrow">BYU RYDE &middot; PROJECT IMPACT</p><h1>Small steps. More rides.</h1><p>BYU Ryde Admin &amp; OKR Portal</p><p>Our objectives and key results, measured through real rider activity.</p><button id="refresh" type="button">Refresh counters</button><p id="status" role="status">Loading counters&hellip;</p></header>
 <section aria-labelledby="adoption"><p class="eyebrow">OBJECTIVE 1</p><h2 id="adoption">Build Rider Adoption</h2><div class="metrics">
 <article><p>KR 1 &middot; Accounts Created</p><strong data-metric="account_registrations">&mdash;</strong><p>Registered rider accounts.</p></article>
 <article><p>KR 2 &middot; Routes Saved</p><strong data-metric="routes_saved">&mdash;</strong><p>Routes currently saved as favorites.</p></article>
@@ -12,4 +12,6 @@
 <article><p>KR 1 &middot; Trip Routes Viewed</p><strong data-metric="trips_planned">&mdash;</strong><p>Trip routes opened on the interactive map.</p></article>
 <article><p>KR 2 &middot; Walking Directions Opened</p><strong data-metric="directions_clicked">&mdash;</strong><p>Google Maps walking directions opened.</p></article>
 </div></section><footer>Totals reflect saved activity. Refresh to see the latest counts.</footer>
-</main><script src="/js/okr.js?v=demo-polish-20261118"></script></body></html>
+</div><section id="panel-users" hidden><h2>Maintain Users</h2><p>Deleting a user also removes that user's favorites, home and sessions.</p><div id="users-content"></div></section>
+<section id="panel-records" hidden><h2>Maintain Records</h2><p>Database routes do not edit published schedules or maps. Published routes cannot be changed here.</p><label>Record type <select id="record-type"><option value="routes">Routes</option><option value="favorites">Favorites</option><option value="homes">Saved homes</option><option value="calendar">Academic calendar</option></select></label><div id="records-content"></div></section><p id="admin-status" role="status"></p>
+</main><script src="/js/admin.js" defer></script><script src="/js/okr.js?v=demo-polish-20261118"></script></body></html>

@@ -164,3 +164,23 @@ Calendar: Emma's existing notice displays up to three upcoming date ranges retur
 5. Verify signup/login; save, refresh, open, and unsave a favorite; save/update/remove a home; and confirm the calendar API returns dates. Visit `/okr` privately, enter the shared password, and verify all four counters. An unauthenticated `/api/okr` request must return 401; normal student navigation has no dashboard link.
 
 No production database changes or deployments were performed by this implementation.
+
+## IS 401 Admin CRUD Assignment
+
+The existing site hosts the portal at `/okr`. Configure `OKR_ADMIN_EMAIL` privately on Render and `OKR_ADMIN_PASSWORD` to the same strong value on Render and Lambda. An administrator signs in with that email and password; rider sessions do not grant access. Render validates both values and invokes Lambda using IAM. Lambda checks a signed, expiring cookie and a hashed session record on every administrative request and OKR read. Logout deletes that record before clearing the cookie, so a copied cookie cannot be replayed. If the backend is unavailable, logout reports failure; retry or rotate the shared password. Existing password-only OKR cookies become invalid after this update.
+
+Maintain Users creates, lists, edits, resets passwords for, and deletes `ryde_demo.appuser` accounts. Passwords are salted and hashed with scrypt. Deleting a user cascades to their favorites, home and rider sessions. Maintain Records covers `route`, `favoriteroute`, `user_home` and `academic_no_class_day`; user and route relationships use selectors. Existing published routes cannot be renamed or deleted because the public app references their names; changes to database routes do not update maps or timetables. A referenced route cannot be deleted until its favorites are removed. Session tables, raw analytics, and derived OKR views are security or reporting data and are deliberately excluded from CRUD.
+
+**Local tests:** run `npm test`; tests use mocks and do not verify a production database. Local Express invokes the configured Lambda, so interactive local use requires an appropriately configured test Lambda and `APP_ORIGIN`.
+
+**Deployment order (manual; no deployment performed here):**
+
+1. Back up the existing Lambda version and configuration. Apply only `services/admin-session-migration.sql` using an authorized database migration connection. It creates one session table and index without changing existing data. Grant the Lambda runtime role SELECT, INSERT and DELETE on `ryde_demo.admin_session`. Do not run the full schema installer.
+2. Privately configure the same `OKR_ADMIN_PASSWORD` in Lambda and Render; set `OKR_ADMIN_EMAIL` in Render, and confirm `APP_ORIGIN` exactly matches the site origin. Keep unrelated configuration unchanged.
+3. Run `npm ci`, `npm test`, and `./package-lambda.ps1`. Upload the verified ZIP to the existing Lambda, keeping `server.handler`, VPC, credentials and runtime settings. If an alias is used, update the existing alias to the new version.
+4. Deploy the reviewed web code to the existing Render service using its established deployment process. Lambda must be updated separately; Render does not update it.
+5. Safely smoke-test with a temporary account and a temporary route: verify login, all four OKR counters, CRUD, logout and rejection of a copied cookie; then remove only the temporary records. Verify the public routes, rider login, favorites, home and calendar. Never edit the seven published routes or existing users for a smoke test. Test the other business tables with temporary data only.
+
+**Rollback:** restore the previous Render release and Lambda version together and restore their prior environment configuration. Existing data remains intact. Once no deployed version uses the new portal, an authorized operator may drop `ryde_demo.admin_session` using the rollback statement in the migration; this invalidates all admin sessions. Do not drop other tables or run the schema installer.
+
+**Private TA submission checklist:** Set an authorized grading email and a unique strong password in the service environments as above; provide the deployed `/okr` URL, email, and password to the instructor through a private channel. Do not commit credentials. Rotate the password after grading, which invalidates all existing signed sessions.
