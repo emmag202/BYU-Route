@@ -30,6 +30,22 @@ Render hosts the Node.js and Express application. Account and administrative req
 
 Published route schedules and much of the route data are maintained in the application's JavaScript. PostgreSQL stores rider accounts, favorites, saved homes, calendar records, administrative sessions, and related data. Editing a route in the admin portal does not change the public timetable or map geometry.
 
+## System Design & Architecture
+
+These original course diagrams describe the project's intended design; some details differ from the final implementation described above.
+
+### Entity Relationship Diagram
+
+![Original BYU Ryde entity relationship diagram](docs/images/ryde-erd.png)
+
+### Level 0 Data Flow Diagram
+
+The complete original Level 0 diagram is pending; the supplied screenshot cuts off the bottom of the diagram.
+
+### Level 1 Data Flow Diagram
+
+![Original BYU Ryde Level 1 data flow diagram](docs/images/ryde-dfd-level-1.png)
+
 ## Local Setup
 
 Use Node.js 22 or later:
@@ -46,7 +62,7 @@ Run the automated tests with `npm test`. To build and verify the Lambda deployme
 
 ## Admin Features
 
-The password-protected `/okr` portal displays four OKR counters and provides maintenance for users, routes, favorite-route associations, saved home locations, and academic calendar records. An authorized email and shared administrator password are configured privately. Logout revokes the admin session. Published routes are protected from administrative renaming or deletion because the public application references them by name.
+The password-protected `/okr` portal displays four OKR counters and provides maintenance for users, routes, favorite-route associations, saved home locations, and academic calendar records. The grading login uses `test123@byu.edu` and the shared administrator password, which is provided privately. Logout revokes the admin session. Published routes are protected from administrative renaming or deletion because the public application references them by name.
 
 ## Team Members
 
