@@ -136,13 +136,15 @@ async function adminInvoke(method, endpoint, token, body) {
     ...(body === undefined ? {} : {body:JSON.stringify(body)}), isBase64Encoded:false };
   return lambdaApi.invoke(event);
 }
+// The comma-separated allowlist is configured on Render; it never reaches the browser.
+function adminEmails() { return (process.env.OKR_ADMIN_EMAIL || '').split(',').map(email => email.trim().toLowerCase()).filter(Boolean); }
 const adminLimit = createRateLimit({limit:8,windowMs:60000});
 const adminIpLimit = createRateLimit({limit:30,windowMs:60000});
 const adminApiLimit = createRateLimit({limit:120,windowMs:60000});
 const cookieOptions = {httpOnly:true,secure:process.env.NODE_ENV === 'production',sameSite:'strict',path:'/'};
 app.get('/okr', async (req,res) => {
   res.set('Cache-Control','no-store');
-  const configured = Boolean(process.env.OKR_ADMIN_PASSWORD && process.env.OKR_ADMIN_EMAIL);
+  const configured = Boolean(process.env.OKR_ADMIN_PASSWORD && adminEmails().length);
   let valid = false;
   if (!isLambda && okrAccess.authorized(req.get('cookie'))) {
     try { valid = (await adminInvoke('GET','session',okrAccess.readToken(req.get('cookie')))).statusCode === 204; } catch (_) {}
@@ -152,13 +154,13 @@ app.get('/okr', async (req,res) => {
 app.use(express.json({ limit: "20kb" }));
 app.post('/okr/login', express.urlencoded({extended:false,limit:'2kb'}), async (req,res) => {
   res.set('Cache-Control','no-store');
-  const configured = Boolean(process.env.OKR_ADMIN_PASSWORD && process.env.OKR_ADMIN_EMAIL);
+  const configured = Boolean(process.env.OKR_ADMIN_PASSWORD && adminEmails().length);
   if (!configured) return res.status(503).render('okr-login',{error:'Administrator login is not configured.',configured:false});
   if (req.get('origin') !== process.env.APP_ORIGIN || req.get('sec-fetch-site') === 'cross-site') return res.sendStatus(403);
   if (!adminIpLimit(req.ip) || !adminLimit(`login:${req.ip}`)) return res.status(429).render('okr-login',{error:'Too many attempts. Please wait.',configured:true});
   const email = typeof req.body.user_email === 'string' ? req.body.user_email.trim().toLowerCase() : '';
   const password = typeof req.body.user_password === 'string' ? req.body.user_password : '';
-  if (email.length > 254 || password.length > 256 || !okrAccess.equal(email,process.env.OKR_ADMIN_EMAIL.trim().toLowerCase()) || !okrAccess.equal(password,process.env.OKR_ADMIN_PASSWORD))
+  if (email.length > 254 || password.length > 256 || !adminEmails().reduce((matched, allowed) => okrAccess.equal(email,allowed) || matched, false) || !okrAccess.equal(password,process.env.OKR_ADMIN_PASSWORD))
     return res.status(401).render('okr-login',{error:'Invalid email or password.',configured:true});
   try {
     const token=okrAccess.createToken();

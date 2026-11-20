@@ -1,4 +1,4 @@
-﻿# Admin & OKR Portal deployment runbook
+# Admin & OKR Portal deployment runbook
 
 This is a manual release plan for the existing Render service, existing Lambda `byu-ryde-api` in `us-east-1`, and its private PostgreSQL RDS database. No production change is made by this document. Review the release and obtain the required authorization before executing it.
 
@@ -39,7 +39,7 @@ SELECT pg_get_serial_sequence('ryde_demo.appuser', 'user_id') AS user_sequence,
 
 ## Configuration and release
 
-5. In Render's existing service, privately set `OKR_ADMIN_EMAIL` to the intended administrator's email. Set `OKR_ADMIN_PASSWORD` to the existing shared admin password or a newly chosen strong secret, using the **same exact value** in Render and Lambda. Never place either value in source, a shell history, logs, or the submission document. Lambda needs `OKR_ADMIN_PASSWORD` but does not need the email. Confirm `APP_ORIGIN` on Render is the exact public origin, including scheme and port if present, with no path or trailing slash. Retain `NODE_ENV=production`, Lambda ARN/region, IAM invocation access, RDS connection and TLS settings. Coordinate configuration and release so a mismatch is brief; changing the password invalidates current OKR cookies.
+5. In Render's existing service, privately set `OKR_ADMIN_EMAIL` to a comma-separated list of authorized administrator emails. Set `OKR_ADMIN_PASSWORD` to the existing shared admin password or a newly chosen strong secret, using the **same exact value** in Render and Lambda. Never place either value in source, a shell history, logs, or the submission document. Lambda needs `OKR_ADMIN_PASSWORD` but does not need the email. Confirm `APP_ORIGIN` on Render is the exact public origin, including scheme and port if present, with no path or trailing slash. Retain `NODE_ENV=production`, Lambda ARN/region, IAM invocation access, RDS connection and TLS settings. Coordinate configuration and release so a mismatch is brief; changing the password invalidates current OKR cookies.
 6. Run `npm test` and `./package-lambda.ps1` from the repository root. Wait for `Verified upload` and the SHA-256; do not use a ZIP from an interrupted run. In Lambda `byu-ryde-api`, upload the verified `artifacts/ryde-lambda.zip`; preserve `server.handler`, Node.js 22 runtime, VPC, environment and execution role. Wait for the update to succeed. If Render invokes an alias, publish the version and update that **existing** alias according to the established process.
 7. Only after Lambda is ready, publish the reviewed source through the existing Render service's established process, with the user's separate authorization to commit/push/deploy. Ensure the deployed revision matches the package's source. Wait for the service to become healthy. No second site, database setup, AWS networking change, or public RDS access is required.
 
