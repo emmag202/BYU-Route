@@ -40,7 +40,7 @@ These original course diagrams describe the project's intended design; some deta
 
 ### Level 0 Data Flow Diagram
 
-The complete original Level 0 diagram is pending; the supplied screenshot cuts off the bottom of the diagram.
+![Original BYU Ryde Level 0 data flow diagram](docs/images/ryde-dfd-level-0.png)
 
 ### Level 1 Data Flow Diagram
 
